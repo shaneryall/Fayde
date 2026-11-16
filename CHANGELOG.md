@@ -1,0 +1,122 @@
+# Changelog
+
+Versioning rules: README, "Versioning and releases".
+
+Versions up to 0.2.1 were development versions and were not published; their notes are kept
+because the index files and their hashes date from 0.1.0.
+
+## 0.3.0 (2026-11-16)
+
+The first public release: on GitHub, PyPI and crates.io.
+
+- Giving neither `--sources` nor `--image` (or both) is reported before anything else runs, so
+  like every command-line mistake it leaves an existing `-o` file in place. `--help` now says
+  which errors come with a JSON report (from the moment the inputs are read) and which are on
+  stderr only.
+
+- Source lists are Fayde's own format, named for what they are: `--sources` (and
+  `--at-sources`) replace `--xyls` (and `--at-xyls`), which are still accepted. The file is
+  unchanged in substance, a FITS binary table with `X`, `Y` and optional columns, so earlier
+  files still read; by convention it is named after its frame, `frame.sources.fits`. Lists that
+  Fayde writes are labelled `EXTNAME = 'SOURCES'`, and giving an image where a source list is
+  expected (or the reverse) is reported as such. In the library, `read_xylist`/`write_xylist`/
+  `Xylist` are `read_sources`/`write_sources`/`SourceList`.
+
+- Fayde finds the stars itself when given a FITS image instead of a source list:
+  `fayde solve|verify|refit --image frame.fits` (the image's header is used for the priors
+  unless `--header` is given), `fayde detect --image frame.fits [-o frame.sources.fits]`, and
+  `fayde.detect(...)` / `Solver.solve_image(...)` in Python (a path, a 2-D array or an Astropy
+  HDU). For point sources (sidereal tracking or stare). FITS images of every `BITPIX` are read
+  (not fpack-compressed ones). Detection options: `--fwhm`, `--detect-threshold`,
+  `--saturation`, `--gain`, `--max-sources`; `SATURATE` and `GAIN`/`EGAIN` are read from the
+  header.
+
+- The detector (crate `fayde-detect`) is Fayde's own design, `docs/design/detection.md`. It
+  needs no settings: it measures the stars' width and matches its filter to it (wide stars are
+  binned), and sets its threshold from one noise peak per frame. Each star gets a position, a
+  1σ position error and a star probability from one closed-form fit at its peak. Hot pixels
+  and cosmic-ray hits are set aside, saturated stars are centred from their clipped region, and
+  streaks are traced and reported with their ends, angle, width and flux; nothing on a streak
+  is handed to the solver. It is built for space-based frames: the star width is the widest
+  distinct size among compact sources (radiation hits can outnumber stars), each peak is tested
+  against a ring around it (stray light), and narrowness is judged against the stars' own
+  narrow axis (frames smeared by a drift). 2 to 7 ms per megapixel on one core, the same bits
+  on every machine. Its work is bounded on hostile input (a width far larger than the frame,
+  a saturation level in the background, a frame saturated all over). The detection report gains `classes`, `streaks`, `rejected` (what was set
+  aside) and, per source, `p_star` and `class`; `sources` is the list handed to the solver.
+
+- `fayde verify` no longer touches the path given with `-o`. It names the option as unused, as
+  before; 0.2.0 and 0.2.1 then went on to delete a file at that path when the check failed or
+  produced no solution.
+- Solved `.wcs` files name the commit as well as the version in their comment cards.
+- Releases are built by GitHub Actions: the `fayde` command and Python wheels for Linux, macOS
+  and Windows, every file run on its platform before it is published, with `SHA256SUMS`.
+- `THIRD-PARTY-LICENSES.md` holds the licences of the Rust crates compiled into binaries and
+  wheels; both carry it.
+- Metadata for crates.io and PyPI. The Fayde crates require exactly their own version of each
+  other, and each carries `LICENSE`, `NOTICE` and a README.
+
+## 0.2.1 (2026-11-16)
+
+- `-o`: any failed run (an unreadable input, a wrong catalogue directory, a solver error, no
+  solution, a failed write) leaves no file at the output path. An error before the solve used to
+  leave an earlier run's WCS there, where it would pass for this frame's.
+- `-o` naming one of the run's inputs (`--wcs`, `--xyls`, `--header`, `--instrument`,
+  `--ucac4`, an `--index`) is refused before anything runs. `fayde refit --wcs a.wcs -o a.wcs`
+  with no solution used to delete the WCS it was given.
+- `fayde_core::fsutil` is internal (hidden from the documentation, not covered by the
+  versioning rules).
+
+## 0.2.0 (2026-11-16)
+
+Fixes from a review with hostile inputs. Several change what Fayde does with input it used to
+accept, so this is a minor release (see the versioning rules). Index bytes and content hashes are
+unchanged from 0.1.0. On a real 146-frame comparison set the header-prior solve rate and
+agreement are identical to 0.1.1.
+
+- No panic on extreme or non-finite WCS and pixel values (`fayde verify --at 1e308,1e308`, a
+  `NaN` SIP coefficient): `pixel_to_sky` is defined for every input, and a non-finite header
+  number is an error naming the keyword.
+- A damaged `u4i/u4index.unf` is reported as such instead of crashing a cone search.
+- `fayde index build` checks its parameters and its output path before the catalogue scan.
+  Rejected now: a lattice of more than 1e9 fields (`--oversampling 1e12`), a non-finite
+  `--mag-limit`, an epoch outside 1800 to 2200.
+- A closed stdout pipe (`fayde solve ... | head -1`) ends quietly instead of panicking.
+- `CROTA2` (with `CDELT`, no CD or PC matrix) is applied; such a WCS was read unrotated.
+- Epochs outside 1800 to 2200 are clock errors: from a header (`MJD-OBS` holding a Julian Date,
+  an unset `DATE-OBS`) they are skipped with a warning; from `--epoch` they are an error.
+- `-o`: the output path is checked before solving, the report is printed before the file is
+  written, a failed write leaves no temporary file, and a run that finds no solution removes a
+  file already at that path instead of leaving an earlier WCS there.
+- Header pointing: coordinates the header declares as FK4 or of another equinox are not used
+  (with a warning); a right ascension out of range is rejected instead of wrapped; the first
+  card of a repeated keyword is used, as in cfitsio and Astropy (it was the last).
+- Options dropped by `--no-priors` or `--no-pointing`, and options `fayde verify` and
+  `fayde refit` do not use, are named in `warnings` or on stderr instead of ignored in silence.
+- `--max-sip-order` above 9 is an error (the SIP convention's limit).
+- Error messages name the file they are about.
+- Temporary files (the `-o` write check, `.wcs` and index writes) are created with
+  `O_CREAT|O_EXCL` under unpredictable names: an existing file or symlink at that name is never
+  followed or truncated, and a failed write removes only the file Fayde created.
+- The example instrument profile is `profiles/example.json`; the catalogue cross-check reads
+  `ucac4_oracle.json`.
+
+## 0.1.1 (2026-11-16)
+
+- Licence: Apache-2.0 (was `MIT OR Apache-2.0`, provisional). `LICENSE`, `NOTICE` and
+  `CITATION.cff` added; wheels and binary archives carry them.
+- Index set built and its content hashes published (`docs/index-set.md`):
+  1.0° `1ddf14fa50ad59dd`, 1.3° `4ad74722223054e1`. Index bytes unchanged from 0.1.0: the
+  builder identity stored in an index (`fayde_index::BUILDER`) now changes only when the
+  index-building code does, not with every crate version, so a patch release keeps every hash.
+- Python: `py.typed`, typed reports (`fayde.Report`, `fayde.AtReport`), checked with
+  `mypy --strict` in CI.
+- `fayde solve|verify|refit --help` and `fayde index build --help` list options with defaults.
+- The commit id is recorded in builds from `git archive` source archives (`.git_archival.txt`).
+- `fayde compare` reads headers as `fayde solve --header` does.
+- Solved `.wcs` files ask for a citation in their comment cards.
+
+## 0.1.0 (2026-11-16)
+
+First release: solve, verify (including `--at`), refit; Python bindings; identical index bytes
+on macOS, Linux and Windows; Linux binaries and wheels.

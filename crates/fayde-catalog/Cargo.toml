@@ -1,0 +1,22 @@
+[package]
+name = "fayde-catalog"
+description = "Star catalogue access for Fayde: catalogue trait, UCAC4 reader, epoch propagation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+
+[dependencies]
+fayde-core.workspace = true
+
+[dev-dependencies]
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

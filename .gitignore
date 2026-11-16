@@ -1,0 +1,12 @@
+target/
+data/
+.claude/
+*.tmp-*
+# Python build artifacts (maturin develop puts the extension beside the package)
+*.so
+*.pyd
+__pycache__/
+.pytest_cache/
+.cargo/
+.venv-ci/
+dist/

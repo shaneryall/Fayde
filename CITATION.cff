@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use Fayde in your work, please cite it as below."
+type: software
+title: "Fayde: an astrometric plate solver"
+abstract: >-
+  Fayde solves the World Coordinate System of an astronomical image from a list of detected
+  sources and whatever is known about the frame (pointing, scale, roll, epoch), against the
+  UCAC4 catalogue, and returns a verified TAN or TAN-SIP solution with its measured accuracy.
+authors:
+  - family-names: Ryall
+    given-names: Shane
+version: 0.3.0
+date-released: 2026-11-16
+license: Apache-2.0
+repository-code: "https://github.com/shaner306/Fayde"
+keywords:
+  - astrometry
+  - plate solving
+  - World Coordinate System
+  - UCAC4

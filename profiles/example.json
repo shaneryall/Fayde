@@ -1,0 +1,9 @@
+{
+  "name": "Example camera",
+  "source": "Illustrative values, not a calibration. Calibrate your own from solved frames: scale_arcsec is the unbinned pixel scale, and roll = offset_deg + sign x header[keyword] must give the position angle of the image +y axis, east of north.",
+  "scale_arcsec": 3.0,
+  "scale_sigma_arcsec": 0.003,
+  "parity": "positive",
+  "roll": { "keyword": "ORIENTAT", "offset_deg": 0.0, "sign": 1, "sigma_deg": 0.1, "max_dev_deg": 1.0 },
+  "binning": { "x_keyword": "XBINNING", "y_keyword": "YBINNING" }
+}

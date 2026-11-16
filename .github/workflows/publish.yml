@@ -1,0 +1,143 @@
+# Publish an existing GitHub release to PyPI and/or crates.io. Started by hand only
+# (Actions > Publish to registries > Run workflow): a version on either registry is permanent.
+#
+# - PyPI gets exactly the wheels and source distribution of the GitHub release, the files that
+#   were tested there; they are checked against the release's SHA256SUMS first. It uses trusted publishing: no token is stored. One-time setup on PyPI:
+#   add this repository, the workflow `publish.yml` and the environment `pypi` as a (pending)
+#   trusted publisher for the project `fayde`.
+# - crates.io gets the crates of the tagged commit, one at a time in dependency order
+#   (scripts/publish_crates.py). It needs the secret CARGO_REGISTRY_TOKEN, available to the
+#   environment `crates-io`.
+#
+# Add required reviewers to the two environments (Settings > Environments) to have GitHub ask
+# before either job runs. See docs/releasing.md.
+#
+# After a registry accepts the version, a check job installs that version from the registry with
+# the command the README gives (`pip install fayde`, `cargo install fayde-cli`) and runs it.
+# Actions are pinned to a commit, with the release it belongs to in a comment: a moved tag must not
+# change what runs here. Dependabot (.github/dependabot.yml) proposes the updates.
+name: Publish to registries
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish, for example v1.2.3
+        required: true
+        type: string
+      pypi:
+        description: Publish the wheels and source distribution to PyPI
+        type: boolean
+        default: false
+      crates_io:
+        description: Publish the crates to crates.io
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  pypi:
+    if: inputs.pypi
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Fetch the Python files of the release
+        run: |
+          gh release download "$TAG" --dir dist --pattern '*.whl' --pattern "fayde-${TAG#v}.tar.gz" --pattern SHA256SUMS
+          ls -l dist
+          wheels=(dist/*.whl)
+          test "${#wheels[@]}" -ge 5
+          test -f "dist/fayde-${TAG#v}.tar.gz"
+          # The files must be the ones the release workflow built and tested.
+          (cd dist && sha256sum --check --ignore-missing SHA256SUMS)
+          rm dist/SHA256SUMS
+        env:
+          TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+
+  crates-io:
+    if: inputs.crates_io
+    runs-on: ubuntu-latest
+    environment: crates-io
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+      - name: The tag is the workspace version
+        run: python3 scripts/check_release.py --tag "$TAG"
+        env:
+          TAG: ${{ inputs.tag }}
+      - name: Rust
+        run: |
+          rustup toolchain install 1.95 --profile minimal --no-self-update
+          rustup default 1.95
+      # One crate at a time: crates.io accepts 5 new crates at once and then 1 every 10 minutes,
+      # so the first release (9 new crates) takes about 40 minutes. The script waits when
+      # crates.io says so and skips what is already published, so a stopped run can be started
+      # again. fayde-py is the Python package: it goes to PyPI, not crates.io.
+      - name: Publish the crates in dependency order
+        run: python3 scripts/publish_crates.py
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # The README's Python install, against the version PyPI just accepted, on every platform.
+  # --only-binary proves that the platform gets a prebuilt wheel, not a source build.
+  pypi-check:
+    name: pip install (${{ matrix.os }})
+    needs: pypi
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Install the published version from PyPI and import it
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          version="${TAG#v}"
+          python -m venv .venv
+          py=.venv/bin/python; [ -x "$py" ] || py=.venv/Scripts/python.exe
+          # A new version can take a few minutes to reach every PyPI mirror.
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if "$py" -m pip install --only-binary :all: "fayde==$version"; then break; fi
+            if [ "$attempt" = 10 ]; then exit 1; fi
+            sleep 30
+          done
+          "$py" -c "import fayde; print(fayde.__version__); assert fayde.__version__ == '$version'"
+
+  # The README's Cargo install, against the version crates.io just accepted.
+  crates-check:
+    name: cargo install
+    needs: crates-io
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install the published version from crates.io and run it
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          version="${TAG#v}"
+          rustup toolchain install 1.95 --profile minimal --no-self-update
+          rustup default 1.95
+          # A new version can take a moment to appear in the crates.io index.
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if cargo install --locked fayde-cli --version "$version"; then break; fi
+            if [ "$attempt" = 10 ]; then exit 1; fi
+            sleep 30
+          done
+          fayde --version
+          fayde --version | grep -F "$version"

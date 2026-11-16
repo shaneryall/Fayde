@@ -1,0 +1,18 @@
+[package]
+name = "fayde-core"
+description = "Core types for the Fayde astrometric plate solver"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+
+[dependencies]
+libm.workspace = true
+
+[lints]
+workspace = true

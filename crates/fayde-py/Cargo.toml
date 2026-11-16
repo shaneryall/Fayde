@@ -1,0 +1,38 @@
+[package]
+name = "fayde-py"
+description = "Python bindings for the Fayde plate solver"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+publish = false
+
+[lib]
+name = "_native"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+fayde-api.workspace = true
+fayde-core.workspace = true
+fayde-fits.workspace = true
+fayde-solve.workspace = true
+fayde-wcs.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+# abi3: one wheel per OS serves CPython 3.10 and every later version.
+pyo3 = { version = "0.30", features = ["abi3-py310"] }
+
+[features]
+# Set by maturin when building the extension module (pyproject.toml); plain cargo builds and
+# tests link libpython instead.
+extension-module = ["pyo3/extension-module"]
+
+# Not the workspace lints: PyO3's generated code uses `unsafe`, which the workspace forbids.
+# This crate's own code has none.
+[lints.rust]
+missing_docs = "warn"

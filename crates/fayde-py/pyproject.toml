@@ -1,0 +1,42 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "fayde"
+description = "Astrometric plate solver: a verified WCS from a source list, against UCAC4"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+# Copies of the root files (CI checks they match): the wheel must carry all three.
+license-files = ["LICENSE", "NOTICE", "THIRD-PARTY-LICENSES.md"]
+authors = [{ name = "Shane Ryall" }]
+keywords = ["astronomy", "astrometry", "plate solving", "WCS", "FITS", "UCAC4"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Typing :: Typed",
+]
+dynamic = ["version"]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/shaner306/Fayde"
+Changelog = "https://github.com/shaner306/Fayde/blob/main/CHANGELOG.md"
+Issues = "https://github.com/shaner306/Fayde/issues"
+
+[project.optional-dependencies]
+test = ["pytest", "numpy"]
+
+[tool.maturin]
+python-source = "python"
+module-name = "fayde._native"
+features = ["extension-module"]

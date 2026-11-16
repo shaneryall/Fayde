@@ -1,0 +1,25 @@
+[package]
+name = "fayde-api"
+description = "Request building and JSON reports shared by the Fayde command line and Python bindings"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+
+[dependencies]
+fayde-core.workspace = true
+fayde-catalog.workspace = true
+fayde-index.workspace = true
+fayde-solve.workspace = true
+fayde-wcs.workspace = true
+fayde-fits.workspace = true
+fayde-detect.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

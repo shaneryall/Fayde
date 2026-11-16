@@ -1,0 +1,24 @@
+[package]
+name = "fayde-solve"
+description = "Plate solving for Fayde: hypothesis generation, verification and WCS fitting"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+
+[dependencies]
+fayde-core.workspace = true
+fayde-catalog.workspace = true
+fayde-index.workspace = true
+fayde-wcs.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+fayde-wcs.workspace = true

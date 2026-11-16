@@ -1,0 +1,112 @@
+# Checks on every push to main and every pull request; also called by the release workflow.
+#
+# - check: format, lint, tests, docs and the consistency scripts, on Linux.
+# - msrv: the workspace builds with the oldest supported Rust (Cargo.toml, rust-version).
+# - native: on each OS and CPU a release is built for, the Rust tests, then the Python wheel
+#   and the Python tests against the installed wheel.
+#
+# Tests that need UCAC4 data are ignored (Rust) or skipped (Python): the catalogue is not in
+# the repository.
+# Actions are pinned to a commit, with the release it belongs to in a comment: a moved tag must not
+# change what runs here. Dependabot (.github/dependabot.yml) proposes the updates.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: never
+  # The toolchain releases are built and checked with. Raise it deliberately: a new clippy
+  # must not fail a build that changed nothing.
+  RUST_TOOLCHAIN: "1.95"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Rust ${{ env.RUST_TOOLCHAIN }}
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --component clippy --component rustfmt --no-self-update
+          rustup default "$RUST_TOOLCHAIN"
+      # fayde-py links libpython when built as a test.
+      - name: Python headers
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq python3-dev
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Release files agree
+        run: python3 scripts/check_release.py
+      - name: Third-party licences are up to date
+        run: python3 scripts/gen_third_party_licenses.py --check
+      - name: Lint
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Test
+        run: cargo test --workspace --release --locked
+      - name: Docs
+        run: cargo doc --workspace --no-deps --locked
+        env:
+          RUSTDOCFLAGS: -D warnings
+      # To repeat this step locally after a code change, use a fresh CARGO_TARGET_DIR: Cargo
+      # reuses the build of a packaged crate whose version has not changed.
+      - name: Crates package
+        run: cargo package --workspace --exclude fayde-py --locked
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Oldest supported Rust
+        run: |
+          msrv=$(sed -n 's/^rust-version = "\([0-9.]*\)".*/\1/p' Cargo.toml)
+          rustup toolchain install "$msrv" --profile minimal --no-self-update
+          rustup default "$msrv"
+      - name: Python headers
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq python3-dev
+      - run: cargo check --workspace --all-targets --locked
+
+  native:
+    name: native (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Rust ${{ env.RUST_TOOLCHAIN }}
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --no-self-update
+          rustup default "$RUST_TOOLCHAIN"
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      # fayde-py is tested below through its wheel, as users get it.
+      - name: Rust tests
+        run: cargo test --workspace --exclude fayde-py --release --locked
+      - name: Build the wheel
+        run: |
+          python -m pip install -q "maturin>=1.7,<2"
+          cd crates/fayde-py
+          maturin build --release --locked -o ../../dist
+      - name: Python tests against the installed wheel
+        run: |
+          python -m venv .venv-ci
+          py=.venv-ci/bin/python; [ -x "$py" ] || py=.venv-ci/Scripts/python.exe
+          "$py" -m pip install -q pytest numpy mypy
+          "$py" -m pip install -q --no-index --find-links dist fayde
+          "$py" -c "import fayde, platform; print(platform.machine(), fayde.__version__, fayde.commit)"
+          (cd crates/fayde-py/python && "../../../$py" -m mypy --strict fayde)
+          "$py" -m pytest -q crates/fayde-py/tests

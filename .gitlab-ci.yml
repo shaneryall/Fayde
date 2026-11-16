@@ -1,0 +1,154 @@
+# Fayde CI: checks and Python wheels for Linux, Windows and macOS.
+#
+# - Linux jobs run on the shared Docker runner (linux/arm64). x86_64 Linux wheels are
+#   cross-built with zig as manylinux2014 (glibc 2.17+).
+# - Windows and macOS jobs need a runner with that tag (`windows`, `macos`; shell executor,
+#   Rust, uv and git installed). They run only when the CI/CD variable FAYDE_WINDOWS_RUNNER /
+#   FAYDE_MACOS_RUNNER is "1", so the pipeline does not wait on a runner that is not there.
+# - Tests that need UCAC4 data run where the runner has FAYDE_UCAC4_DIR set; elsewhere they
+#   are ignored (Rust) or skipped (Python).
+
+stages: [check, wheels, test, release]
+
+variables:
+  CARGO_TERM_COLOR: "never"
+  FAYDE_COMMIT: "$CI_COMMIT_SHORT_SHA"
+
+# Docker jobs keep the cargo registry inside the project dir so it can be cached.
+.rust-cache: &rust-cache
+  variables:
+    CARGO_HOME: "$CI_PROJECT_DIR/.cargo"
+  cache:
+    key: "$CI_JOB_NAME"
+    paths: [.cargo/registry, .cargo/git, target]
+
+check:linux:
+  stage: check
+  image: rust:1.95-bookworm
+  <<: *rust-cache
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq python3-dev > /dev/null
+    - rustup component add clippy rustfmt
+  script:
+    - cargo fmt --all --check
+    - python3 scripts/check_release.py
+    - python3 scripts/gen_third_party_licenses.py --check
+    - cargo clippy --workspace --all-targets -- -D warnings
+    - cargo test --workspace --release
+
+check:msrv:
+  stage: check
+  image: rust:1.85-bookworm
+  <<: *rust-cache
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq python3-dev > /dev/null
+  script:
+    - cargo check --workspace --all-targets
+
+wheels:linux:
+  stage: wheels
+  image: rust:1.95-bookworm
+  <<: *rust-cache
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq python3-venv > /dev/null
+    - python3 -m venv /opt/maturin && /opt/maturin/bin/pip install -q "maturin[zig]>=1.7,<2"
+    # maturin finds zig through `python3 -m ziglang`: the venv's python must come first.
+    - export PATH="/opt/maturin/bin:$PATH"
+    - rustup target add x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu
+  script:
+    - cd crates/fayde-py
+    - for t in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu; do
+        maturin build --release --zig --compatibility manylinux2014 --target $t -o "$CI_PROJECT_DIR/dist" || exit 1;
+      done
+    - ls -l "$CI_PROJECT_DIR/dist"
+  artifacts:
+    paths: [dist/]
+    expire_in: 30 days
+
+binaries:linux:
+  stage: wheels
+  image: rust:1.95-bookworm
+  <<: *rust-cache
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq python3-venv > /dev/null
+    - python3 -m venv /opt/zb && /opt/zb/bin/pip install -q "cargo-zigbuild>=0.19,<1"
+    - export PATH="/opt/zb/bin:$PATH"
+    - rustup target add x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu
+  script:
+    - mkdir -p dist
+    # glibc 2.17 floor, as the manylinux2014 wheels.
+    - for t in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu; do
+        cargo zigbuild --release -p fayde-cli --target $t.2.17 || exit 1;
+        tar -czf "dist/fayde-${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}-$t.tar.gz" -C target/$t/release fayde -C "$CI_PROJECT_DIR" README.md CHANGELOG.md LICENSE NOTICE THIRD-PARTY-LICENSES.md CITATION.cff docs/index-set.md docs/source-list.md profiles || exit 1;
+      done
+    - ls -l dist
+  artifacts:
+    paths: [dist/]
+    expire_in: 30 days
+
+test:wheel-linux:
+  stage: test
+  image: python:3.13-slim-bookworm
+  needs: [wheels:linux]
+  script:
+    - pip install -q pytest numpy mypy
+    - pip install -q --no-index --find-links dist fayde
+    - (cd crates/fayde-py/python && python -m mypy --strict fayde)
+    - python -c "import fayde, platform; print(platform.machine(), fayde.__version__, fayde.commit)"
+    - python -m pytest -q crates/fayde-py/tests
+
+# One job per OS: Rust tests, the wheel, and the Python tests against the installed wheel.
+.native: &native
+  stage: wheels
+  needs: []
+  artifacts:
+    paths: [dist/]
+    expire_in: 30 days
+
+native:windows:
+  <<: *native
+  tags: [windows]
+  rules:
+    - if: '$FAYDE_WINDOWS_RUNNER == "1"'
+  script:
+    - if ($env:FAYDE_UCAC4_DIR) { cargo test --workspace --release -- --include-ignored } else { cargo test --workspace --release }
+    - uv tool install "maturin>=1.7,<2"
+    - Set-Location crates/fayde-py
+    - maturin build --release -o "$env:CI_PROJECT_DIR/dist"
+    - Set-Location $env:CI_PROJECT_DIR
+    - uv venv --python 3.13 .venv-ci
+    - uv pip install --python .venv-ci/Scripts/python.exe pytest numpy
+    - uv pip install --python .venv-ci/Scripts/python.exe --no-index --find-links dist fayde
+    - .venv-ci/Scripts/python.exe -m pytest -q crates/fayde-py/tests
+
+native:macos:
+  <<: *native
+  tags: [macos]
+  rules:
+    - if: '$FAYDE_MACOS_RUNNER == "1"'
+  script:
+    - if [ -n "$FAYDE_UCAC4_DIR" ]; then cargo test --workspace --release -- --include-ignored; else cargo test --workspace --release; fi
+    - uv tool install "maturin>=1.7,<2"
+    - (cd crates/fayde-py && maturin build --release -o "$CI_PROJECT_DIR/dist")
+    - uv venv --python 3.13 .venv-ci
+    - uv pip install --python .venv-ci/bin/python pytest numpy
+    - uv pip install --python .venv-ci/bin/python --no-index --find-links dist fayde
+    - .venv-ci/bin/python -m pytest -q crates/fayde-py/tests
+
+# A tag vX.Y.Z (matching the workspace version) publishes a GitLab release with the Linux
+# binaries and wheels of its pipeline (kept: artifacts of this job never expire). The release is
+# created through the API with the job token: release-cli has no arm64 image for this runner.
+release:
+  stage: release
+  image: python:3.13-slim-bookworm
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+[.][0-9]+[.][0-9]+$/'
+  needs: [wheels:linux, binaries:linux, test:wheel-linux, check:linux]
+  script:
+    - V=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+    - test "$CI_COMMIT_TAG" = "v$V" || { echo "tag $CI_COMMIT_TAG does not match version $V"; exit 1; }
+    - ls -l dist
+    - python3 scripts/ci_release.py
+  artifacts:
+    paths: [dist/]
+    expire_in: never

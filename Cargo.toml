@@ -1,0 +1,36 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.3.0"
+edition = "2021"
+rust-version = "1.85"  # PyO3 0.30 (fayde-py) needs 1.85
+license = "Apache-2.0"
+repository = "https://github.com/shaner306/Fayde"
+authors = ["Shane Ryall"]
+keywords = ["astronomy", "astrometry", "plate-solving", "wcs", "fits"]
+categories = ["science"]
+
+[workspace.dependencies]
+# The Fayde crates are released together under one version, so each depends on exactly that
+# version of the others. A release changes `version` above and every `=x.y.z` below
+# (scripts/check_release.py checks that they agree).
+fayde-core = { path = "crates/fayde-core", version = "=0.3.0" }
+fayde-wcs = { path = "crates/fayde-wcs", version = "=0.3.0" }
+fayde-catalog = { path = "crates/fayde-catalog", version = "=0.3.0" }
+fayde-index = { path = "crates/fayde-index", version = "=0.3.0" }
+fayde-solve = { path = "crates/fayde-solve", version = "=0.3.0" }
+fayde-fits = { path = "crates/fayde-fits", version = "=0.3.0" }
+fayde-api = { path = "crates/fayde-api", version = "=0.3.0" }
+fayde-detect = { path = "crates/fayde-detect", version = "=0.3.0" }
+serde = { version = "1", features = ["derive"] }
+# float_roundtrip: parse floats exactly (the default parser can be off in the last bit).
+serde_json = { version = "1", features = ["float_roundtrip"] }
+# Pure-Rust maths: the same bits on every OS and CPU (see fayde_core::math).
+libm = { version = "0.2", default-features = false }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
