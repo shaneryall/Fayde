@@ -1,6 +1,6 @@
 # Fayde
 
-Fayde is an astrometric plate solver written in Rust. You provide a FITS image of a star field
+Fayde is an extremely fast and accurate astrometric plate solver. You provide a FITS image of a star field
 and information about the frame, such as its pointing, pixel scale, and observation time.
 Fayde finds the stars in the image, matches them against the UCAC4 star catalog, and returns a
 verified world coordinate system (WCS) solution with its measured accuracy.
