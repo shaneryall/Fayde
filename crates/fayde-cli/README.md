@@ -1,13 +1,13 @@
 # fayde-cli
 
 The `fayde-cli` crate provides the `fayde` command for the
-[Fayde](https://github.com/shaner306/Fayde) astrometric plate solver. You provide a FITS image of
+[Fayde](https://github.com/shaneryall/Fayde) astrometric plate solver. You provide a FITS image of
 a star field. The command finds the stars, matches them against the UCAC4 star catalog, and
 returns a verified world coordinate system (WCS) solution with its measured accuracy.
 
 Fayde reads the UCAC4 star catalog from a local copy. The catalog isn't included with this
 crate. To download it, see
-[Get the UCAC4 catalog](https://github.com/shaner306/Fayde#get-the-ucac4-catalog).
+[Get the UCAC4 catalog](https://github.com/shaneryall/Fayde#get-the-ucac4-catalog).
 
 ## Install the command
 
@@ -18,7 +18,7 @@ cargo install --locked fayde-cli
 ```
 
 To install a prebuilt binary for Linux, macOS, or Windows without Rust, see
-[Install the command-line tool](https://github.com/shaner306/Fayde#install-the-command-line-tool).
+[Install the command-line tool](https://github.com/shaneryall/Fayde#install-the-command-line-tool).
 
 ## Use the command
 
@@ -40,10 +40,10 @@ To list the commands, run `fayde --help`. To list a command's options and defaul
 the command with `--help`, for example `fayde solve --help`.
 
 For more information about source lists, pattern indexes, and versioning, see the
-[Fayde README](https://github.com/shaner306/Fayde#readme).
+[Fayde README](https://github.com/shaneryall/Fayde#readme).
 
 ## License
 
 Fayde uses the Apache License 2.0. For license terms and attribution, see the `LICENSE` and
 `NOTICE` files in this crate. If you use Fayde in a publication, cite it as described in
-[`CITATION.cff`](https://github.com/shaner306/Fayde/blob/main/CITATION.cff).
+[`CITATION.cff`](https://github.com/shaneryall/Fayde/blob/main/CITATION.cff).

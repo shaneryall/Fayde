@@ -1,6 +1,6 @@
 # Fayde
 
-The `fayde` Python package provides the [Fayde](https://github.com/shaner306/Fayde) astrometric
+The `fayde` Python package provides the [Fayde](https://github.com/shaneryall/Fayde) astrometric
 plate solver. You provide a FITS image of a star field and information about the frame, such
 as its pointing, pixel scale, and observation time. Fayde finds the stars in the image,
 matches them against the UCAC4 star catalog, and returns a verified world coordinate system
@@ -14,7 +14,7 @@ To use the package, you need the following:
   to install it.
 - A local copy of the UCAC4 catalog. The catalog isn't included with this package.
   For download instructions, see
-  [Get the UCAC4 catalog](https://github.com/shaner306/Fayde#get-the-ucac4-catalog).
+  [Get the UCAC4 catalog](https://github.com/shaneryall/Fayde#get-the-ucac4-catalog).
 
 To install the package from PyPI, follow these steps:
 
@@ -27,7 +27,7 @@ To install the package from PyPI, follow these steps:
    ```
 
 For more information about installation, see
-[Install the Python package](https://github.com/shaner306/Fayde#install-the-python-package).
+[Install the Python package](https://github.com/shaneryall/Fayde#install-the-python-package).
 
 ## Solve a frame
 
@@ -92,12 +92,12 @@ The package includes type information: the `py.typed` marker and the `fayde.Repo
 `fayde.AtReport`, and `fayde.DetectReport` types.
 
 For more information about priors, pattern indexes, and versioning, see the
-[Fayde README](https://github.com/shaner306/Fayde#readme). For the changes in each version, see the
-[changelog](https://github.com/shaner306/Fayde/blob/main/CHANGELOG.md).
+[Fayde README](https://github.com/shaneryall/Fayde#readme). For the changes in each version, see the
+[changelog](https://github.com/shaneryall/Fayde/blob/main/CHANGELOG.md).
 
 ## License
 
 Fayde uses the Apache License 2.0. The wheel includes `LICENSE`, `NOTICE`, and
 `THIRD-PARTY-LICENSES.md`. The latter lists the licenses of the Rust crates compiled into the
 wheel. If you use Fayde in a publication, cite it as described in
-[`CITATION.cff`](https://github.com/shaner306/Fayde/blob/main/CITATION.cff).
+[`CITATION.cff`](https://github.com/shaneryall/Fayde/blob/main/CITATION.cff).

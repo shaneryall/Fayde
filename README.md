@@ -75,7 +75,7 @@ To install the latest release, follow these steps:
 3. Download the archive:
 
    ```bash
-   curl -LO "https://github.com/shaner306/Fayde/releases/latest/download/fayde-$platform.tar.gz"
+   curl -LO "https://github.com/shaneryall/Fayde/releases/latest/download/fayde-$platform.tar.gz"
    ```
 
    Optional: Before you extract the archive, check it as described in
@@ -124,7 +124,7 @@ To install the latest release, follow these steps:
 1. In PowerShell, download the archive:
 
    ```powershell
-   curl.exe -LO https://github.com/shaner306/Fayde/releases/latest/download/fayde-windows-x86_64.zip
+   curl.exe -LO https://github.com/shaneryall/Fayde/releases/latest/download/fayde-windows-x86_64.zip
    ```
 
    Optional: Before you extract the archive, check it as described in
@@ -179,7 +179,7 @@ To check an archive on Linux or macOS, follow these steps:
 1. In the directory that contains the archive, download the checksum file:
 
    ```bash
-   curl -LO https://github.com/shaner306/Fayde/releases/latest/download/SHA256SUMS
+   curl -LO https://github.com/shaneryall/Fayde/releases/latest/download/SHA256SUMS
    ```
 
 2. Compare the checksums. On Linux, use `sha256sum`:
@@ -201,7 +201,7 @@ To check the archive on Windows, follow these steps:
 1. In PowerShell, in the directory that contains the archive, download the checksum file:
 
    ```powershell
-   curl.exe -LO https://github.com/shaner306/Fayde/releases/latest/download/SHA256SUMS
+   curl.exe -LO https://github.com/shaneryall/Fayde/releases/latest/download/SHA256SUMS
    ```
 
 2. Print the checksum of the archive:
@@ -685,7 +685,7 @@ these steps:
 1. In a terminal, clone the repository:
 
    ```bash
-   git clone https://github.com/shaner306/Fayde
+   git clone https://github.com/shaneryall/Fayde
    ```
 
 2. Go to the repository directory:

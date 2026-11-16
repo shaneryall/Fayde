@@ -33,7 +33,7 @@ import urllib.request
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 # Overridable so that the script can be tested against a local stand-in for crates.io.
 API = os.environ.get("FAYDE_CRATES_IO_API", "https://crates.io/api/v1")
-USER_AGENT = "fayde-release-script (https://github.com/shaner306/Fayde)"
+USER_AGENT = "fayde-release-script (https://github.com/shaneryall/Fayde)"
 # crates.io earns back one new crate every 10 minutes; used when its answer names no time.
 DEFAULT_WAIT_S = 600
 MAX_ATTEMPTS = 12

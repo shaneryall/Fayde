@@ -29,9 +29,9 @@ dynamic = ["version"]
 dependencies = []
 
 [project.urls]
-Repository = "https://github.com/shaner306/Fayde"
-Changelog = "https://github.com/shaner306/Fayde/blob/main/CHANGELOG.md"
-Issues = "https://github.com/shaner306/Fayde/issues"
+Repository = "https://github.com/shaneryall/Fayde"
+Changelog = "https://github.com/shaneryall/Fayde/blob/main/CHANGELOG.md"
+Issues = "https://github.com/shaneryall/Fayde/issues"
 
 [project.optional-dependencies]
 test = ["pytest", "numpy"]
