@@ -674,65 +674,125 @@ sharpness; find the centre of a saturated star with a bleed trail; trace streaks
 | Hessian line points (Steger 1998 **[secondary]**; Lowe 2004 **[full]** for the curvature ratio) | per pixel | per-pixel contrast | The local test Fayde uses at peaks |
 | Neural networks (DeepStreaks, MaxiMask, ASTA **[abstract]**) | 1 to 25 s per frame on a CPU | | Outside a few ms per megapixel |
 
-No published pipeline combines a per-peak ridge test with a trace from that peak, and no plate
-solver runs a streak detector before solving.
+Steger 1998 links Hessian line points into lines, and in trailed frames Houtz & Frueh 2021 (entry
+2.1) and Sharma et al. 2023 (entry 8.4) detect trails before plate solving. For frames with
+point-like stars, no surveyed plate solver traces streaks before solving.
 
 **Verdict: ADOPT** ridge-like peaks as seeds and trace from them (Fayde's own tracer); **SKIP**
 Radon and Hough (cost; they find streaks too faint to disturb the star list).
 
-## Recommended changes to the design doc (ranked)
+## 8. Trailed stars and faint streaks (2026-11-17)
 
-1. **§5.3: add a minimal-sample hinted matcher in front of (or beside) the 4-star hash.** When the
-   scale (and parity) prior is tight:
-   - build a sorted pair list (k-vector) of the catalogue stars in the hint cone at query time;
-   - seed similarity hypotheses from image-star **pairs**, and from single stars when roll is
-     known;
-   - verify each with the existing verifier.
+Survey for one detector that handles trailed stars, streaks and faint streaks
+(`docs/design/streak-detection.md`). Sources already in entries 2 and 7.4 are not repeated. Many
+publisher PDFs could not be read; each entry says what was. Figures marked *derived* were worked
+out during the survey and are not from a source.
 
-   With half the sources false, a 2-star seed is all-true 4× as often as a 4-star pattern, and a
-   1-star seed 8× as often (§3.1). Pair or attitude voting (§1.3, §1.8) is the fallback. The 4-star
-   hash stays the primary path for weak priors, and the quad kd-tree stays the blind path.
-   Basis: Fischler & Bolles 1981; Mortari et al. 2004; Kolomenkin et al. 2008.
-2. **§5.3, §6.3: PROSAC-style ordering.** Order sources for every matcher by a deterministic score
-   built from `p_star` (after the §5.0 adjustments) and brightness, not by brightness alone. In SSA
-   frames the brightest detections are disproportionately non-stars. Basis: Chum & Matas 2005.
-3. **§6.4, §6.3a: derive roll, scale and parity priors from the trail model.** In target-tracking
-   mode, the common star-trail vector together with the predicted apparent target rate (TLE plus
-   observer) and the exposure time fixes roll (with sign, hence parity) and scale. Treat this as a
-   derived prior with σ, recorded in the provenance with its origin. It turns many "hinted" solves
-   into the 1-star-seed case of item 1. This is Fayde's own inference: the literature (Houtz &
-   Frueh 2021) uses common trail geometry only as a filter.
-4. **§5.4: local optimization before acceptance, and an NFA report.** Score hypotheses on a
-   weighted refit (similarity → TAN, plus rate terms when there are endpoints), not on the raw
-   seed transform. Count the hypotheses tested and report an NFA-style figure alongside the
-   log-odds, optionally requiring NFA < ε in blind mode. Basis: Chum et al. 2003; a-contrario
-   framework.
-5. **§5.5: one mixture likelihood shared by the verifier and the fitter.** Replace "re-match within
-   kσ" with IRLS over the same Gaussian-plus-distractor mixture the verifier uses, with per-source
-   outlier priors from `p_star`. Fit and report a global error-scale factor *s*. Choose the SIP
-   order by BIC or leave-one-out instead of an F-test. Basis: Hogg, Bovy & Lang 2010; MAGSAC (the
-   idea only).
-6. **§5.5, §6.5, §9: persistent instrument distortion.** Add `fayde refit --calibrate`, a joint fit
-   over many solved frames for a persistent SIP stored in the `InstrumentProfile`. Per-frame fits
-   then solve only the linear terms plus at most a low-order correction. This avoids overfitting
-   SIP order 3 on 30–60 partly trailed stars per frame. Basis: Bernstein et al. 2017; SCAMP.
-7. **§5.1, §5.2, §11 question 2: epoch policy.** Build the index at a fixed epoch and exclude
-   high proper-motion stars from patterns. Propagate at query time with the Butkevich & Lindegren
-   2014 formulae, including covariance, for verification and fitting. UCAC4 errors at 2026 are
-   0.02–0.1 px at 3″/px, so Gaia DR3 is needed only for accuracy goals below about 0.1″. In §6.6,
-   note that aberration (ERFA `ab`) affects only CRVAL and scale at 1° FOV, never solve rate.
-8. **§9: public benchmarks.** Add the ESA Kelvins "Star Trackers: First Contact" scenes (10k
-   scenes, up to 80 false objects each; a Tetra entry scored within 0.4% of the winner) as a public
-   regression test for the matchers, after checking their terms. Follow Rijlaarsdam et al. 2020's
-   evaluation considerations, and use LOST's Pyramid and voting implementations as independent
-   baselines on the synthetic trailed-star fixtures.
+### 8.1 The frame's common trail
 
-**Explicitly not recommended:**
+| Source | Idea | Numbers | Verdict |
+|---|---|---|---|
+| Danescu & Turcu 2026, *Sensors* 26(5), 1628, doi:10.3390/s26051628 **[full]** | LoG filter, top 5% of pixels, connected components, second moments; components with eccentricity over 0.65 vote; the frame's trail is the median direction and median major-axis length; template = 1 px line ⊛ Gaussian | astrometry.net solved 39 of 40 frames after filtering with the template, 15 of 40 before; under 1 s for 1536 × 1024; fails when trails reach about 12% of the frame width | ADOPT: cheap, deterministic, the median ignores a satellite or cosmic rays |
+| Lévesque 2011, AMOS poster **[abstract]** | Track-rate frames: trail direction from the Radon transform of the Fourier modulus; length next; an iterative matched filter; star trails measured before satellites are sought | none obtained | CONSIDER as the segmentation-free check |
+| Li, Zhang, Yao & Sun 2013, *Opt. Precision Eng.* 21(10), 2656, doi:10.3788/OPE.20132110.2656 **[abstract]** | Direction from PCA of the binarised cepstrum; length from the minima of the spectrum's Radon profile along it | 0.14° and 0.27 px on natural images | CONSIDER for refining long trails |
+| Cannon 1976, *IEEE TASSP* 24(1), 58; Moghaddam & Jamzad 2007, *EURASIP JASP* 068985; Oliveira, Figueiredo & Bioucas-Dias 2014, *IEEE TIP* 23(1), 466 **[abstract]** | Blur kernel from the cepstrum or the Radon transform of the spectrum | natural images only | SKIP as primary: noise-sensitive, not tested on star fields |
+| Sun, Xing, You & Wei 2013, *Opt. Express* 21, 20096 **[abstract]**; Hou et al. 2021, *Math. Probl. Eng.* 8819277 **[abstract]** | Star-tracker smear direction and length from image derivatives, bispectrum or the spectrum's Radon profile | not obtained | CONSIDER |
 
-- learned star-ID;
-- QUEST/ESOQ (SVD plus weighted TAN is enough);
-- TPV or Zernike output;
-- MAGSAC as an algorithm;
-- grid and Liebe-triangle matchers;
-- non-dimensional star-ID;
-- rolling-shutter models in v1.
+*Derived*: the power spectrum of a field of identical trails is `|PSF̂|²·sinc²` times a speckle
+factor from the star positions, so in an ideal frame the sinc's zeros survive any star layout.
+Cropping, noise and trails that vary across the frame fill them in. For trails under about
+2 FWHM the first zero falls where the PSF has already removed the power: the spectrum can only
+help with long trails.
+
+### 8.2 Aimed filters and the trailing loss
+
+| Source | Idea | Numbers | Verdict |
+|---|---|---|---|
+| Nir, Zackay & Ofek 2018 (entry 7.4) **[full]** | Optimal streak detector: the PSF-broadened line; `(S/N) = ξ·√(L / (2√π·σ·B))` for flux ξ per unit length | | ADOPT the algebra |
+| Jones, "Trailing losses for moving objects", Rubin SMTN-003 **[full]**; Jones et al. 2018, *Icarus* 303, 181, arXiv:1711.10621 **[full]** | Loss fits `Δm = 1.25 log₁₀(1 + a·x² / (1 + b·x))`, `x` = length / FWHM; point filter `a = 0.420, b = 0.003`, trail filter `a = 0.761, b = 1.162` (SMTN-003; Jones et al. 2018 give `a = 0.67, b = 1.16` for the trail filter) | at `x = 5`: 1.32 against 0.72 mag | ADOPT as an independent check of the gain |
+| Soille, Breen & Jones 1996, *IEEE TPAMI* 18(5), 562, doi:10.1109/34.494646 **[abstract]** | Recursive filters along translates of a Bresenham line at any angle: a running sum costs a few operations per pixel whatever the length | | ADOPT for the box along the trail |
+| Geusebroek, Smeulders & van de Weijer 2003, *IEEE TIP* 12(8), 938 **[abstract]** | Anisotropic Gaussian at any angle: one pass along x and one along a skewed axis, recursive | 512² in 40 ms on 2003 hardware | CONSIDER; an isotropic Gaussian after the box is already the matched filter |
+| Cvrček & Šára 2021, 8th European Conf. on Space Debris, paper 80 **[abstract]** | Steerable basis filters for streaks of any angle and length | over 100 × faster than spatial convolution | SKIP: short streaks, which the tracer covers |
+
+*Derived*, checked numerically: for long trails the aimed filter's response with an angle error
+`Δθ` is `(√π / 2z)·erf(z)` of the matched one, `z = L·|Δθ| / 4σ`: 2% lost at `σ/L`, 7.7% at
+`2σ/L`, 25% at `4σ/L`. A length off by a factor `k` keeps `1/√k`: 29% lost at `k = 2`, 16% at
+`k = √2` (the worst case on a grid of factor-2 steps).
+
+### 8.3 Fitting a trail and its error
+
+| Source | Idea | Numbers | Verdict |
+|---|---|---|---|
+| Bouquillon et al. 2017, *A&A* 606, A27, arXiv:1707.01447 **[full]**, main sections | Erf model (Vereš et al. 2012 with a sign corrected); Cramér–Rao bounds along (U) and across (V) the trail | background-limited, `L ≥ 2 FWHM`: `Var_U ∝ L̄²`, `Var_V ∝ L̄² / (√π·L̄ − 1)`, `L̄ = L / 2σ`; source-limited: `Var_U ≈ 1.11·(σ²/F)·L̄`, `Var_V = σ²/F`; unweighted least squares about 30% above the bound across | ADOPT as the error model and the benchmark |
+| Blake et al. 2026, "DebrisWatch II", *J. Astronaut. Sci.*, doi:10.1007/s40295-026-00602-1, arXiv:2605.27516 **[full]**, pipeline section | Gaussian across, a difference of arctangents with tilt terms along; candidates pre-filtered by expected angle and length; a trail is a blend when its fitted centroid departs from the detection's | median offset from about 2″ to under 0.3 px | CONSIDER the tilt and the blend test (not built; Fayde refits neighbours instead) |
+| Kouprianov 2008, *Adv. Space Res.* 41, 1029 **[abstract]** | Trailed reference stars limit GEO astrometry; jitter and extinction along the trail are common to the frame, so one empirical profile is fitted to every star | | CONSIDER |
+| Fraser et al. 2016, "TRIPPy", *AJ* 151, 158, arXiv:1604.00031 **[abstract]** | Moffat ⊛ line PSF with a look-up table; "pill" aperture | aperture corrections to about 10 mmag | CONSIDER the pill aperture for fluxes |
+| Yan, Jiang & Zhang 2016, *Opt. Express* 24, 5961 **[abstract]**; Wei, Tan, Li & Zhang 2014, *Sensors* 14, 4914 **[full]**, partial | Star-tracker smeared-spot models; the peak pixel holds about `0.264/l` of the flux for trails over 9 px | | CONSIDER; shows why peak thresholds fail on trails |
+| Zhang, Quan & Guo 2012, *Sensors* 12, 6712 **[full]**; Mu et al. 2019, *Sensors* 19, 4127; Wang et al. 2018, *Sensors* 18, 2662 | Blur kernel from a gyro, then deconvolution | | SKIP: need the rate as input |
+| Kakarala & Hero 1992, *IEEE TPAMI* 14(7), 777 **[abstract]** | Cramér–Rao bounds for edge position; Canny's estimator about twice the bound at high signal | | CONSIDER: simple end estimators come within a factor of two |
+
+*Derived* (Gaussian PSF of width `s`, pixel noise σ, flux λ per pixel of length; leading order for
+long, well-sampled trails in white background noise): an end is located to
+`σ_end ≥ 2√π·σ·s / λ`, a trail's offset across to `2π^{1/4}·σ·s^{3/2} / (λ√L)`, its angle to
+`√12·σ_offset / L`. A whole trail's centre, located from both ends, has `σ_end / √2`, consistent
+with Bouquillon et al. 2017, App. A.3. Their scalings, the factor 1.11 included, hold at fixed total
+flux in the limiting regimes stated, for the model's own parameters; a fit with more nuisance
+parameters does worse.
+
+### 8.4 Pipelines for trailed frames
+
+| Source | What it does | Numbers | Verdict |
+|---|---|---|---|
+| Sharma et al. 2023, "Astreaks", *MNRAS*, arXiv:2306.16519 **[full]** | Template of points 1 px apart ⊛ Gaussian, rotated; angle checked against the tracking; streaks within `L/2` of the edge discarded; stars re-rendered as points for astrometry.net | 371 images, all solved, O − C 0.52″; minutes per image; target found by hand | SKIP the discard rule; Fayde flags edge trails and fits their visible pixels (streak-detection §4.6) |
+| Danescu & Turcu 2026 (entry 8.1) | Target as a round component in a median stack of 3 to 7 frames; RANSAC on position against time | | multi-frame; noted for sequence mode |
+| Spiller & Curti, *Acta Astronautica*, doi:10.1016/j.actaastro.2020.11.043 **[abstract]** | Under rotation, star trails are arcs; rate from chords | rate within 1% at 1 to 5°/s | SKIP unless trails curve |
+| Samadzadegan & Alidoost 2013, *ISPRS Archives* XL-1/W3, 25 **[abstract]** | FFT-based streak features | under 5″ in simulation | SKIP |
+
+### 8.5 Faint streaks: line integrals
+
+| Source | Idea | Numbers | Verdict |
+|---|---|---|---|
+| Ofir, Galun, Alpert, Brandt, Nadler & Basri, "On detection of faint edges in noisy images", *IEEE TPAMI* 42(4), 894, 2020, arXiv:1706.07717 **[full]** | Bottom-up hierarchy: a length-2L line integral from two length-L ones, or for a new angle by interpolating four; positions along the line subsampled at `L/2`, so about 8N responses per length and O(N log N) in all; threshold for the *mean* of `w·L` pixels `σ·√(2 ln(K/δ) / (w·L))` per length (for a sum, `σ·√(2·w·L·ln(K/δ))`), conservative, checked on pure noise | about 3 s for 257² in research code | CONSIDER the hierarchy and the threshold, with a ridge profile in place of a step (not built) |
+| Brandt & Dym 1999, *SIAM J. Sci. Comput.* 20(4), 1417 **[abstract]** | Fast approximation of all line integrals at all lengths, angles and positions within a set error | about n log n | CONSIDER (abstract only) |
+| Arias-Castro, Donoho & Huo 2005, *IEEE Trans. Inf. Theory* 51(7), 2402 **[abstract]** | Multiscale (beamlet) detectors reach near-optimal thresholds where naive searches do not | | the theory behind the hierarchy |
+| Brady 1998, *SIAM J. Comput.* 27(1), 107 **[abstract]**; Press 2006, *PNAS* 103(51), 19249 **[full]**; Götz & Druckmüller 1996, *Pattern Recognition* 29, 711 **[secondary]** | Dyadic approximate Radon transform, additions only, about `1.05 to 1.17 · n² log₂ n`; Press's median variant recovers a 0.5σ line among bright clutter | | basis of Nir et al. 2018 |
+| Karpenko & Ershov 2021, *Probl. Inf. Transm.* 57(3) **[abstract]**, cited in Kazimirov et al. 2024, arXiv:2411.07351 **[full]** | Dyadic lines stray from true ones by up to `log₂n / 6` px, `n` the image side | 1.7 px at n = 1024 | CONSIDER: a band across the line wide enough for this and the PSF; the bound is for dyadic paths, not directly for Ofir's interpolated hierarchy |
+| Horev, Nadler, Arias-Castro, Galun & Basri 2015, *SIAM J. Imaging Sci.* 8(1), 458 **[abstract]** | Long edges found by sampling a fraction of the pixels | | CONSIDER |
+| Averbuch et al. 2008, *SIAM J. Sci. Comput.* 30(2), 764 and 785 **[abstract]** | Fast slant stack via the pseudopolar FFT | | SKIP: no locality for short segments |
+| Šára & Cvrček 2017, 7th European Conf. on Space Debris, paper 403 **[abstract]**; Cvrček & Šára 2019, VISAPP, doi:10.5220/0007399804980509 **[abstract]** | Shear instead of rotation, per-angle background calibration, dynamic programming, branch-and-bound over angle, model selection | over 90% certified for streaks over 500 px at −10 dB | CONSIDER the per-image calibration |
+| Dawson, Schneider & Kamath 2016, arXiv:1609.07158 **[full]** | Maximum likelihood reduces to the PSF-broadened line filter | 10 × below the pixel noise; unmasked stellar wings make false alarms | SKIP the search; heed the wings |
+| Vananti, Schild & Schildknecht 2020, *Adv. Space Res.* 65, 364 **[abstract]** | Bank of streak filters | 2 to 3 h per 4k × 4k (as quoted elsewhere) | SKIP |
+| Virtanen et al. 2016 (StreakDet), *Adv. Space Res.* 57, 1607 **[abstract]**; Pöntinen et al. 2020, *A&A* 644, A35, arXiv:2011.05297 **[full]** | Difference of mean filters, morphology, classification, PSF fit | 90% found at S/N over 1 for streaks over 100 px; about 1 min per 4k × 4k; 30 false per true before post-processing | SKIP |
+| Han, Wen, Li & Qiao 2025, *Remote Sens.* 17(4), 631 **[abstract]** | Coarse-to-fine streak filter with a perpendicular cross-check | | CONSIDER the perpendicular veto |
+| Bektešević & Vinković 2017, *MNRAS* 471, 2626 **[abstract]** | Known objects removed, then Hough; satellite trails narrower than meteor trails | | ADOPT the width veto |
+| Stark et al., arXiv:2602.17816 (2026 posting of ACS ISR 2022-08) **[full]** | Median Radon | 10 s per 2048 × 1024 on 24 cores; 0.13 × pixel noise at 4580 px | SKIP |
+| Tagawa et al. 2016, *Adv. Space Res.* 57(4), 929; Reed, Gagliardi & Shao 1983, *IEEE TAES* 19(6), 898; Blake et al. 2026 stacking **[abstract]** | Multi-frame | | SKIP for one frame |
+
+### 8.6 False alarms and model choice
+
+| Source | Idea | Verdict |
+|---|---|---|
+| von Gioi, Jakubowicz, Morel & Randall 2010, *IEEE TPAMI* 32(4), 722; IPOL 2 (2012), 35 **[abstract]**, and OpenCV's `lsd.cpp` **[code]** | Number of false alarms = number of tests × binomial tail of aligned pixels; accept at NFA ≤ 1; about `(WH)^{5/2}` tests | CONSIDER the bookkeeping, not the detector: gradient alignment is noise for a streak under the pixel noise |
+| Grosjean & Moisan 2009, *J. Math. Imaging Vis.* 33(3), 313 **[secondary]** | NFA of a linear filter on coloured Gaussian noise = tests × Gaussian tail | CONSIDER: the form of the line-sum test |
+| Lezama, Morel, Randall & von Gioi 2015 (entry 7.4) **[abstract]** | A-contrario alignment of points, aware of local density | CONSIDER for dotted (tumbling) tracks |
+| Killick, Fearnhead & Eckley 2012, *JASA* 107(500), 1590, arXiv:1101.1438 **[abstract]** | Exact penalised changepoint search; linear time under conditions on the changepoints, not in the worst case | CONSIDER for cutting a line's profile into on and off |
+| Adler & Taylor 2007, *Random Fields and Geometry*, Springer **[secondary]** | Density of maxima of a smooth stationary Gaussian field above a high level `u`: `(√det Λ / 2π)·u·φ(u)`, `Λ` the covariance of the gradient | ADOPT for the aimed filter's threshold, with `Λ` from the model profiles |
+| Self & Liang 1987, *JASA* 82, 605; Chernoff 1954; Davies 1987, *Biometrika* 74(1), 33 **[secondary]** | Likelihood ratios on a parameter boundary are a mixture of χ²; with a parameter undefined under the null, no standard distribution, and the usual BIC approximation is unjustified | CONSIDER the consequence: calibrate point against segment by simulation (Fayde's ratio is not calibrated) |
+| Toldo & Fusiello 2008 (J-linkage); Magri & Fusiello 2014 (T-linkage); Barath & Matas 2019 (Progressive-X) **[abstract]** | Multi-model robust fitting | SKIP: randomised, or quadratic in points |
+
+### 8.7 Line-segment detectors from computer vision
+
+| Source | Cost | Verdict |
+|---|---|---|
+| LSD (von Gioi et al. 2010) | 36.5 ms for 640 × 480 | SKIP as a detector (entry 8.6) |
+| EDLines, Akinlar & Topal 2011, *Pattern Recognit. Lett.* 32(13), 1633 **[abstract]** | 7.6 ms for 640 × 480 | SKIP: gradient thresholds |
+| ELSED, Suárez, Buenaposada & Baumela 2022, *Pattern Recognit.* 127, 108619, arXiv:2108.03144 **[full]** | 5.4 ms for 640 × 480, about 17 ms per megapixel | SKIP as a detector; its gap jumping is worth copying into the tracer |
+| MCMLSD, Almazàn, Tal, Qian & Elder 2017, CVPR, 2031 **[abstract]** | about 4.7 s for 640 × 480 | CONSIDER the structure: find the line globally, then cut it in one dimension |
+| CannyLines, Lu, Yao, Li & Li 2015, ICIP, 507 **[abstract]** | | SKIP: edges in man-made scenes |
+
+**Verdict.** ADOPT an aimed segment filter for trailed frames, with the frame's trail from moments
+and checked by a segmentation-free estimate, and the erf fit, whose errors come from its inverse
+normal matrix, with Bouquillon et al.'s bounds as a comparison (both built: streak-detection §4).
+CONSIDER multiscale line sums with an a-contrario threshold for faint streaks (not built). The parts
+are known; no surveyed pipeline combines them in one frame. Detection takes a median 40 ms on
+Fayde's frames in trails mode (streak-detection §7).

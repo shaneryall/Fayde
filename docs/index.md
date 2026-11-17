@@ -36,4 +36,5 @@ Read how the solver and the detector work, and why they work that way:
 
 - [Plate solver design](design/plate-solver.md)
 - [Star detection](design/detection.md)
+- [Trail and streak detection](design/streak-detection.md)
 - [Literature review](research/literature-review.md)

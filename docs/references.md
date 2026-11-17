@@ -68,8 +68,8 @@ Wider survey and verdicts: [`docs/research/literature-review.md`](research/liter
 | Civil date → day number | Hinnant, "chrono-compatible low-level date algorithms" (2013, howardhinnant.github.io/date_algorithms.html) | `DATE-OBS` → MJD | `crates/fayde-fits/src/priors.rs` (`mjd_from_iso`) |
 | FNV-1a 64-bit hash | Fowler, Noll & Vo; [Noll, Vo, Eastlake & Hansen 2026, RFC 9923](https://www.rfc-editor.org/rfc/rfc9923) | Index content hash for provenance and corruption checks | `crates/fayde-index/src/file.rs` |
 
-The detection entries (`fayde-detect`) come from the survey in the literature review, §7, which
-says how much of each source was read.
+The detection entries (`fayde-detect`) come from the survey in the literature review, §7 and §8,
+which say how much of each source was read.
 
 ### Fayde's own choices (no published source)
 
