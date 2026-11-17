@@ -10,7 +10,10 @@ use std::{fmt, path::Path};
 use fayde_wcs::{Header, Value};
 
 pub use image::{image_from_file, read_image, read_image_header, Image};
-pub use instrument::{parse_parity, InstrumentPriors, InstrumentProfile, RollRule};
+pub use instrument::{
+    parse_parity, ChargeTransfer, InstrumentPriors, InstrumentProfile, PeriodicPattern,
+    ReadoutEdge, RollRule, TransferAxis, MAX_PATTERN_FREQUENCIES,
+};
 pub use priors::{
     header_priors, header_priors_for_size, mjd_from_iso, parse_sexagesimal, HeaderPriors,
 };

@@ -350,6 +350,7 @@ describes the result.
 | One sheared copy of the image | Two sheared rows at a time, each only where it crosses the image | A frame far wider than tall needed its width squared |
 | Census for mixed frames | Refused when round sources of the stars' width outnumber the trails four to one | Point stars with aligned satellite segments could pass as trailed; radiation hits on real trailed frames reach 3.5 to one |
 | Trails mode final | A frame measured as trails that gives no solution is solved again with its stars measured as points (`fayde solve --image`, Python `solve_image`) | A slew ending in a dwell leaves curved trails with a bright point at the end: trails mode failed where the points solved |
+| Background as measured | An instrument profile's periodic pattern is subtracted before detection | Readout pickup at a fixed frequency, about 18% of the background variance on real frames, pulled the census's second estimate to the stripes' direction and hid faint trails |
 
 Results on the synthetic frames of `crates/fayde-detect/tests/trails.rs` (768 × 768, PSF σ 1.3 px,
 120 stars, 12 frames per length, errors with no floor):

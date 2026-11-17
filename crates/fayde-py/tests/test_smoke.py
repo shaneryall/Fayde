@@ -107,6 +107,36 @@ def test_detect_finds_stars_in_an_array():
     assert fayde.detect(masked)["count"] == 3
 
 
+def test_detect_takes_out_charge_transfer_smear():
+    pytest.importorskip("numpy")
+    stars = [(70.3, 150.6, 20000.0), (150.8, 120.2, 800.0)]
+    img = _star_image(stars)
+    plain = fayde.detect(img)
+    assert plain["charge_transfer"] is None
+    term = {"axis": "y", "readout_edge": "low", "shift_px": 2.0, "flux_ref": 100000.0}
+    r = fayde.detect(img, instrument={"charge_transfer": term})
+    assert r["charge_transfer"] is not None and r["charge_transfer"]["moved"] == 2
+    for a, b in zip(plain["sources"], r["sources"]):
+        want = 2.0 * (a["y"] - 1) / 1000 * math.log(100000.0 / a["flux"])
+        assert abs(b["charge_transfer_px"] - want) < 1e-9
+        assert abs(a["y"] - b["y"] - want) < 1e-9 and a["x"] == b["x"]
+    with pytest.raises(ValueError, match="flux_ref"):
+        fayde.detect(img, instrument={"charge_transfer": dict(term, flux_ref=0)})
+
+
+def test_masked_integer_and_strided_images_keep_fits_row_order():
+    np = pytest.importorskip("numpy")
+    image = _star_image([(73, 111, 20000.0)]).astype(">i2")[:, ::-1]
+    mask = np.zeros_like(image, dtype=bool)
+    mask[:2] = True
+    report = fayde.detect(np.ma.array(image, mask=mask))
+    assert report["undefined_pixels"] == 2 * image.shape[1]
+    assert report["count"] == 1
+    star = report["sources"][0]
+    assert abs(star["x"] - (image.shape[1] - 73)) < 0.1
+    assert abs(star["y"] - 112) < 0.1
+
+
 def test_detect_errors():
     np = pytest.importorskip("numpy")
     with pytest.raises(ValueError, match="2-D"):

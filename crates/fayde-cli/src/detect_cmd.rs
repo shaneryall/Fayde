@@ -4,7 +4,15 @@ use crate::options;
 use crate::solve_cmd::{detect_options, DETECT_OPTIONS};
 
 pub(crate) fn run(args: &[&str]) -> Result<(), String> {
-    let mut known: Vec<&str> = vec!["image", "o", "output", "trail-length", "trail-angle"];
+    let mut known: Vec<&str> = vec![
+        "image",
+        "o",
+        "output",
+        "trail-length",
+        "trail-angle",
+        "instrument",
+        "epoch",
+    ];
     known.extend_from_slice(DETECT_OPTIONS);
     let o: HashMap<String, String> = options(args, &known, &["no-trails"])?;
     let image_path = o.get("image").ok_or("--image is required")?;
@@ -15,10 +23,17 @@ pub(crate) fn run(args: &[&str]) -> Result<(), String> {
     if let Some(path) = out {
         crate::check_output_path(path)?;
         crate::check_output_against_input(path, image_path, "the --image input")?;
+        if let Some(profile) = o.get("instrument") {
+            crate::check_output_against_input(path, profile, "the --instrument input")?;
+        }
     }
     let image = fayde_fits::read_image(image_path)
         .map_err(|e| crate::solve_cmd::wrong_kind(image_path, "--image", e))?;
-    let mut detect = detect_options(&o)?;
+    let instrument = match o.get("instrument") {
+        Some(p) => Some(fayde_fits::InstrumentProfile::load(p).map_err(|e| format!("{p}: {e}"))?),
+        None => None,
+    };
+    let mut detect = detect_options(&o, instrument.as_ref())?;
     detect.points_only = o.contains_key("no-trails");
     let (sources, mut report) =
         fayde_api::detect_sources(&image, &detect).map_err(|e| format!("{image_path}: {e}"))?;

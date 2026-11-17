@@ -81,7 +81,7 @@ struct Opts {
 }
 
 impl Opts {
-    fn detect_options(&self) -> fayde_api::DetectOptions {
+    fn detect_options(&self, profile: Option<&InstrumentProfile>) -> fayde_api::DetectOptions {
         fayde_api::DetectOptions {
             fwhm: self.fwhm,
             threshold: self.detect_threshold,
@@ -89,6 +89,9 @@ impl Opts {
             gain: self.gain,
             max_sources: self.max_sources,
             trail_angle: self.trail_angle,
+            charge_transfer: profile.and_then(|p| p.charge_transfer),
+            epoch: self.epoch,
+            periodic_pattern: profile.and_then(|p| p.periodic_pattern),
             points_only: self.no_trails,
         }
     }
@@ -164,6 +167,9 @@ fn detect(
         "max_sources",
         "trail_angle",
         "no_trails",
+        "instrument",
+        "instrument_path",
+        "epoch",
     ];
     if let Some(k) = given.keys().find(|k| !ALLOWED.contains(&k.as_str())) {
         return Err(PyValueError::new_err(format!(
@@ -175,7 +181,8 @@ fn detect(
         .map_err(|e| PyValueError::new_err(format!("options: {e}")))?;
     let image =
         load_image(path, data, width, height, o.header.as_ref()).map_err(PyValueError::new_err)?;
-    let opts = o.detect_options();
+    let profile = instrument(&o).map_err(PyValueError::new_err)?;
+    let opts = o.detect_options(profile.as_ref());
     let (_, report) = py
         .detach(|| fayde_api::detect_sources(&image, &opts))
         .map_err(PyValueError::new_err)?;
@@ -335,7 +342,7 @@ impl Solver {
         let image = load_image(path, data, width, height, o.header.as_ref())
             .map_err(PyValueError::new_err)?;
         let opts = request_options(&o).map_err(PyValueError::new_err)?;
-        let detect = o.detect_options();
+        let detect = o.detect_options(opts.instrument.as_ref());
         let prepared = py
             .detach(|| PreparedImage::new(image, opts, detect))
             .map_err(|e| PyValueError::new_err(e.to_string()))?;

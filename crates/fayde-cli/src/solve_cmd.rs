@@ -158,7 +158,7 @@ fn solve_once(
     };
     let (built, report) = if let Some(path) = o.get("image") {
         let image = fayde_fits::read_image(path).map_err(|e| wrong_kind(path, "--image", e))?;
-        let mut detect = detect_options(o)?;
+        let mut detect = detect_options(o, opts.instrument.as_ref())?;
         detect.points_only = o.contains_key("no-trails");
         let input_error = |e| match e {
             ImageRequestError::Detect(e) => format!("{path}: {e}"),
@@ -305,6 +305,7 @@ pub(crate) const DETECT_OPTIONS: &[&str] = &[
 
 pub(crate) fn detect_options(
     o: &HashMap<String, String>,
+    instrument: Option<&InstrumentProfile>,
 ) -> Result<fayde_api::DetectOptions, String> {
     Ok(fayde_api::DetectOptions {
         fwhm: num(o, "fwhm")?,
@@ -320,6 +321,9 @@ pub(crate) fn detect_options(
             (Some(_), None) => return Err("--trail-length needs --trail-angle".into()),
             (None, None) => None,
         },
+        charge_transfer: instrument.and_then(|p| p.charge_transfer),
+        epoch: num(o, "epoch")?,
+        periodic_pattern: instrument.and_then(|p| p.periodic_pattern),
         points_only: false,
     })
 }

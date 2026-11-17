@@ -174,7 +174,10 @@ def detect(image: Any, **options: Any) -> DetectReport:
     ``gain`` (default: the header's ``SATURATE``, ``GAIN``/``EGAIN``), ``max_sources`` (default
     2000), ``trail_angle`` (degrees from +x towards +y: the expected direction of star trails,
     to choose among directions), ``no_trails`` (measure every star as a point, even when the
-    stars are trails) and ``header`` (dict or cards, for an array). Returns the report
+    stars are trails), ``header`` (dict or cards, for an array), ``instrument`` or
+    ``instrument_path`` (a profile whose ``periodic_pattern`` is subtracted and whose
+    ``charge_transfer`` is taken out of the positions; its other fields are not used here) and ``epoch`` (Julian year, when the header has no
+    observation time). Returns the report
     ``fayde detect`` prints: settings, background, noise, ``mode`` (``"points"``, ``"trails"``,
     ``"kernel"``, or ``"refused"``) with ``census``, ``trail``, and ``kernel``, ``sources`` (the stars, with FITS 1-based
     ``x``, ``y``, ``sigma_px``, ``flux``, ``p_star`` and ``class``), ``streaks`` (ends, angle,

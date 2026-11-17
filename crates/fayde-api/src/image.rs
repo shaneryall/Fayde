@@ -5,7 +5,7 @@ use std::{
 };
 
 use fayde_detect::FrameMode;
-use fayde_fits::Image;
+use fayde_fits::{header_priors, Image};
 use fayde_solve::{solve_auto_after, Outcome};
 use serde_json::{json, Value};
 
@@ -47,8 +47,15 @@ impl PreparedImage {
     pub fn new(
         image: Image,
         mut request: RequestOptions,
-        detect: DetectOptions,
+        mut detect: DetectOptions,
     ) -> Result<Self, ImageRequestError> {
+        detect.epoch = detect.epoch.or(request.epoch).or_else(|| {
+            request
+                .header
+                .as_ref()
+                .and_then(|h| header_priors(h).epoch)
+                .map(|(e, _)| e.year())
+        });
         if request.header.is_none() {
             request.header = Some(image.header.clone());
         }

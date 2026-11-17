@@ -310,6 +310,7 @@ fn a_trailed_frame_solves_from_its_pixels() {
     );
     assert!(worst < 1.0, "{worst}″");
 }
+
 #[test]
 fn a_curved_frame_solves_from_exposure_averaged_positions() {
     let mut f = frame(140.0, -20.0, 70.0, Psf::Gaussian(0.9), 14);
@@ -365,4 +366,120 @@ fn a_curved_frame_solves_from_exposure_averaged_positions() {
         let error = to_arcsec(sol.wcs.pixel_to_sky(p).separation(f.truth.pixel_to_sky(p)));
         assert!(error < 0.3 * SCALE, "{error} arcsec at ({x}, {y})");
     }
+}
+
+#[test]
+fn charge_transfer_smear_is_taken_out_of_the_positions() {
+    use fayde_fits::{ChargeTransfer, ReadoutEdge, TransferAxis};
+    let mut f = frame(81.0, 12.0, 25.0, Psf::Gaussian(1.4), 21);
+    let brightest = f.scene.stars.iter().map(|s| s.flux).fold(0.0, f64::max);
+    let smear = ChargeTransfer {
+        axis: TransferAxis::Y,
+        readout_edge: ReadoutEdge::Low,
+        shift_px: 0.3,
+        flux_ref: brightest,
+        per_year: 0.0,
+        epoch: None,
+    };
+    let truth: Vec<(f64, f64, f64)> = f.scene.stars.iter().map(|s| (s.x, s.y, s.flux)).collect();
+    for s in &mut f.scene.stars {
+        s.y += smear.displacement(s.x, s.y, SIZE, SIZE, s.flux, 0.3);
+    }
+    f.scene.streaks.clear();
+    let image = Image {
+        width: SIZE,
+        height: SIZE,
+        data: f.scene.render(21 ^ 0x5eed),
+        header: Header::default(),
+        hdu: 0,
+    };
+    let plain = DetectOptions::default();
+    let corrected = DetectOptions {
+        charge_transfer: Some(smear),
+        ..plain
+    };
+    let (raw, raw_report) = detect_sources(&image, &plain).unwrap();
+    let (fixed, report) = detect_sources(&image, &corrected).unwrap();
+    assert!(raw_report["charge_transfer"].is_null());
+    assert_eq!(report["charge_transfer"]["axis"], "y");
+    assert!(
+        report["charge_transfer"]["moved"].as_u64().unwrap() > 50,
+        "{}",
+        report["charge_transfer"]
+    );
+    assert_eq!(raw.len(), fixed.len());
+    let mean_dy = |sources: &[fayde_solve::Source]| {
+        let mut errs = Vec::new();
+        for s in sources {
+            let Some(t) = truth
+                .iter()
+                .filter(|t| t.1 > 300.0 && t.2 < brightest / 100.0)
+                .find(|t| (t.0 - s.x).phypot(t.1 - s.y) < 1.5)
+            else {
+                continue;
+            };
+            errs.push(s.y - t.1);
+        }
+        assert!(errs.len() > 30, "{} matched", errs.len());
+        errs.iter().sum::<f64>() / errs.len() as f64
+    };
+    let (before, after) = (mean_dy(&raw), mean_dy(&fixed));
+    eprintln!("faint stars' mean y error: {before:+.3} px as detected, {after:+.3} px corrected");
+    assert!(before > 0.4, "{before}");
+    assert!(after.abs() < 0.05, "{after}");
+    for (a, b) in raw.iter().zip(&fixed) {
+        assert_eq!(a.x, b.x);
+        assert!(b.y <= a.y);
+    }
+}
+
+#[test]
+fn a_periodic_pattern_is_subtracted_before_detection() {
+    use fayde_fits::PeriodicPattern;
+    let f = frame(81.0, 12.0, 25.0, Psf::Gaussian(1.4), 22);
+    let noise = f.scene.sky_noise();
+    let freq = [0.1699, 0.1598];
+    let tau = 2.0 * std::f64::consts::PI;
+    let striped: Vec<f32> = f
+        .pixels
+        .iter()
+        .enumerate()
+        .map(|(i, &v)| {
+            let (x, y) = ((i % SIZE) as f64, (i / SIZE) as f64);
+            v + (1.5 * noise * (tau * (freq[0] * x + freq[1] * y)).pcos()) as f32
+        })
+        .collect();
+    let image = |data: Vec<f32>| Image {
+        width: SIZE,
+        height: SIZE,
+        data,
+        header: Header::default(),
+        hdu: 0,
+    };
+    let plain = DetectOptions::default();
+    let cleaned = DetectOptions {
+        periodic_pattern: Some(PeriodicPattern::new(&[freq]).unwrap()),
+        ..plain
+    };
+    let (clean, _) = detect_sources(&image(f.pixels.clone()), &plain).unwrap();
+    let (raw, _) = detect_sources(&image(striped.clone()), &plain).unwrap();
+    let (fixed, report) = detect_sources(&image(striped), &cleaned).unwrap();
+    let pattern = &report["periodic_pattern"];
+    eprintln!(
+        "stars: {} without stripes, {} with, {} with them subtracted; {pattern}",
+        clean.len(),
+        raw.len(),
+        fixed.len()
+    );
+    assert!(
+        (pattern["amplitude"][0].as_f64().unwrap() / noise - 1.5).abs() < 0.15,
+        "{pattern}"
+    );
+    assert!(
+        raw.len() as f64 <= 0.9 * clean.len() as f64,
+        "{} {}",
+        raw.len(),
+        clean.len()
+    );
+    assert!((fixed.len() as f64 - clean.len() as f64).abs() <= 0.05 * clean.len() as f64);
 }

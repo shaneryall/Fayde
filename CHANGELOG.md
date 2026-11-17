@@ -5,6 +5,27 @@ Versioning rules: `docs/versioning.md`.
 Versions up to 0.2.1 were development versions and were not published; their notes are kept
 because the index files and their hashes date from 0.1.0.
 
+## Unreleased
+
+- Periodic background patterns. An instrument profile's `periodic_pattern` field lists the
+  frequencies of stripes from readout pickup; Fayde fits their amplitude and phase in 32 × 32
+  pixel tiles and subtracts them before detection. `fayde calibrate --periodic-pattern` finds
+  the frequencies from the frames' power spectra. The detection report gains
+  `periodic_pattern`. On 193 real frames from one camera, whose stripes hold
+  about 18% of the background variance, frames tracking satellites solved 77 of 84 (66 without)
+  and frames whose stars are points 109 of 109, as before.
+- Charge-transfer smear. An instrument profile's `charge_transfer` field takes the CCD's
+  smear out of the positions Fayde detects: traps displace faint stars away from the readout,
+  more the farther they are from it. `fayde calibrate --charge-transfer --ucac4 DIR` fits it
+  from solved frames (the readout axis and edge too), with its growth per year when five or
+  more dated frames span a year. It applies to `--image`, `fayde detect --instrument` and
+  Python `detect`/`solve_image`; source lists given with `--sources` are left as they are. The
+  detection report gains `charge_transfer` (`null` without a term) and, per star,
+  `charge_transfer_px`. On 175 solved real frames from one camera (not in the
+  repository), the offset between faint and bright stars at the top rows fell from 0.29
+  to 0.04 px, the error scale of frames whose stars are points from 1.52 to 1.32, and no
+  frame stopped solving.
+
 ## 0.4.0 (2026-11-21)
 
 ### Added

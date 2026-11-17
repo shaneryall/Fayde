@@ -98,6 +98,10 @@ When Fayde measures stars as points and their full width at half maximum (FWHM) 
 checks. A star this narrow can put nearly all its light in one pixel, so the source list can
 also include hot pixels and compact cosmic-ray hits.
 
+If your instrument profile has a `charge_transfer` field, add `--instrument PROFILE` so that
+the report and `SOURCES` hold corrected positions. For more information, see
+[Correct charge-transfer smear](#correct-charge-transfer-smear).
+
 To list the detection options and their default values, run `fayde detect --help`. The same
 options work with `fayde solve --image`. The `--detect-threshold` option sets the peak threshold
 in σ of the filtered image, and its value must be at least 1.5.
@@ -244,6 +248,8 @@ All of the following profile fields are optional:
 | `pointing_sigma_deg` | The 1σ error of the pointing in the frame headers, for each axis, in degrees |
 | `pointing_radius_deg` | The search limit around the pointing, in degrees, in place of the default of 2° |
 | `header_wcs` | When `false`, has the same effect as `--no-header-wcs` on every frame |
+| `charge_transfer` | The CCD's charge-transfer smear, which Fayde removes from the positions it detects. For more information, see [Correct charge-transfer smear](#correct-charge-transfer-smear). |
+| `periodic_pattern` | Stripes from electronic pickup during readout, which Fayde subtracts before it detects stars. For more information, see [Remove a periodic background pattern](#remove-a-periodic-background-pattern). |
 | `source` | A description of where the values come from. Fayde doesn't read this field. |
 
 The roll is the position angle of the image +y axis, measured east of north:
@@ -317,11 +323,84 @@ A calibrated profile has the following fields:
 | `roll` | With `--roll-keyword`, the rule that gives the roll from the roll keyword, with its 1σ error and hard limit in degrees |
 | `binning` | With `--binning`, the binning keywords that you named |
 | `pointing_sigma_deg` | The 1σ error of the pointing in the headers, in degrees. Fayde omits this field when fewer than five headers have a pointing. |
+| `charge_transfer` | With `--charge-transfer`, the CCD's charge-transfer smear. Fayde omits this field when the frames show no smear. |
 | `calibration` | The numbers behind these values: frames used, spreads, and largest deviations |
 
 You can add the `pointing_radius_deg` and `header_wcs` fields manually. To include
 `header_wcs` in the profile during calibration, add `--no-header-wcs` to the `fayde calibrate`
 command.
+
+### Correct charge-transfer smear
+
+A CCD moves each pixel's charge across the chip to its readout. Traps in the silicon hold back
+part of the charge and release it later, behind the rest. A star's measured position therefore
+moves away from the readout edge. The shift is larger for stars farther from that edge, and
+larger for faint stars than for bright ones. The WCS fit can't absorb a shift that depends on
+brightness, so it remains in the residuals. Radiation damage adds traps over time, so the
+smear can grow over the years.
+
+To measure the smear, add `--charge-transfer` to the `fayde calibrate` command in
+[Calibrate an instrument profile](#calibrate-an-instrument-profile):
+
+```bash
+fayde calibrate --solved LIST --charge-transfer --ucac4 UCAC4_DIR -o PROFILE
+```
+
+Each line of `LIST` must name the FITS image, not only a header, because Fayde detects the
+stars again. Fayde matches them to the catalog under each frame's solution, and fits how their
+residuals depend on brightness and on distance from each edge of the frame. Fayde keeps the
+result only if the shift is positive and at least five times its uncertainty. If it isn't,
+Fayde prints a warning and omits the field. Calibration needs at least 200 matched stars.
+
+The `charge_transfer` field has these fields:
+
+| Field | Meaning |
+|---|---|
+| `axis` | `y` if the charge moves along the columns to a row of the frame, or `x` if it moves along the rows to a column |
+| `readout_edge` | `low` if the charge moves toward row or column 1, or `high` if it moves toward the last row or column |
+| `shift_px` | The shift in pixels per 1,000 transfers per factor of e (2.718) in flux below `flux_ref` |
+| `flux_ref` | The flux, in image units, at and above which Fayde doesn't move a star |
+| `per_year`, `epoch` | The change of `shift_px` per year, and the Julian year at which `shift_px` holds. Fayde fits these when at least five dated frames, each with at least six matched stars, span at least 1 year. Frames without an observation time then don't take part. |
+
+For a frame observed in Julian year `t`, the shift is
+`s` = `shift_px` + `per_year` × (`t` − `epoch`), and never less than 0. Without an observation
+time, Fayde uses `shift_px`. A star `n` rows or columns from the readout edge, with flux `F`,
+moves away from that edge by `s` × (`n` / 1000) × ln(`flux_ref` / `F`). A star with a flux of at
+least `flux_ref` doesn't move. With `readout_edge` set to `high`, Fayde counts `n` from the last
+row or column, and the star moves toward row or column 1. Fayde removes that shift from every
+star that it detects: with `fayde solve`, `fayde verify`, or `fayde refit` and `--image`, and
+with `fayde detect --instrument PROFILE`. Fayde doesn't change the positions in a source list
+that you give with `--sources`, because it calibrates the term against the flux that its own
+detection measures.
+
+### Remove a periodic background pattern
+
+Some cameras pick up electronic interference while they read out a frame. The interference adds
+a wave of fixed frequency to every frame, which appears as fine stripes. Stripes a fraction of
+the noise high raise the measured noise, so faint stars go undetected. They also line up noise
+peaks along the stripes, which can make Fayde take a frame of trailed stars for something else.
+
+To find the stripes, add `--periodic-pattern` to the `fayde calibrate` command in
+[Calibrate an instrument profile](#calibrate-an-instrument-profile):
+
+```bash
+fayde calibrate --solved LIST --periodic-pattern -o PROFILE
+```
+
+Each line of `LIST` must name the FITS image. Fayde averages the power spectra of the frames'
+backgrounds and keeps up to four peaks that stand far above the rest. If it finds none, it
+prints a warning and omits the field. Otherwise the profile gets a `periodic_pattern` field with
+a `frequencies` list. Each frequency is a pair of numbers, in cycles per pixel along x and y.
+
+With such a profile, Fayde fits each wave's amplitude and phase in 32 × 32 pixel tiles of every
+frame, away from the stars, and subtracts the waves before it detects stars. The detection
+report's `periodic_pattern` field gives the frequencies, the RMS of what Fayde subtracted
+(`rms`), and each wave's mean amplitude (`amplitude`), in image units. Without such a profile,
+`periodic_pattern` is `null`. If you give `--periodic-pattern` and `--charge-transfer`
+together, Fayde subtracts the pattern before it measures the charge-transfer smear.
+
+A frame that is binned differently can have the stripes at another frequency. At a frequency
+with no stripes, the fitted amplitude is near zero and the frame barely changes.
 
 ### Solve without a pointing or scale
 
@@ -485,6 +564,12 @@ points, the three errors are equal. The `class` field describes each detection.
 - In `rejected`: `sharp` for a hot pixel or cosmic-ray hit, `streak` for a detection on a traced
   streak, or `point` for a point-like source in an image whose stars are trails, such as the
   tracked object
+
+With a profile that has a `charge_transfer` field, the positions in `sources` are corrected.
+Each star's `charge_transfer_px` field holds the shift that Fayde removed, in pixels. The
+report's `charge_transfer` field holds the term that Fayde used, the shift at the frame's
+epoch, the number of stars moved (`moved`), and the largest shift (`max_px`). Without such a
+profile, `charge_transfer` is `null`.
 
 ## Check or refit an existing WCS
 

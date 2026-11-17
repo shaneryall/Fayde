@@ -18,7 +18,10 @@ use serde_json::{json, Value};
 mod calibrate;
 mod image;
 
-pub use calibrate::{calibrate_profile, CalibrateOptions, SolvedFrame, CALIBRATE_MIN_FRAMES};
+pub use calibrate::{
+    calibrate_charge_transfer, calibrate_profile, transfer_frame, CalibrateOptions, SolvedFrame,
+    TransferFrame, TransferStar, CALIBRATE_MIN_FRAMES, TRANSFER_MIN_STARS,
+};
 pub use fayde_solve::AtPosition;
 pub use image::{ImageRequestError, PreparedImage};
 pub use serde_json;
@@ -555,6 +558,9 @@ pub struct DetectOptions {
     pub gain: Option<f64>,
     pub max_sources: Option<usize>,
     pub trail_angle: Option<f64>,
+    pub charge_transfer: Option<fayde_fits::ChargeTransfer>,
+    pub epoch: Option<f64>,
+    pub periodic_pattern: Option<fayde_fits::PeriodicPattern>,
     pub points_only: bool,
 }
 
@@ -631,13 +637,56 @@ fn detect_image(
         ..fayde_detect::DetectOptions::default()
     };
     let started = std::time::Instant::now();
-    let r = fayde_detect::detect(&image.data, image.width, image.height, &p)
-        .map_err(|e| e.to_string())?;
+    let cleaned = o.periodic_pattern.map(|pat| {
+        let mut data = image.data.clone();
+        let removed =
+            fayde_detect::pattern::remove(&mut data, image.width, image.height, pat.frequencies());
+        let top = saturation.map(|s| s as f32).unwrap_or_else(|| {
+            image
+                .data
+                .iter()
+                .copied()
+                .filter(|v| v.is_finite())
+                .fold(f32::NEG_INFINITY, f32::max)
+        });
+        for (d, &v) in data.iter_mut().zip(&image.data) {
+            if v >= top {
+                *d = v;
+            }
+        }
+        (data, removed, pat)
+    });
+    let pixels = cleaned.as_ref().map_or(&image.data, |c| &c.0);
+    let r =
+        fayde_detect::detect(pixels, image.width, image.height, &p).map_err(|e| e.to_string())?;
     let seconds = started.elapsed().as_secs_f64();
+    let smear = match o.charge_transfer {
+        Some(c) => {
+            let epoch = o
+                .epoch
+                .or_else(|| header_priors(&image.header).epoch.map(|(e, _)| e.year()));
+            Some((c, c.shift_at(epoch), epoch))
+        }
+        None => None,
+    };
+    let moved: Vec<(f64, f64, f64)> = r
+        .stars()
+        .map(|d| match smear {
+            Some((c, shift, _)) => {
+                let m = c.displacement(d.x, d.y, image.width, image.height, d.flux, shift);
+                match c.axis {
+                    fayde_fits::TransferAxis::X => (d.x - m, d.y, m),
+                    fayde_fits::TransferAxis::Y => (d.x, d.y - m, m),
+                }
+            }
+            None => (d.x, d.y, 0.0),
+        })
+        .collect();
     let sources: Vec<Source> = r
         .stars()
-        .map(|d| {
-            let mut s = Source::at(d.x, d.y);
+        .zip(&moved)
+        .map(|(d, &(x, y, _))| {
+            let mut s = Source::at(x, y);
             s.flux = Some(d.flux);
             s.sigma_px = Some(d.sigma_px);
             s.p_star = Some(d.p_star);
@@ -686,6 +735,14 @@ fn detect_image(
             "saturation level {level} is at the background: not used (check SATURATE or the \
              saturation option)"
         ));
+    }
+    if let Some((c, _, None)) = smear {
+        if c.per_year != 0.0 {
+            warnings.push(
+                "no observation time: the charge-transfer shift is taken at the profile's epoch"
+                    .into(),
+            );
+        }
     }
     let mut report = json!({
         "image": {"width": image.width, "height": image.height, "hdu": image.hdu},
@@ -757,10 +814,43 @@ fn detect_image(
                 "photometry_masked": t.photometry_masked,
             })
         }).collect::<Vec<_>>(),
+        "charge_transfer": smear.map(|(c, shift, epoch)| {
+            let size: Vec<f64> = moved.iter().map(|m| m.2.abs()).collect();
+            json!({
+                "axis": match c.axis { fayde_fits::TransferAxis::X => "x", fayde_fits::TransferAxis::Y => "y" },
+                "readout_edge": match c.readout_edge { fayde_fits::ReadoutEdge::Low => "low", fayde_fits::ReadoutEdge::High => "high" },
+                "shift_px": shift,
+                "epoch": epoch,
+                "flux_ref": c.flux_ref,
+                "moved": size.iter().filter(|m| **m > 0.0).count(),
+                "max_px": size.iter().copied().fold(0.0, f64::max),
+            })
+        }),
+        "periodic_pattern": cleaned.as_ref().map(|(_, r, pat)| json!({
+            "frequencies": pat.frequencies(),
+            "rms": r.rms,
+            "amplitude": r.amplitude,
+            "tiles": r.tiles,
+            "tiles_skipped": r.skipped,
+        })),
         "warnings": warnings,
     });
     if detail == DetectionReport::Full {
-        report["sources"] = Value::Array(r.stars().map(row).collect());
+        report["sources"] = Value::Array(
+            r.stars()
+                .zip(&moved)
+                .map(|(d, &(x, y, m))| {
+                    let mut v = row(d);
+                    if smear.is_some() {
+                        let (fx, fy) = fits(x, y);
+                        v["x"] = json!(fx);
+                        v["y"] = json!(fy);
+                        v["charge_transfer_px"] = json!(m);
+                    }
+                    v
+                })
+                .collect(),
+        );
         report["rejected"] = Value::Array(
             r.sources
                 .iter()

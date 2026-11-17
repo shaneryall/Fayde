@@ -624,7 +624,8 @@ as `sigma_px`. See [Read the detection report](../usage.md#read-the-detection-re
 The JSON instrument profile can supply a scale and its uncertainty, binning, parity, a roll
 rule based on a header keyword, pointing uncertainty and radius, and whether to use the
 frame's WCS as a hint. Caller overrides take precedence, followed by the profile and then the
-image header. See the [instrument profile example](../../profiles/example.json) and the
+image header. Detection can also use the profile's charge-transfer and periodic-background
+corrections. See the [instrument profile example](../../profiles/example.json) and the
 [calibration guide](../usage.md#calibrate-an-instrument-profile).
 
 ### 6.6 Observer

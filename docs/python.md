@@ -96,6 +96,10 @@ The Python interface follows the command line:
   `astropy.io.fits.Header`. The WCS argument of `verify`, `refit`, and `stars_at` accepts the
   same types.
 - The `instrument` argument accepts a profile dictionary or the path to a profile file.
+  The `detect` function also takes `instrument` or `instrument_path`. During detection, Fayde
+  applies the profile's `charge_transfer` and `periodic_pattern` corrections. For more
+  information, see [Correct charge-transfer smear](usage.md#correct-charge-transfer-smear) and
+  [Remove a periodic background pattern](usage.md#remove-a-periodic-background-pattern).
 - The report is a dictionary with the same fields as the command-line JSON report. For more
   information about these fields, see [Read the report](usage.md#read-the-report).
 - An invalid option raises `ValueError`. A solver failure raises `fayde.FaydeError`, which

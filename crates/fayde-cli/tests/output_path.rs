@@ -61,6 +61,27 @@ fn the_output_cannot_be_an_input() {
 }
 
 #[test]
+fn detect_cannot_overwrite_its_instrument_profile() {
+    let d = scratch("detect-profile");
+    let profile = d.join("profile.json");
+    std::fs::write(&profile, "{}").unwrap();
+    let out = d.join("./profile.json");
+    let r = fayde(&[
+        "detect",
+        "--image",
+        "missing.fits",
+        "--instrument",
+        profile.to_str().unwrap(),
+        "-o",
+        out.to_str().unwrap(),
+    ]);
+    assert!(!r.status.success());
+    assert!(String::from_utf8_lossy(&r.stderr).contains("is the --instrument input"));
+    assert_eq!(std::fs::read_to_string(profile).unwrap(), "{}");
+    let _ = std::fs::remove_dir_all(&d);
+}
+
+#[test]
 fn calibrate_cannot_overwrite_its_list_or_the_files_it_names() {
     let d = scratch("calibrate-inputs");
     let frame = d.join("frame.fits");

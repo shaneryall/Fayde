@@ -122,6 +122,7 @@ const USAGE: &str = "usage:
        --relax-priors-on-failure
   fayde calibrate --solved <list> [--roll-keyword <KEY>] [--binning <XKEY>[,<YKEY>]]
                   [--name <text>] [--no-header-wcs] [-o <profile.json>]
+                  [--charge-transfer --ucac4 <dir>] [--periodic-pattern]
   fayde compare --ucac4 <dir> --index <a.fidx>[,<b.fidx>] --frames <frames.json> [--limit <n>]
                 [--instrument <profile.json>] [--no-header-wcs] [--hinted-only] [--deadline <s>]
   fayde bench --ucac4 <dir> --index <file> [--frames <n>] [--seed <n>] [--size <px>] [--scale <arcsec/px>]
@@ -212,6 +213,13 @@ nominal scale (fayde solve --scale <arcsec/px> ... -o frame.wcs), then calibrate
   --name <text>            the profile's name
   --no-header-wcs          measure the header pointing from RA/DEC or OBJCTRA/OBJCTDEC, not a
                            WCS in the header, and make the profile tell the solver the same
+  --charge-transfer        also fit the CCD's charge-transfer smear (faint stars displaced
+                           away from the readout edge): the listed FITS files must be the
+                           images; needs --ucac4. Detection options (--fwhm ...) apply
+  --periodic-pattern       also find stripes from readout pickup (a wave of fixed frequency in
+                           every frame's background), to subtract before detection; the listed
+                           FITS files must be the images
+  --ucac4 <dir>            UCAC4 directory, for --charge-transfer
   -o <profile.json>        also write the profile to a file
 
 The profile goes to stdout. Its \"calibration\" member holds the numbers behind it: frames
@@ -242,6 +250,11 @@ reads the frame's header from the image unless --header is given.
                               trails, from +x towards +y       is measured from the image
   --no-trails                 measure every star as a point, even when the stars are
                               trails (skips the trail census)
+  --instrument <profile.json> subtract the profile's periodic pattern and take its
+                              charge-transfer smear out of the positions (its other fields
+                              are for the solve)                          default: none
+  --epoch <year>              observation year, for a smear    default: the header's
+                              that changes with time
   -o <frame.sources.fits>     also write the sources as a source list (Fayde's FITS table:
                               X, Y, FLUX, SIGMA, P_STAR, TRUNCATED); name it after the frame";
 

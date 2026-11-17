@@ -152,7 +152,11 @@ class AtReport(TypedDict, total=False):
     reason: str
 
 
-class DetectedSource(TypedDict):
+class _CorrectedSource(TypedDict, total=False):
+    charge_transfer_px: float
+
+
+class DetectedSource(_CorrectedSource):
     """A detection reported by :func:`fayde.detect` (FITS 1-based pixels).
 
     The detection's class is under the key ``"class"`` (a Python keyword, so not declared
@@ -230,6 +234,28 @@ class DetectTrail(TypedDict):
     fitted: int
 
 
+class DetectChargeTransfer(TypedDict):
+    """The charge-transfer smear taken out of the stars' positions."""
+
+    axis: str
+    readout_edge: str
+    shift_px: float
+    epoch: Optional[float]
+    flux_ref: float
+    moved: int
+    max_px: float
+
+
+class DetectPattern(TypedDict):
+    """The periodic background pattern subtracted before detection."""
+
+    frequencies: List[List[float]]
+    rms: float
+    amplitude: List[float]
+    tiles: int
+    tiles_skipped: int
+
+
 class DetectImage(TypedDict):
     width: int
     height: int
@@ -271,6 +297,8 @@ class DetectReport(TypedDict, total=False):
     census: DetectCensus
     trail: Optional[DetectTrail]
     kernel: Optional[DetectKernel]
+    charge_transfer: Optional[DetectChargeTransfer]
+    periodic_pattern: Optional[DetectPattern]
     warnings: List[str]
     sources: List[DetectedSource]
     rejected: List[DetectedSource]
