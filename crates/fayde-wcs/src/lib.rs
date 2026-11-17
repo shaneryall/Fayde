@@ -14,4 +14,4 @@ mod tan;
 pub use error::WcsError;
 pub use header::{Header, Value};
 pub use sip::{Poly, Sip, Wcs};
-pub use tan::{gnomonic, gnomonic_inverse, Parity, TanWcs};
+pub use tan::{gnomonic, gnomonic_inverse, Parity, TanWcs, TangentPlane};

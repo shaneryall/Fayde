@@ -343,7 +343,8 @@ UCAC4 reader:
 - **Sentinels:** a magnitude of 20000 means missing. A proper motion of 32767 means the real value
   is in `u4i/u4hpm.dat`, which is loaded once.
 - `u4i/u4index.unf` holds, for each of the 900 zones × 1440 RA bins (0.25° each), a start offset and
-  a count, so a cone search seeks straight to the rows it needs.
+  a count, so a cone search seeks straight to the rows it needs. The file is optional: a zone
+  file is in RA order, so without it the same rows are found by binary search of the zone file.
 - **Epoch:** positions are ICRS mean positions at epoch 2000.0. `cepra`/`cepdc` are central epochs,
   not the reference epoch, and are not used for propagation. Proper motion is applied to the query
   epoch with the rigorous formulae of Butkevich & Lindegren (2014), including propagation of the
@@ -437,11 +438,27 @@ executed plan (`search`: stage, hypotheses, seconds).
 
 | Metadata | Stages |
 |---|---|
-| Pointing + tight scale (σ/scale ≤ 3%) | Pair seeds in the prior cone → pattern hash in an inner ring (2σ) → pattern hash to the hard radius |
+| Pointing + tight scale (σ/scale ≤ 3%) | Pair seeds within 3σ of the pointing, when 3σ is at most half the hard radius → pair seeds in the whole prior cone → pattern hash in an inner ring (2σ) → pattern hash to the hard radius |
 | Pointing, loose or no scale | Pattern hash, inner ring → hard radius (scale-pruned when a scale prior exists) |
 | Scale only | Pattern hash over the whole index, scale-pruned |
 | Nothing | Blind: pattern hash over every index band |
 | `search_outside_pointing` (opt-in) | After the above, pattern hash outside the pointing limit; the solution is flagged `prior_violated` |
+
+The pair seeds look close to the pointing first when its σ is small (added 2026-11-16). The
+work of a pair-seed stage grows with the area of its cone, and a spacecraft's pointing is
+usually far better than the hard limit a pipeline is willing to set: measured on 146 real
+source lists, the pointing was within 2.7′ while the limit was 2°, and a solve cost 8.7 ms at
+the 2° limit against 1.1 ms at 0.25°. The first look is skipped when 3σ is more than half the
+hard radius, which includes the default σ of a quarter of it: a first look nearly as wide as
+the limit costs almost as much as the search it would spare. The σ comes from the request
+(`--pointing-sigma`) or the instrument profile, which `fayde calibrate` fills in from solved
+frames.
+
+With a pointing and a tight scale the pair seeds go first even when an index is loaded. The
+reverse was tried (2026-11-16): one hash stage ahead of the pair seeds halves the median solve
+on real source lists, but with an all-sky index a stage that finds nothing costs 37 to 395 ms,
+against 3 ms for the pair-seed solve it delays, and the mean went from 4.5 ms to 24 ms
+(`docs/references.md`, "Considered and not adopted").
 
 The inner ring is skipped when 2σ ≥ 0.8 × hard radius (the second pass would add nothing).
 Indexes whose region cannot contain the field are skipped, and implausible priors are rejected
@@ -455,8 +472,10 @@ implemented.
 - **Source order (PROSAC; Chum & Matas 2005):** image sources are tried in order of
   `p_star` × brightness, not brightness alone, widening the set progressively. In
   satellite-tracking frames the brightest detections are often not stars.
-- **Hinted, tight scale prior → pair seeds** (k-vector; Mortari): fetch catalogue stars in the
-  hint cone at solve time and build a sorted list of their pair separations. Each image pair from
+- **Hinted, tight scale prior → pair seeds** (k-vector; Mortari): fetch the brightest catalogue
+  stars in the hint cone at solve time and build a list of their pair separations. The fainter
+  stars that a hypothesis is verified against are read around the hypotheses that pass the
+  pre-filter, not for the whole cone, which is tens of frame areas. Each image pair from
   the top of the source order is looked up by separation (tolerance from the scale σ and
   position errors). One matched pair plus the parity prior fixes rotation, scale and translation,
   so it is a complete hypothesis. With known roll, single-star seeds suffice. Fewer stars per seed

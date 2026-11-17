@@ -167,6 +167,18 @@ fn index_seek_equals_full_scan() {
         let b = cat.cone_hits_full_scan(centre, arcsec(r), &q).unwrap();
         assert_eq!(a, b, "({ra}, {dec}, {r}\")");
         assert!(!a.is_empty());
+        // The search a catalogue without `u4index.unf` makes reads the same records.
+        let c = cat.cone_hits_ra_search(centre, arcsec(r), &q).unwrap();
+        assert_eq!(a, c, "({ra}, {dec}, {r}\") by RA search");
+        // The brightest-n query is the cone, sorted and cut.
+        let stars: Vec<_> = a.iter().map(|h| h.star).collect();
+        for n in [1, 25, usize::MAX] {
+            assert_eq!(
+                cat.cone_brightest(centre, arcsec(r), &q, n).unwrap(),
+                fayde_catalog::brightest_first(stars.clone(), n),
+                "({ra}, {dec}, {r}\") brightest {n}"
+            );
+        }
     }
 }
 

@@ -1,35 +1,38 @@
-//! `fayde compare`: solve exported producer source lists and compare with an existing solver's
-//! WCS (e.g. solve-field), frame by frame.
+//! `fayde compare`: solve exported producer source lists frame by frame, with priors and blind,
+//! and compare the two solutions; where the file carries another solver's WCS, compare with
+//! that too.
 //!
 //! Input: JSON with a `frames` array. Each frame has `name`, `width`, `height`, `sources_fits`
 //! (`[x, y]` pairs, FITS 1-based, brightest first), `header` (keyword → value, every valued card
-//! of the frame header) and, where the other solver solved it, `solve_field_wcs_cards` (its WCS
-//! as card images). Each frame is solved twice:
-//! - **header priors:** pointing, scale and epoch read from the frame header as `fayde solve
-//!   --header` reads them (`fayde_fits::header_priors`); pointing 1σ 0.5°, hard limit 2°, scale
-//!   1σ 2%, each used when present — the information a pipeline has;
-//! - **blind:** no priors, pattern index only.
+//! of the frame header) and, optionally, `solve_field_wcs_cards` (another solver's WCS as card
+//! images). Each frame is solved twice:
+//! - **with priors:** as `fayde solve --header` does (`fayde_api::build_request`): pointing,
+//!   scale and epoch from the frame header, or from `--instrument` where the profile has them;
+//!   pointing 1σ 0.5° and hard limit 2°, scale 1σ 2%, unless the profile says otherwise;
+//! - **blind:** no priors, pattern index only (skipped with `--hinted-only`).
 //!
-//! Where the other solver produced a WCS, the two are compared on a 5×5 grid over the frame.
+//! Fayde is checked against itself: where both runs solve, their WCS are compared on a 5×5
+//! grid over the frame. The other solver's WCS, where given, is a second opinion, not an
+//! input: with `--no-header-wcs` nothing a plate solver wrote into the header is read either
+//! (the pointing then comes from `RA`/`DEC` or `OBJCTRA`/`OBJCTDEC`).
 
 use fayde_core::Portable;
 use std::time::Instant;
 
+use fayde_api::{build_request, RequestOptions};
 use fayde_catalog::ucac4::Ucac4Catalog;
 use fayde_core::{to_arcsec, PixelConvention, PixelPos};
-use fayde_fits::header_priors;
+use fayde_fits::InstrumentProfile;
 use fayde_index::Index;
-use fayde_solve::{
-    solve_auto, Frame, Outcome, PointingPrior, Policy, Priors, ScalePrior, Solution, SolveRequest,
-    Source,
-};
+use fayde_solve::{solve_auto, Outcome, Priors, SolveRequest, Source};
 use fayde_wcs::{Header, Wcs};
 use serde_json::Value;
 
 use crate::{index_paths, num, options, seconds};
 
 struct Run {
-    solved: bool,
+    /// The solution's WCS.
+    wcs: Option<Wcs>,
     agree_arcsec: Option<f64>,
     seconds: f64,
 }
@@ -47,7 +50,7 @@ fn run_one(
     let seconds = t0.elapsed().as_secs_f64();
     Ok(match out {
         Outcome::Solved(sol) => {
-            let agree = reference.map(|r| max_disagreement(&sol, r, w, h));
+            let agree = reference.map(|r| max_disagreement(&sol.wcs, r, w, h));
             // Arbiter: both WCS against the same confident matches (source pixel vs catalogue star).
             let rms_of = |wcs: &Wcs| {
                 let (mut s, mut n) = (0.0f64, 0.0f64);
@@ -77,7 +80,7 @@ fn run_one(
             );
             (
                 Run {
-                    solved: true,
+                    wcs: Some(sol.wcs.clone()),
                     agree_arcsec: agree,
                     seconds,
                 },
@@ -90,7 +93,7 @@ fn run_one(
             ..
         } => (
             Run {
-                solved: false,
+                wcs: None,
                 agree_arcsec: None,
                 seconds,
             },
@@ -99,16 +102,14 @@ fn run_one(
     })
 }
 
-/// Largest sky separation between the two WCS over a 5×5 grid, arcsec.
-fn max_disagreement(sol: &Solution, reference: &Wcs, w: f64, h: f64) -> f64 {
+/// Largest sky separation between two WCS over a 5×5 grid, arcsec.
+fn max_disagreement(wcs: &Wcs, reference: &Wcs, w: f64, h: f64) -> f64 {
     let mut worst = 0.0f64;
     for i in 0..5 {
         for j in 0..5 {
             let p = PixelPos::new(-0.5 + w * i as f64 / 4.0, -0.5 + h * j as f64 / 4.0);
             worst = worst.max(to_arcsec(
-                sol.wcs
-                    .pixel_to_sky(p)
-                    .separation(reference.pixel_to_sky(p)),
+                wcs.pixel_to_sky(p).separation(reference.pixel_to_sky(p)),
             ));
         }
     }
@@ -122,15 +123,28 @@ fn f(v: &Value, k: &str) -> Option<f64> {
 pub(crate) fn run(args: &[&str]) -> Result<(), String> {
     let o = options(
         args,
-        &["ucac4", "index", "frames", "limit", "deadline"],
-        &[],
+        &[
+            "ucac4",
+            "index",
+            "frames",
+            "limit",
+            "deadline",
+            "instrument",
+        ],
+        &["no-header-wcs", "hinted-only"],
     )?;
+    let hinted_only = o.contains_key("hinted-only");
+    let no_header_wcs = o.contains_key("no-header-wcs");
+    let instrument = o
+        .get("instrument")
+        .map(|p| InstrumentProfile::load(p).map_err(|e| format!("{p}: {e}")))
+        .transpose()?;
     let deadline = Some(seconds(&o, "deadline")?.unwrap_or(std::time::Duration::from_secs(60)));
     let cat = Ucac4Catalog::open(o.get("ucac4").ok_or("--ucac4 is required")?)
         .map_err(|e| e.to_string())?;
     let paths = index_paths(&o);
-    if paths.is_empty() {
-        return Err("--index is required".into());
+    if paths.is_empty() && !hinted_only {
+        return Err("--index is required (the blind run needs one; or give --hinted-only)".into());
     }
     let indexes: Vec<Index> = paths
         .iter()
@@ -147,6 +161,9 @@ pub(crate) fn run(args: &[&str]) -> Result<(), String> {
     let (mut hp_solved, mut hp_agree, mut hp_disagree, mut hp_only) = (0, 0, 0, 0);
     let (mut bl_solved, mut bl_agree, mut bl_disagree, mut bl_only) = (0, 0, 0, 0);
     let (mut ref_only_hp, mut ref_only_bl) = (0, 0);
+    // Fayde against itself: frames both runs solve, and how far apart the two solutions are.
+    let (mut both, mut both_agree) = (0usize, 0usize);
+    let mut own_agreements = Vec::new();
     let mut agreements = Vec::new();
     let mut times = (Vec::new(), Vec::new());
     for fr in frames.iter().take(limit) {
@@ -171,53 +188,57 @@ pub(crate) fn run(args: &[&str]) -> Result<(), String> {
             let cards: Vec<&str> = cards.iter().filter_map(Value::as_str).collect();
             Wcs::from_header(&Header::parse_cards(cards)).ok()
         });
-        // The same header reading as `fayde solve --header`: pointing (CRVAL with CTYPE, or
-        // RA/DEC), scale (CD, PC+CDELT, CDELT, optics; placeholders ignored), mid-exposure
-        // epoch (JD/MJD/DATE-OBS + exposure/2), reference-frame checks.
-        let hp = hdr
+        // The request `fayde solve --header [--instrument] [--no-header-wcs]` builds.
+        let header = hdr
             .as_object()
             .map(fayde_api::header_from_json)
-            .transpose()?
-            .map(|h| header_priors(&h))
-            .unwrap_or_default();
-        let epoch = hp.epoch.map(|(e, _)| e);
-        let scale = hp.scale_arcsec.map(|(s, _)| s);
-        let pointing = hp.pointing.map(|(p, _)| p);
-        let base = SolveRequest {
-            frame: Frame {
-                width: w as u32,
-                height: h as u32,
-                trail: None,
-            },
+            .transpose()?;
+        let built = build_request(
             sources,
-            priors: Priors::default(),
-            policy: Policy {
-                epoch,
+            (Some(w as u32), Some(h as u32)),
+            &RequestOptions {
+                header,
+                instrument: instrument.clone(),
+                no_header_wcs,
                 deadline,
-                ..Policy::default()
+                ..RequestOptions::default()
             },
+        )?;
+        let hinted = built.request;
+        // Blind: the same frame, sources and epoch, and no prior.
+        let base = SolveRequest {
+            priors: Priors::default(),
+            ..hinted.clone()
         };
-        let mut hinted = base.clone();
-        // Each prior stands on its own: a placeholder scale must not discard a usable pointing.
-        if let Some(c) = pointing {
-            hinted.priors.pointing = Some(PointingPrior {
-                centre: c,
-                sigma: 0.5f64.to_radians(),
-                max_radius: 2f64.to_radians(),
-            });
-        }
-        if let Some(s) = scale {
-            hinted.priors.scale = Some(ScalePrior {
-                arcsec_per_px: s,
-                sigma: 0.02 * s,
-            });
-        }
         n += 1;
         ref_solved += usize::from(reference.is_some());
         let (a, ta) = run_one(&hinted, &cat, &indexes, reference.as_ref(), w, h)?;
-        let (b, tb) = run_one(&base, &cat, &indexes, reference.as_ref(), w, h)?;
+        let (b, tb) = if hinted_only {
+            (
+                Run {
+                    wcs: None,
+                    agree_arcsec: None,
+                    seconds: 0.0,
+                },
+                "skipped (--hinted-only)".to_string(),
+            )
+        } else {
+            run_one(&base, &cat, &indexes, reference.as_ref(), w, h)?
+        };
         times.0.push(a.seconds);
-        times.1.push(b.seconds);
+        if !hinted_only {
+            times.1.push(b.seconds);
+        }
+        let own = match (&a.wcs, &b.wcs) {
+            (Some(x), Some(y)) => {
+                let d = max_disagreement(x, y, w, h);
+                both += 1;
+                both_agree += usize::from(d < 5.0);
+                own_agreements.push(d);
+                format!("with priors and blind {d:.2}″ apart")
+            }
+            _ => "with priors and blind: not both solved".to_string(),
+        };
         for (r, solved, agree, disagree, only, ref_only) in [
             (
                 &a,
@@ -236,8 +257,8 @@ pub(crate) fn run(args: &[&str]) -> Result<(), String> {
                 &mut ref_only_bl,
             ),
         ] {
-            *solved += usize::from(r.solved);
-            match (r.solved, reference.is_some(), r.agree_arcsec) {
+            *solved += usize::from(r.wcs.is_some());
+            match (r.wcs.is_some(), reference.is_some(), r.agree_arcsec) {
                 (true, true, Some(d)) if d < 5.0 => *agree += 1,
                 (true, true, _) => *disagree += 1,
                 (true, false, _) => *only += 1,
@@ -249,21 +270,25 @@ pub(crate) fn run(args: &[&str]) -> Result<(), String> {
             agreements.push(d);
         }
         eprintln!(
-            "{:<42} {:>3} src  solve-field {:<6}\n    header priors {:6.2}s  {ta}\n    blind         {:6.2}s  {tb}",
+            "{:<42} {:>3} src  reference {:<6}\n    with priors   {:6.2}s  {ta}\n    blind         {:6.2}s  {tb}\n    {own}",
             fr["name"].as_str().unwrap_or("?"),
             base.sources.len(),
-            if reference.is_some() { "solved" } else { "FAILED" },
+            if reference.is_some() { "given" } else { "none" },
             a.seconds,
             b.seconds,
         );
     }
     agreements.sort_by(f64::total_cmp);
+    own_agreements.sort_by(f64::total_cmp);
     let med = |v: &mut Vec<f64>| {
         v.sort_by(f64::total_cmp);
         v.get(v.len() / 2).copied()
     };
     for (k, v) in [
         ("frames", n),
+        ("priors_and_blind_both_solved", both),
+        ("priors_and_blind_agree_lt_5arcsec", both_agree),
+        ("priors_and_blind_disagree", both - both_agree),
         ("solve_field_solved", ref_solved),
         ("header_priors_solved", hp_solved),
         ("header_priors_agree_lt_5arcsec", hp_agree),
@@ -278,6 +303,14 @@ pub(crate) fn run(args: &[&str]) -> Result<(), String> {
     ] {
         stats.insert(k.into(), v.into());
     }
+    stats.insert(
+        "priors_and_blind_arcsec_median".into(),
+        own_agreements.get(own_agreements.len() / 2).copied().into(),
+    );
+    stats.insert(
+        "priors_and_blind_arcsec_max".into(),
+        own_agreements.last().copied().into(),
+    );
     stats.insert(
         "agreement_arcsec_median".into(),
         agreements.get(agreements.len() / 2).copied().into(),

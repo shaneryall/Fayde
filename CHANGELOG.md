@@ -1,9 +1,51 @@
 # Changelog
 
-Versioning rules: README, "Versioning and releases".
+Versioning rules: `docs/development.md`, "Versioning and releases".
 
 Versions up to 0.2.1 were development versions and were not published; their notes are kept
 because the index files and their hashes date from 0.1.0.
+
+## 0.3.1 (2026-11-17)
+
+- `pip install fayde` also installs the `fayde` command. It runs the same code as the release
+  binary (`fayde-cli` is now a library as well, with `fayde_cli::run`), so a solve finds the same
+  solution either way; only the timings in the report differ.
+- Solving is faster, with the same results to the last bit. Measured on 109 real frames, one
+  thread: a solve with a pointing and a scale takes 6.0 ms on average, from 22.5 ms; with a
+  pattern index and a pointing, 2.3 ms from 18.8 ms; with no priors, 1.9 ms from 3.7 ms.
+  - The catalogue stars of a pointing prior are read as hypotheses need them. Only the brightest
+    stars of the prior's cone are read for seeding; the fainter ones are read around each
+    hypothesis that passes the pre-filter. A 2° prior around a 0.6° frame is 46 frame areas, and
+    reading all of it was most of a solve. A consequence: a missing zone file is an error when a
+    seed or a hypothesis needs it, no longer whenever it lies inside the prior.
+  - The UCAC4 cone search works out each star's direction once, not three times, and decides
+    the cone from it; the exact separation is computed only for a star at the cone's edge.
+  - The pair-seed table is sorted only where a lookup reaches it; sources are matched to
+    reference stars on a grid of cells; a fit projects each star from its unit vector.
+- A pointing known better than its hard limit is searched close in first. When the pointing's
+  1σ (`--pointing-sigma`, or the instrument profile) is at most a sixth of the limit, pair seeds
+  look within 3σ of the pointing and widen to the limit only when that finds nothing. Measured
+  on 146 real source lists: 8.7 ms per list at a 2° limit, 1.1 ms at 0.25°. With the default σ
+  (a quarter of the limit) nothing changes.
+- `fayde calibrate` writes an instrument profile from frames Fayde has solved: scale, parity,
+  the roll rule for a header keyword, and the pointing's 1σ. A profile needs no other solver:
+  solve some frames with their header pointing and a nominal `--scale`, then calibrate.
+- Instrument profiles can carry `pointing_sigma_deg`, `pointing_radius_deg` (the hard limit, in
+  place of `--radius`) and `header_wcs` (`false`: do not read the pointing or scale from a WCS
+  in the header).
+- `--no-header-wcs` (Python: `no_header_wcs=True`) reads the pointing from `RA`/`DEC` or
+  `OBJCTRA`/`OBJCTDEC` only, for headers whose WCS may be another solver's solution.
+- `fayde compare` builds its requests as `fayde solve` does and takes `--instrument`,
+  `--no-header-wcs` and `--hinted-only`. It reports how far apart Fayde's solutions with priors
+  and blind are; another solver's WCS in the frame file is a second opinion.
+- A UCAC4 copy without `u4i/u4index.unf` is searched by RA in each zone file, which is in RA
+  order, instead of read whole: a solve that took 350 ms takes 6 ms, as with the index. Keep
+  `u4hpm.dat`, which holds the proper motions of the fastest stars.
+- New in the library: `Catalog::cone_brightest` (the n brightest stars of a cone; a catalogue
+  can override it to rank by magnitude before working out positions), `brightest_first`,
+  `Ucac4Catalog::cone_hits_ra_search`, `TanWcs::vector_to_pixel`, `Wcs::vector_to_pixel`,
+  `TangentPlane`, `KdTree::any_within`, `Header::without_wcs`, `calibrate_profile` and
+  `RequestOptions::no_header_wcs`.
 
 ## 0.3.0 (2026-11-16)
 

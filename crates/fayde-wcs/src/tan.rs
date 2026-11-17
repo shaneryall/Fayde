@@ -137,7 +137,14 @@ impl TanWcs {
     /// Pixel of a sky position, or `None` if it is 90° or more from the reference point
     /// (behind the tangent plane).
     pub fn sky_to_pixel(&self, s: SkyPos) -> Option<PixelPos> {
-        let (xi, eta) = self.basis.project(s.to_unit_vector())?;
+        self.vector_to_pixel(s.to_unit_vector())
+    }
+
+    /// [`TanWcs::sky_to_pixel`] for a direction given as a unit vector. For
+    /// `s.to_unit_vector()` the result is that of `sky_to_pixel(s)` to the last bit, without
+    /// the sines and cosines: use it for positions projected many times.
+    pub fn vector_to_pixel(&self, u: UnitVector) -> Option<PixelPos> {
+        let (xi, eta) = self.basis.project(u)?;
         Some(self.plane_to_pixel(xi, eta))
     }
 }
@@ -145,7 +152,26 @@ impl TanWcs {
 /// Gnomonic projection of `s` onto the tangent plane at `centre`: (ξ, η) in radians, ξ east,
 /// η north. `None` if `s` is 90° or more from `centre`.
 pub fn gnomonic(centre: SkyPos, s: SkyPos) -> Option<(f64, f64)> {
-    Basis::at(centre).project(s.to_unit_vector())
+    TangentPlane::at(centre).project(s.to_unit_vector())
+}
+
+/// The tangent plane at one point, for projecting many directions onto it: [`gnomonic`] without
+/// working out the plane's axes again for every one.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TangentPlane(Basis);
+
+impl TangentPlane {
+    /// The plane tangent to the sphere at `centre`.
+    pub fn at(centre: SkyPos) -> Self {
+        Self(Basis::at(centre))
+    }
+
+    /// (ξ, η) in radians of the direction `u`, ξ east, η north; `None` if it is 90° or more
+    /// from the tangent point. For `s.to_unit_vector()` this is `gnomonic(centre, s)` to the
+    /// last bit.
+    pub fn project(&self, u: UnitVector) -> Option<(f64, f64)> {
+        self.0.project(u)
+    }
 }
 
 /// Inverse of [`gnomonic`].
@@ -247,6 +273,25 @@ mod tests {
         assert!((p.x - q.x).abs() < 1e-9 && (p.y - q.y).abs() < 1e-9);
         let behind = SkyPos::from_degrees(330.0, -2.0).unwrap();
         assert!(w.sky_to_pixel(behind).is_none());
+    }
+
+    /// Projecting a unit vector is projecting its sky position, to the last bit, and the
+    /// tangent plane is the plane of `gnomonic`.
+    #[test]
+    fn vector_forms_equal_the_sky_forms() {
+        let w = simple();
+        for (ra, dec) in [
+            (150.0, 2.0),
+            (150.4, 1.7),
+            (149.1, 2.9),
+            (10.0, -80.0),
+            (330.0, -2.0),
+        ] {
+            let s = SkyPos::from_degrees(ra, dec).unwrap();
+            assert_eq!(w.vector_to_pixel(s.to_unit_vector()), w.sky_to_pixel(s));
+            let plane = TangentPlane::at(w.crval());
+            assert_eq!(plane.project(s.to_unit_vector()), gnomonic(w.crval(), s));
+        }
     }
 
     #[test]

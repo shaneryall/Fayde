@@ -4,11 +4,15 @@
 //!
 //! ```text
 //! <root>/u4b/z001 … z900    78-byte little-endian records, one file per 0.2° Dec zone, by RA
-//! <root>/u4i/u4index.unf    optional; start/count per (zone, 0.25° RA bin) for direct seeks
+//! <root>/u4i/u4index.unf    optional; start/count per (zone, 0.25° RA bin)
 //! <root>/u4i/u4hpm.dat      optional; true proper motions of high-proper-motion stars
 //! ```
 //!
 //! `open` also accepts the `u4b` directory itself, in which case `u4i` is looked for next to it.
+//!
+//! A cone search reads only the RA range it needs from each zone file. With `u4index.unf` the
+//! range comes from its table; without it, from a binary search of the zone file, which is in
+//! RA order (the property the table itself is built on). Both read the same records.
 //! Field definitions follow `readme_u4.txt` (notes 6, 8 and 9 for the error and proper-motion
 //! encodings).
 
@@ -23,7 +27,7 @@ use std::{
 use fayde_core::{Epoch, SkyPos};
 
 use crate::{
-    propagate::{grow_error, propagate},
+    propagate::{grow_error, propagate, propagate_in, LocalFrame},
     Band, Catalog, CatalogError, CatalogId, Star, StarQuery,
 };
 
@@ -34,6 +38,8 @@ pub const N_ZONES: u16 = 900;
 const N_RA_BINS: usize = 1440;
 const ZONE_HEIGHT_DEG: f64 = 0.2;
 const RA_BIN_DEG: f64 = 0.25;
+/// Width of an RA bin in the unit of [`Ucac4Record::ra`], mas.
+const RA_BIN_MAS: u64 = 900_000;
 const MISSING_MAG: i16 = 20_000;
 const HPM_SENTINEL: i16 = 32_767;
 /// Largest proper motion representable inline (mas/yr).
@@ -251,13 +257,6 @@ impl Ucac4Record {
     /// Build a [`Star`] at `epoch` (or J2000 if `None`).
     pub fn to_star(&self, hpm: Option<[f64; 2]>, epoch: Option<Epoch>, band: Band) -> Star {
         let pm = self.pm_mas_yr(hpm);
-        // Without its supplement entry, a high-PM star's catalogue errors describe the sentinel,
-        // not its motion: the error must cover the (unknown, large) motion instead.
-        let sig_pm = if self.is_high_pm() && hpm.is_none() {
-            [HPM_MISSING_SIGMA_PM_MAS_YR; 2]
-        } else {
-            self.sigma_pm_mas_yr()
-        };
         let target = epoch.unwrap_or(Epoch::J2000);
         let pos = propagate(
             self.position_j2000(),
@@ -265,6 +264,26 @@ impl Ucac4Record {
             Epoch::J2000,
             target,
         );
+        self.star_at(pos, pm, hpm, target, band)
+    }
+
+    /// The [`Star`] of this record at `target`, given its position there (`pos`) and its proper
+    /// motion (`pm`, from [`Ucac4Record::pm_mas_yr`]).
+    fn star_at(
+        &self,
+        pos: SkyPos,
+        pm: [Option<f64>; 2],
+        hpm: Option<[f64; 2]>,
+        target: Epoch,
+        band: Band,
+    ) -> Star {
+        // Without its supplement entry, a high-PM star's catalogue errors describe the sentinel,
+        // not its motion: the error must cover the (unknown, large) motion instead.
+        let sig_pm = if self.is_high_pm() && hpm.is_none() {
+            [HPM_MISSING_SIGMA_PM_MAS_YR; 2]
+        } else {
+            self.sigma_pm_mas_yr()
+        };
         let sig = self.sigma_pos_mas();
         let cep = self.central_epochs();
         Star {
@@ -405,7 +424,8 @@ impl Ucac4Catalog {
         })
     }
 
-    /// Whether `u4index.unf` was found (cone searches seek instead of reading whole zones).
+    /// Whether `u4index.unf` was found. Without it a cone search finds its records by binary
+    /// search of each zone file, which costs a few dozen short reads per zone and no more.
     pub fn has_index(&self) -> bool {
         self.index.is_some()
     }
@@ -420,62 +440,28 @@ impl Ucac4Catalog {
         self.zone_dir.join(zone_file(zone))
     }
 
+    /// Open a zone file. `Ok(None)` if it is absent.
+    fn open_zone(&self, zone: u16) -> Result<Option<(File, PathBuf)>, CatalogError> {
+        let path = self.zone_path(zone);
+        match File::open(&path) {
+            Ok(f) => Ok(Some((f, path))),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(source) => Err(CatalogError::Io { path, source }),
+        }
+    }
+
     /// Read records `[start, end)` (0-based) of a zone. `Ok(None)` if the zone file is absent.
     fn read_records(
         &self,
         zone: u16,
         range: Option<(u64, u64)>,
     ) -> Result<Option<Vec<Ucac4Record>>, CatalogError> {
-        let path = self.zone_path(zone);
-        let mut f = match File::open(&path) {
-            Ok(f) => f,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-            Err(source) => return Err(CatalogError::Io { path, source }),
+        let Some((mut f, path)) = self.open_zone(zone)? else {
+            return Ok(None);
         };
-        let io = |source| CatalogError::Io {
-            path: path.clone(),
-            source,
-        };
-        let mut buf = Vec::new();
-        match range {
-            None => {
-                f.read_to_end(&mut buf).map_err(io)?;
-                if buf.len() % RECORD_BYTES != 0 {
-                    return Err(CatalogError::Malformed {
-                        path: path.clone(),
-                        reason: format!("size {} is not a multiple of {RECORD_BYTES}", buf.len()),
-                    });
-                }
-            }
-            Some((start, end)) => {
-                if end == start {
-                    return Ok(Some(Vec::new()));
-                }
-                // Check the range against the file before sizing the buffer from it: the index
-                // is a separate file and may be damaged.
-                let available = f.metadata().map_err(io)?.len() / RECORD_BYTES as u64;
-                if end > available {
-                    return Err(CatalogError::Malformed {
-                        path: path.clone(),
-                        reason: format!(
-                            "index asks for records {start}..{end}, zone has {available}; index and zone disagree"
-                        ),
-                    });
-                }
-                f.seek(SeekFrom::Start(start * RECORD_BYTES as u64))
-                    .map_err(io)?;
-                buf.resize(((end - start) as usize) * RECORD_BYTES, 0);
-                f.read_exact(&mut buf)
-                    .map_err(|e| CatalogError::Malformed {
-                        path: path.clone(),
-                        reason: format!(
-                            "records {start}..{end} not readable ({e}); index and zone disagree"
-                        ),
-                    })?;
-            }
-        }
         Ok(Some(
-            buf.chunks_exact(RECORD_BYTES)
+            read_range(&mut f, &path, range)?
+                .chunks_exact(RECORD_BYTES)
                 .map(|c| Ucac4Record::decode(c.try_into().expect("exact chunk")))
                 .collect(),
         ))
@@ -486,6 +472,16 @@ impl Ucac4Catalog {
         self.read_records(zone, None)
     }
 
+    /// How a cone search finds its records: `u4index.unf` when it was found, otherwise a
+    /// binary search of each zone file.
+    fn lookup(&self) -> Lookup {
+        if self.index.is_some() {
+            Lookup::Index
+        } else {
+            Lookup::RaSearch
+        }
+    }
+
     /// Cone search returning catalogue locations and raw records as well as stars.
     pub fn cone_hits(
         &self,
@@ -493,7 +489,7 @@ impl Ucac4Catalog {
         radius: f64,
         query: &StarQuery,
     ) -> Result<Vec<Ucac4Hit>, CatalogError> {
-        self.search(centre, radius, query, true)
+        self.hits(centre, radius, query, self.lookup())
     }
 
     /// Same as [`Ucac4Catalog::cone_hits`] but reads whole zones instead of seeking with
@@ -504,86 +500,469 @@ impl Ucac4Catalog {
         radius: f64,
         query: &StarQuery,
     ) -> Result<Vec<Ucac4Hit>, CatalogError> {
-        self.search(centre, radius, query, false)
+        self.hits(centre, radius, query, Lookup::FullScan)
     }
 
-    fn search(
+    /// Same as [`Ucac4Catalog::cone_hits`] but finds each zone's RA range by binary search of
+    /// the zone file, as a catalogue without `u4index.unf` does. Used to check that path.
+    pub fn cone_hits_ra_search(
         &self,
         centre: SkyPos,
         radius: f64,
         query: &StarQuery,
-        use_index: bool,
     ) -> Result<Vec<Ucac4Hit>, CatalogError> {
+        self.hits(centre, radius, query, Lookup::RaSearch)
+    }
+
+    fn hits(
+        &self,
+        centre: SkyPos,
+        radius: f64,
+        query: &StarQuery,
+        lookup: Lookup,
+    ) -> Result<Vec<Ucac4Hit>, CatalogError> {
+        let test = ConeTest::new(self, centre, radius, query);
+        let mut out = Vec::new();
+        self.chunks(centre, radius, query, lookup, &mut |zone, first, bytes| {
+            for (k, c) in bytes.chunks_exact(RECORD_BYTES).enumerate() {
+                let raw = Ucac4Record::decode(c.try_into().expect("exact chunk"));
+                if let Some(star) = test.star(&raw) {
+                    out.push(Ucac4Hit {
+                        zone,
+                        record: (first + k as u64 + 1) as u32,
+                        raw,
+                        star,
+                    });
+                }
+            }
+        })?;
+        out.sort_by_key(|h| (h.zone, h.record));
+        out.dedup_by_key(|h| (h.zone, h.record));
+        Ok(out)
+    }
+
+    /// Hand `visit` the records a cone search has to look at, one RA range of one zone at a
+    /// time: the zone, the 0-based number of the range's first record, and the records' bytes.
+    /// Every star within `radius` of `centre` at the query epoch is among them; ranges can
+    /// overlap, so a record can come twice.
+    fn chunks(
+        &self,
+        centre: SkyPos,
+        radius: f64,
+        query: &StarQuery,
+        lookup: Lookup,
+        visit: &mut dyn FnMut(u16, u64, Vec<u8>),
+    ) -> Result<(), CatalogError> {
         if !radius.is_finite() || !(0.0..std::f64::consts::PI).contains(&radius) {
             return Err(CatalogError::InvalidQuery(format!("radius {radius} rad")));
         }
-        // Zones and RA bins are by J2000 position: widen the search by the largest motion any
-        // star can have made since J2000.
-        let pad = query
-            .epoch
-            .map(|e| e.years_since(Epoch::J2000).abs() * self.max_pm_mas_yr * crate::propagate::MAS)
-            .unwrap_or(0.0);
-        let r = radius + pad + 1e-9;
+        let r = radius + self.motion_pad(query) + 1e-9;
         let (ra0, dec0) = (centre.ra.to_degrees(), centre.dec.to_degrees());
         let r_deg = r.to_degrees();
         let z_lo = zone_number(dec0 - r_deg);
         let z_hi = zone_number(dec0 + r_deg);
         let bins = ra_bins(ra0, dec0, r);
 
-        let mut out = Vec::new();
         for zone in z_lo..=z_hi {
-            let chunks: Vec<(Option<(u64, u64)>, u64)> = match (&self.index, use_index) {
-                (Some(idx), true) => bins
-                    .iter()
-                    .map(|&(lo, hi)| {
-                        let range = idx.range(zone, lo, hi);
-                        (Some(range), range.0)
-                    })
-                    .collect(),
-                _ => vec![(None, 0)],
-            };
-            for (range, first) in chunks {
-                let Some(records) = self.read_records(zone, range)? else {
-                    if query.strict {
-                        return Err(CatalogError::NotFound(format!(
-                            "zone file {} (needed for this cone)",
-                            self.zone_path(zone).display()
-                        )));
-                    }
-                    break;
-                };
-                for (k, raw) in records.iter().enumerate() {
-                    let hpm = raw
-                        .is_high_pm()
-                        .then(|| self.hpm.get(&raw.rnm).copied())
-                        .flatten();
-                    let star = raw.to_star(hpm, query.epoch, query.band);
-                    if centre.separation(star.pos) > radius {
-                        continue;
-                    }
-                    if let Some(limit) = query.mag_max {
-                        if !star.mag.is_some_and(|m| m <= limit) {
-                            continue;
-                        }
-                    }
-                    if query.require_proper_motion
-                        && !(star.pm_mas_yr[0].is_some() && star.pm_mas_yr[1].is_some())
-                    {
-                        continue;
-                    }
-                    out.push(Ucac4Hit {
-                        zone,
-                        record: (first + k as u64 + 1) as u32,
-                        raw: *raw,
-                        star,
-                    });
+            let Some((mut f, path)) = self.open_zone(zone)? else {
+                if query.strict {
+                    return Err(CatalogError::NotFound(format!(
+                        "zone file {} (needed for this cone)",
+                        self.zone_path(zone).display()
+                    )));
                 }
+                continue;
+            };
+            // The ranges to read, and whether a binary search found them.
+            let (ranges, searched): (Vec<Option<(u64, u64)>>, bool) = match (lookup, &self.index) {
+                (Lookup::Index, Some(idx)) => (
+                    bins.iter()
+                        .map(|&(lo, hi)| Some(idx.range(zone, lo, hi)))
+                        .collect(),
+                    false,
+                ),
+                (Lookup::FullScan, _) => (vec![None], false),
+                (Lookup::RaSearch | Lookup::Index, _) => {
+                    let records = record_count(&f, &path)?;
+                    let mut ranges = Vec::with_capacity(bins.len());
+                    for &(lo, hi) in &bins {
+                        ranges.push(Some(ra_range(&mut f, &path, records, lo, hi)?));
+                    }
+                    (ranges, true)
+                }
+            };
+            for range in ranges {
+                let bytes = read_range(&mut f, &path, range)?;
+                if searched {
+                    check_ra_order(&bytes, &path)?;
+                }
+                visit(zone, range.map_or(0, |r| r.0), bytes);
             }
         }
-        out.sort_by_key(|h| (h.zone, h.record));
-        out.dedup_by_key(|h| (h.zone, h.record));
+        Ok(())
+    }
+
+    /// The farthest a star can have moved between J2000 and the query epoch, radians. Zones and
+    /// RA bins are by J2000 position, so a cone search looks this much farther out.
+    fn motion_pad(&self, query: &StarQuery) -> f64 {
+        query
+            .epoch
+            .map(|e| e.years_since(Epoch::J2000).abs() * self.max_pm_mas_yr * crate::propagate::MAS)
+            .unwrap_or(0.0)
+    }
+
+    /// The `n` brightest stars of a cone ([`Catalog::cone_brightest`]). Magnitudes are read
+    /// first, and positions are worked out, brightest first, only until `n` stars are found
+    /// inside the cone: most of a wide cone is never propagated.
+    fn brightest(
+        &self,
+        centre: SkyPos,
+        radius: f64,
+        query: &StarQuery,
+        n: usize,
+    ) -> Result<Vec<Star>, CatalogError> {
+        struct Candidate {
+            mag: f32,
+            id: u32,
+            zone: u16,
+            record: u32,
+            /// Where the record's bytes are: the chunk and the record's place in it.
+            chunk: u32,
+            at: u32,
+        }
+        let order = |a: &Candidate, b: &Candidate| {
+            a.mag
+                .total_cmp(&b.mag)
+                .then(a.id.cmp(&b.id))
+                .then((a.zone, a.record).cmp(&(b.zone, b.record)))
+        };
+        let mut chunks: Vec<Vec<u8>> = Vec::new();
+        let mut candidates: Vec<Candidate> = Vec::new();
+        self.chunks(
+            centre,
+            radius,
+            query,
+            self.lookup(),
+            &mut |zone, first, bytes| {
+                for (k, c) in bytes.chunks_exact(RECORD_BYTES).enumerate() {
+                    let raw = Ucac4Record::decode(c.try_into().expect("exact chunk"));
+                    let Some(mag) = raw.mag(query.band).filter(|m| m.is_finite()) else {
+                        continue;
+                    };
+                    if query.mag_max.is_some_and(|limit| mag > limit) {
+                        continue;
+                    }
+                    candidates.push(Candidate {
+                        mag,
+                        id: raw.rnm,
+                        zone,
+                        record: (first + k as u64 + 1) as u32,
+                        chunk: chunks.len() as u32,
+                        at: k as u32,
+                    });
+                }
+                chunks.push(bytes);
+            },
+        )?;
+        let test = ConeTest::new(self, centre, radius, query);
+        let mut out = Vec::new();
+        let mut last = None;
+        // Sort the candidates a batch at a time, brightest batch first: the search usually
+        // ends inside the first.
+        let mut start = 0;
+        let mut batch = n.saturating_add(n / 2).saturating_add(64);
+        while start < candidates.len() && out.len() < n {
+            let end = start.saturating_add(batch).min(candidates.len());
+            if end < candidates.len() {
+                candidates[start..].select_nth_unstable_by(end - start, order);
+            }
+            candidates[start..end].sort_unstable_by(order);
+            for c in &candidates[start..end] {
+                // The same record from two overlapping ranges: equal keys, so adjacent.
+                if last == Some((c.zone, c.record)) {
+                    continue;
+                }
+                last = Some((c.zone, c.record));
+                let at = c.at as usize * RECORD_BYTES;
+                let bytes = &chunks[c.chunk as usize][at..at + RECORD_BYTES];
+                let raw = Ucac4Record::decode(bytes.try_into().expect("one record"));
+                if let Some(star) = test.star(&raw) {
+                    out.push(star);
+                    if out.len() == n {
+                        break;
+                    }
+                }
+            }
+            start = end;
+            batch = batch.saturating_mul(2);
+        }
         Ok(out)
     }
+}
+
+/// How a cone search finds the records of an RA range in a zone file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Lookup {
+    /// Start and count from `u4index.unf` (a binary search when the file was not found).
+    Index,
+    /// Binary search of the zone file, which is in RA order.
+    RaSearch,
+    /// Read the whole zone.
+    FullScan,
+}
+
+/// The cone test of one search: everything about it that is the same for every record.
+struct ConeTest<'a> {
+    catalog: &'a Ucac4Catalog,
+    query: &'a StarQuery,
+    centre: SkyPos,
+    centre_vec: [f64; 3],
+    radius: f64,
+    /// A J2000 direction whose dot product with the centre is below this is farther from it
+    /// than the radius plus the largest proper motion: such a star cannot be in the cone.
+    reject_below: f64,
+    /// Squared chord lengths `(inside, outside)`: a star nearer the centre than the first is in
+    /// the cone and one farther than the second is not, without the exact test. `None` for a
+    /// cone so wide that the chord no longer resolves its edge.
+    sure: Option<(f64, f64)>,
+}
+
+/// Width of the band around a cone's edge, radians, in which the separation is computed
+/// exactly (far wider than rounding, far narrower than any star's position error).
+const EDGE_BAND: f64 = 1e-9;
+/// Widest cone, radians, for which the chord shortcut is used.
+const CHORD_TEST_MAX_RADIUS: f64 = 1.0;
+
+impl<'a> ConeTest<'a> {
+    fn new(catalog: &'a Ucac4Catalog, centre: SkyPos, radius: f64, query: &'a StarQuery) -> Self {
+        let reach = radius + catalog.motion_pad(query) + EDGE_BAND;
+        let chord2 = |angle: f64| (2.0 * (angle / 2.0).psin()).ppowi(2);
+        Self {
+            catalog,
+            query,
+            centre,
+            centre_vec: centre.to_unit_vector().0,
+            radius,
+            reject_below: if reach < std::f64::consts::PI {
+                reach.pcos() - 1e-12
+            } else {
+                f64::NEG_INFINITY
+            },
+            sure: (radius <= CHORD_TEST_MAX_RADIUS).then(|| {
+                (
+                    chord2((radius - EDGE_BAND).max(0.0)),
+                    chord2(radius + EDGE_BAND),
+                )
+            }),
+        }
+    }
+
+    /// The star of `raw` at the query epoch if the query keeps it and it is inside the cone.
+    ///
+    /// The cone is decided by `centre.separation(position) > radius`, as it always was. That
+    /// form costs two sines, two cosines and an arctangent per star on top of the propagation,
+    /// so it is evaluated only for a star within [`EDGE_BAND`] of the edge: everywhere else the
+    /// vector the propagation already produced settles the question.
+    fn star(&self, raw: &Ucac4Record) -> Option<Star> {
+        let q = self.query;
+        if let Some(limit) = q.mag_max {
+            if !raw.mag(q.band).is_some_and(|m| m <= limit) {
+                return None;
+            }
+        }
+        let hpm = raw
+            .is_high_pm()
+            .then(|| self.catalog.hpm.get(&raw.rnm).copied())
+            .flatten();
+        let pm = raw.pm_mas_yr(hpm);
+        if q.require_proper_motion && !(pm[0].is_some() && pm[1].is_some()) {
+            return None;
+        }
+        let j2000 = raw.position_j2000();
+        let frame = LocalFrame::at(j2000);
+        let c = self.centre_vec;
+        if frame.u0[0] * c[0] + frame.u0[1] * c[1] + frame.u0[2] * c[2] < self.reject_below {
+            return None;
+        }
+        let target = q.epoch.unwrap_or(Epoch::J2000);
+        let (pos, v) = propagate_in(
+            &frame,
+            j2000,
+            [pm[0].unwrap_or(0.0), pm[1].unwrap_or(0.0)],
+            Epoch::J2000,
+            target,
+        );
+        // "Not farther than the radius", as the search has always put it.
+        let exact = || {
+            let outside = self.centre.separation(pos) > self.radius;
+            !outside
+        };
+        let inside = match self.sure {
+            Some((inside, outside)) => {
+                let d2 = (v[0] - c[0]).ppowi(2) + (v[1] - c[1]).ppowi(2) + (v[2] - c[2]).ppowi(2);
+                d2 < inside || (d2 <= outside && exact())
+            }
+            None => exact(),
+        };
+        inside.then(|| raw.star_at(pos, pm, hpm, target, q.band))
+    }
+}
+
+/// Number of records in an open zone file.
+fn record_count(f: &File, path: &Path) -> Result<u64, CatalogError> {
+    let len = f
+        .metadata()
+        .map_err(|source| CatalogError::Io {
+            path: path.into(),
+            source,
+        })?
+        .len();
+    if len % RECORD_BYTES as u64 != 0 {
+        return Err(CatalogError::Malformed {
+            path: path.into(),
+            reason: format!("size {len} is not a multiple of {RECORD_BYTES}"),
+        });
+    }
+    Ok(len / RECORD_BYTES as u64)
+}
+
+/// Record range `[start, end)` of an open zone file holding RA bins `lo..=hi`, found by binary
+/// search: the range `u4index.unf` gives for the same bins.
+fn ra_range(
+    f: &mut File,
+    path: &Path,
+    records: u64,
+    lo: usize,
+    hi: usize,
+) -> Result<(u64, u64), CatalogError> {
+    let start = first_at_or_after(f, path, records, lo as u64 * RA_BIN_MAS)?;
+    let end = if hi + 1 >= N_RA_BINS {
+        records
+    } else {
+        first_at_or_after(f, path, records, (hi as u64 + 1) * RA_BIN_MAS)?
+    };
+    Ok((start, end.max(start)))
+}
+
+/// The number of the first record of an open zone file whose RA is at least `ra_mas`, by binary
+/// search (`records` if there is none). `readme_u4.txt`: a zone file is sorted by RA.
+fn first_at_or_after(
+    f: &mut File,
+    path: &Path,
+    records: u64,
+    ra_mas: u64,
+) -> Result<u64, CatalogError> {
+    /// Once the search is down to this many records they are read together: one read
+    /// instead of one per remaining step.
+    const BLOCK: u64 = 64;
+    let io = |source| CatalogError::Io {
+        path: path.into(),
+        source,
+    };
+    let ra = |c: &[u8]| u64::from(u32::from_le_bytes([c[0], c[1], c[2], c[3]]));
+    let (mut lo, mut hi) = (0u64, records);
+    let mut one = [0u8; 4];
+    while hi - lo > BLOCK {
+        let mid = lo + (hi - lo) / 2;
+        read_at(f, mid * RECORD_BYTES as u64, &mut one).map_err(io)?;
+        if ra(&one) < ra_mas {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    let mut block = vec![0u8; (hi - lo) as usize * RECORD_BYTES];
+    read_at(f, lo * RECORD_BYTES as u64, &mut block).map_err(io)?;
+    let before = block
+        .chunks_exact(RECORD_BYTES)
+        .position(|c| ra(c) >= ra_mas)
+        .unwrap_or((hi - lo) as usize);
+    Ok(lo + before as u64)
+}
+
+/// Fill `buf` from `offset` of `f`: one positioned read where the platform has it.
+fn read_at(f: &mut File, offset: u64, buf: &mut [u8]) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::FileExt::read_exact_at(f, buf, offset)
+    }
+    #[cfg(not(unix))]
+    {
+        f.seek(SeekFrom::Start(offset))?;
+        f.read_exact(buf)
+    }
+}
+
+/// A binary search is only right in a sorted file: check the records it led to.
+fn check_ra_order(bytes: &[u8], path: &Path) -> Result<(), CatalogError> {
+    let ra = |c: &[u8]| u32::from_le_bytes([c[0], c[1], c[2], c[3]]);
+    let mut records = bytes.chunks_exact(RECORD_BYTES).map(ra);
+    let Some(mut before) = records.next() else {
+        return Ok(());
+    };
+    for next in records {
+        if next < before {
+            return Err(CatalogError::Malformed {
+                path: path.into(),
+                reason: "records are not in RA order, which a search without u4index.unf needs"
+                    .into(),
+            });
+        }
+        before = next;
+    }
+    Ok(())
+}
+
+/// Records `[start, end)` (0-based) of an open zone file, or all of them, as bytes.
+fn read_range(
+    f: &mut File,
+    path: &Path,
+    range: Option<(u64, u64)>,
+) -> Result<Vec<u8>, CatalogError> {
+    let io = |source| CatalogError::Io {
+        path: path.into(),
+        source,
+    };
+    let mut buf = Vec::new();
+    match range {
+        None => {
+            f.seek(SeekFrom::Start(0)).map_err(io)?;
+            f.read_to_end(&mut buf).map_err(io)?;
+            if buf.len() % RECORD_BYTES != 0 {
+                return Err(CatalogError::Malformed {
+                    path: path.into(),
+                    reason: format!("size {} is not a multiple of {RECORD_BYTES}", buf.len()),
+                });
+            }
+        }
+        Some((start, end)) => {
+            if end == start {
+                return Ok(buf);
+            }
+            // Check the range against the file before sizing the buffer from it: the index
+            // is a separate file and may be damaged.
+            let available = f.metadata().map_err(io)?.len() / RECORD_BYTES as u64;
+            if end > available {
+                return Err(CatalogError::Malformed {
+                    path: path.into(),
+                    reason: format!(
+                        "index asks for records {start}..{end}, zone has {available}; index and zone disagree"
+                    ),
+                });
+            }
+            f.seek(SeekFrom::Start(start * RECORD_BYTES as u64))
+                .map_err(io)?;
+            buf.resize(((end - start) as usize) * RECORD_BYTES, 0);
+            f.read_exact(&mut buf)
+                .map_err(|e| CatalogError::Malformed {
+                    path: path.into(),
+                    reason: format!(
+                        "records {start}..{end} not readable ({e}); index and zone disagree"
+                    ),
+                })?;
+        }
+    }
+    Ok(buf)
 }
 
 impl Catalog for Ucac4Catalog {
@@ -601,11 +980,35 @@ impl Catalog for Ucac4Catalog {
         radius: f64,
         query: &StarQuery,
     ) -> Result<Vec<Star>, CatalogError> {
-        Ok(self
-            .cone_hits(centre, radius, query)?
-            .into_iter()
-            .map(|h| h.star)
-            .collect())
+        let test = ConeTest::new(self, centre, radius, query);
+        let mut out: Vec<(u16, u64, Star)> = Vec::new();
+        self.chunks(
+            centre,
+            radius,
+            query,
+            self.lookup(),
+            &mut |zone, first, bytes| {
+                for (k, c) in bytes.chunks_exact(RECORD_BYTES).enumerate() {
+                    let raw = Ucac4Record::decode(c.try_into().expect("exact chunk"));
+                    if let Some(star) = test.star(&raw) {
+                        out.push((zone, first + k as u64, star));
+                    }
+                }
+            },
+        )?;
+        out.sort_by_key(|&(zone, record, _)| (zone, record));
+        out.dedup_by_key(|&mut (zone, record, _)| (zone, record));
+        Ok(out.into_iter().map(|(_, _, star)| star).collect())
+    }
+
+    fn cone_brightest(
+        &self,
+        centre: SkyPos,
+        radius: f64,
+        query: &StarQuery,
+        n: usize,
+    ) -> Result<Vec<Star>, CatalogError> {
+        self.brightest(centre, radius, query, n)
     }
 
     fn scan(&self, query: &StarQuery, visit: &mut dyn FnMut(Star)) -> Result<(), CatalogError> {
@@ -775,6 +1178,136 @@ pub(crate) mod tests {
             zn2: 0,
             rn2: 0,
         }
+    }
+
+    /// A catalogue of three zones (Dec +1.8° to +2.4°) of made-up stars in RA order, without
+    /// `u4i`: stars every 0.02° in RA over 148° to 152° and around RA 0, magnitudes all over.
+    fn synthetic(name: &str, spoil: bool) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("fayde-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("u4b")).unwrap();
+        let mut rnm = 0u32;
+        for zone in 460u16..=462 {
+            let spd0 = (u32::from(zone) - 1) * 720_000; // zone height 0.2° in mas
+            let mut ras: Vec<u32> = (0..200u32)
+                .map(|i| 532_800_000 + i * 72_000 + (i * 7919 + u32::from(zone)) % 50_000)
+                .chain((0..40u32).map(|i| i * 90_000 + 13))
+                .chain((0..40u32).map(|i| 1_295_999_000 - i * 90_000))
+                .collect();
+            ras.sort_unstable();
+            if spoil {
+                ras.swap(100, 180);
+            }
+            let mut bytes = Vec::new();
+            for (k, ra) in ras.into_iter().enumerate() {
+                rnm += 1;
+                let k = k as u32;
+                bytes.extend(encode(&Ucac4Record {
+                    ra,
+                    spd: spd0 + (k * 104_729) % 720_000,
+                    magm: if k % 11 == 0 {
+                        MISSING_MAG
+                    } else {
+                        8_000 + ((k * 37) % 80) as i16 * 100
+                    },
+                    maga: MISSING_MAG,
+                    pmrac: ((k % 21) as i16 - 10) * 400,
+                    pmdc: ((k % 13) as i16 - 6) * 700,
+                    rnm,
+                    ..sample()
+                }));
+            }
+            std::fs::write(dir.join("u4b").join(zone_file(zone)), bytes).unwrap();
+        }
+        dir
+    }
+
+    /// Without `u4index.unf` a cone search finds its records by binary search of the zone
+    /// files: it must return what reading the whole zones returns, at any centre and radius,
+    /// including across RA 0, and the brightest-n query must agree with sorting the cone.
+    #[test]
+    fn search_without_index_equals_full_scan() {
+        let dir = synthetic("ra-search", false);
+        let cat = Ucac4Catalog::open(&dir).unwrap();
+        assert!(!cat.has_index());
+        let mut found = 0;
+        for (i, (ra, dec, r)) in [
+            (150.0, 2.1, 0.5),
+            (150.0, 2.1, 0.03),
+            (148.01, 2.3, 0.2),
+            (151.99, 1.9, 0.2),
+            (0.01, 2.1, 0.4),
+            (359.98, 2.1, 0.4),
+            (0.0, 2.1, 0.0005),
+            (200.0, 2.1, 0.3),
+            (150.0, 2.1, 2.9),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let centre = SkyPos::from_degrees(ra, dec).unwrap();
+            let q = StarQuery {
+                epoch: [None, Epoch::julian_year(2021.3), Epoch::julian_year(1960.0)][i % 3],
+                mag_max: (i % 4 == 3).then_some(12.0),
+                require_proper_motion: i % 5 == 4,
+                strict: false,
+                ..StarQuery::default()
+            };
+            let r = f64::to_radians(r);
+            let by_search = cat.cone_hits(centre, r, &q).unwrap();
+            assert_eq!(
+                by_search,
+                cat.cone_hits_full_scan(centre, r, &q).unwrap(),
+                "({ra}, {dec}, {r})"
+            );
+            // The plain statement of a cone search, record by record.
+            let mut plain = Vec::new();
+            for zone in 460..=462 {
+                for raw in cat.read_zone(zone).unwrap().unwrap() {
+                    let star = raw.to_star(None, q.epoch, q.band);
+                    let outside = centre.separation(star.pos) > r;
+                    let keep = !outside
+                        && q.mag_max.is_none_or(|m| star.mag.is_some_and(|v| v <= m))
+                        && (!q.require_proper_motion || star.pm_mas_yr.iter().all(Option::is_some));
+                    if keep {
+                        plain.push(star);
+                    }
+                }
+            }
+            let stars = cat.cone(centre, r, &q).unwrap();
+            assert_eq!(stars, plain, "({ra}, {dec}, {r})");
+            assert_eq!(stars, by_search.iter().map(|h| h.star).collect::<Vec<_>>());
+            for n in [0, 1, 5, 60, usize::MAX] {
+                assert_eq!(
+                    cat.cone_brightest(centre, r, &q, n).unwrap(),
+                    crate::brightest_first(stars.clone(), n),
+                    "({ra}, {dec}, {r}) brightest {n}"
+                );
+            }
+            found += stars.len();
+        }
+        assert!(found > 300, "only {found} stars in the test cones");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A binary search is only right in a sorted file: a zone that is not in RA order is
+    /// reported, not searched.
+    #[test]
+    fn zone_out_of_ra_order_is_an_error_without_index() {
+        let dir = synthetic("ra-order", true);
+        let cat = Ucac4Catalog::open(&dir).unwrap();
+        let centre = SkyPos::from_degrees(150.0, 2.1).unwrap();
+        // The test catalogue has three zones: the ones a wider cone would also need are absent.
+        let lax = StarQuery {
+            strict: false,
+            ..StarQuery::default()
+        };
+        let err = cat.cone(centre, 2f64.to_radians(), &lax).unwrap_err();
+        assert!(
+            matches!(&err, CatalogError::Malformed { reason, .. } if reason.contains("RA order")),
+            "{err}"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

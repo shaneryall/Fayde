@@ -22,6 +22,9 @@ use fayde_solve::{
 use fayde_wcs::{Header, Wcs};
 use serde_json::{json, Value};
 
+mod calibrate;
+
+pub use calibrate::{calibrate_profile, CalibrateOptions, SolvedFrame, CALIBRATE_MIN_FRAMES};
 pub use fayde_solve::AtPosition;
 pub use serde_json;
 
@@ -74,6 +77,11 @@ pub struct RequestOptions {
     pub no_priors: bool,
     /// Drop only the pointing.
     pub no_pointing: bool,
+    /// Do not use a world coordinate system in the header for the pointing or the scale: read
+    /// the pointing from the header's pointing keywords (`RA`/`DEC`, `OBJCTRA`/`OBJCTDEC`)
+    /// only. For frames whose header WCS may be another solver's solution. The instrument
+    /// profile can ask for the same (`header_wcs: false`).
+    pub no_header_wcs: bool,
     /// Search the sky outside the pointing limit when the pointing finds nothing.
     pub search_outside_pointing: bool,
     /// Retry once with relaxed hard limits when the strict pass fails.
@@ -115,7 +123,15 @@ pub fn build_request(
     o: &RequestOptions,
 ) -> Result<Built, String> {
     let header = o.header.as_ref();
-    let hp = header.map(header_priors);
+    let no_header_wcs =
+        o.no_header_wcs || o.instrument.as_ref().and_then(|p| p.header_wcs) == Some(false);
+    let hp = header.map(|h| {
+        if no_header_wcs {
+            header_priors(&h.without_wcs())
+        } else {
+            header_priors(h)
+        }
+    });
     let mut warnings: Vec<String> = hp.iter().flat_map(|h| h.warnings.iter().cloned()).collect();
     let ip = o
         .instrument
@@ -160,10 +176,18 @@ pub fn build_request(
         _ => return Err("ra and dec go together".into()),
     }
     .filter(|_| !no_pointing);
-    let radius = o.radius.unwrap_or(2.0);
-    // 1σ of the pointing, degrees: independent of the hard radius (a good hint with a long tail
-    // wants a small σ and a wide limit). Default: a quarter of the radius.
-    let pointing_sigma = o.pointing_sigma.unwrap_or(radius / 4.0);
+    // Hard limit and 1σ of the pointing: caller, else instrument profile, else 2° and a quarter
+    // of the limit. The two are independent (a good hint with a long tail wants a small σ and a
+    // wide limit).
+    let profile = o.instrument.as_ref();
+    let radius = o
+        .radius
+        .or(profile.and_then(|p| p.pointing_radius_deg))
+        .unwrap_or(2.0);
+    let pointing_sigma = o
+        .pointing_sigma
+        .or(profile.and_then(|p| p.pointing_sigma_deg))
+        .unwrap_or(radius / 4.0);
     // Scale: caller, else instrument profile (with its σ), else header.
     let cli_sigma = o.scale_sigma;
     let scale: Option<(f64, f64, &str)> = match o.scale {
@@ -952,6 +976,80 @@ mod tests {
         assert_eq!(b.request.priors.scale.unwrap().arcsec_per_px, 2.0);
         assert!(b.request.priors.parity.is_some());
         assert_eq!(b.priors["instrument"], "cam");
+    }
+
+    /// The pointing's limit and 1σ come from the caller, else the profile, else the defaults;
+    /// and a header WCS is left unread when the caller or the profile says so.
+    #[test]
+    fn profile_pointing_uncertainty_and_header_wcs_switch() {
+        let header = Header::parse_cards([
+            "NAXIS1  =                  512",
+            "NAXIS2  =                  512",
+            "CTYPE1  = 'RA---TAN'",
+            "CTYPE2  = 'DEC--TAN'",
+            "CRVAL1  =                 10.0",
+            "CRVAL2  =                 20.0",
+            "CD1_1   =               -0.001",
+            "CD1_2   =                  0.0",
+            "CD2_1   =                  0.0",
+            "CD2_2   =                0.001",
+            "RA      = '00 44 00.0'",
+            "DEC     = '+21 30 00'",
+        ]);
+        let with = |o: RequestOptions| {
+            build_request(
+                vec![],
+                (None, None),
+                &RequestOptions {
+                    header: Some(header.clone()),
+                    ..o
+                },
+            )
+            .unwrap()
+        };
+        // The header WCS is the pointing and the scale by default.
+        let b = with(RequestOptions::default());
+        let pt = b.request.priors.pointing.unwrap();
+        assert!((pt.centre.to_degrees().0 - 10.0).abs() < 1e-9);
+        assert!((pt.max_radius.to_degrees() - 2.0).abs() < 1e-12);
+        assert!((pt.sigma.to_degrees() - 0.5).abs() < 1e-12);
+        assert_eq!(b.priors["pointing"]["origin"], "CRVAL1/CRVAL2");
+        assert!((b.request.priors.scale.unwrap().arcsec_per_px - 3.6).abs() < 1e-9);
+        // Without it: the pointing keywords, and no scale from the header.
+        let b = with(RequestOptions {
+            no_header_wcs: true,
+            ..RequestOptions::default()
+        });
+        let pt = b.request.priors.pointing.unwrap();
+        assert!((pt.centre.to_degrees().0 - 11.0).abs() < 1e-9);
+        assert!((pt.centre.to_degrees().1 - 21.5).abs() < 1e-9);
+        assert_eq!(b.priors["pointing"]["origin"], "RA/DEC");
+        assert!(b.request.priors.scale.is_none());
+        // A profile can ask for the same, and gives the pointing's 1σ and limit.
+        let profile = InstrumentProfile::from_json(
+            r#"{"scale_arcsec": 3.0, "pointing_sigma_deg": 0.02, "pointing_radius_deg": 1.5,
+                "header_wcs": false}"#,
+        )
+        .unwrap();
+        let b = with(RequestOptions {
+            instrument: Some(profile.clone()),
+            ..RequestOptions::default()
+        });
+        let pt = b.request.priors.pointing.unwrap();
+        assert_eq!(b.priors["pointing"]["origin"], "RA/DEC");
+        assert!((pt.sigma.to_degrees() - 0.02).abs() < 1e-12);
+        assert!((pt.max_radius.to_degrees() - 1.5).abs() < 1e-12);
+        assert_eq!(b.priors["pointing"]["sigma_deg"], 0.02);
+        // The caller's values come before the profile's.
+        let b = with(RequestOptions {
+            instrument: Some(profile),
+            radius: Some(3.0),
+            pointing_sigma: Some(0.1),
+            ..RequestOptions::default()
+        });
+        let pt = b.request.priors.pointing.unwrap();
+        assert!((pt.sigma.to_degrees() - 0.1).abs() < 1e-12);
+        assert!((pt.max_radius.to_degrees() - 3.0).abs() < 1e-12);
     }
 
     #[test]

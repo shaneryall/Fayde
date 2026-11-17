@@ -114,7 +114,36 @@ pub trait Catalog {
         query: &StarQuery,
     ) -> Result<Vec<Star>, CatalogError>;
 
+    /// The `n` brightest stars within `radius` of `centre`: the stars of [`Catalog::cone`] that
+    /// have a finite magnitude in the query band, brightest first, equal magnitudes by
+    /// identifier and then in catalogue order; at most `n` of them.
+    ///
+    /// The solver seeds its search from these. This default reads the whole cone and sorts it. A
+    /// catalogue that can rank its stars by magnitude before working out their positions should
+    /// override it, with the same result.
+    fn cone_brightest(
+        &self,
+        centre: SkyPos,
+        radius: f64,
+        query: &StarQuery,
+        n: usize,
+    ) -> Result<Vec<Star>, CatalogError> {
+        Ok(brightest_first(self.cone(centre, radius, query)?, n))
+    }
+
     /// Visit every star in the catalogue at the query epoch, in catalogue order. Used to build
     /// all-sky indexes without holding the whole catalogue in memory.
     fn scan(&self, query: &StarQuery, visit: &mut dyn FnMut(Star)) -> Result<(), CatalogError>;
+}
+
+/// The stars with a finite magnitude, brightest first, equal magnitudes by identifier and then in
+/// the order given; at most `n` of them. The order [`Catalog::cone_brightest`] returns.
+pub fn brightest_first(stars: Vec<Star>, n: usize) -> Vec<Star> {
+    let mut ranked: Vec<(f32, Star)> = stars
+        .into_iter()
+        .filter_map(|s| s.mag.filter(|m| m.is_finite()).map(|m| (m, s)))
+        .collect();
+    ranked.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.id.cmp(&b.1.id)));
+    ranked.truncate(n);
+    ranked.into_iter().map(|(_, s)| s).collect()
 }

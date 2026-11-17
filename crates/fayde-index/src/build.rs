@@ -334,7 +334,7 @@ impl Selector {
 /// that leaves the builder unchanged builds the same bytes, so published hashes stay valid.
 /// Change it, to the version of the release, whenever a change alters the bytes an index build
 /// produces (selection, patterns, table, serialization); the golden-bytes tests then fail until
-/// re-pinned, and the release is breaking under the versioning rules (README).
+/// re-pinned, and the release is breaking under the versioning rules (docs/development.md).
 pub const BUILDER: &str = "fayde-index 0.1.0";
 
 /// Field centres on a Fibonacci sphere (deterministic).

@@ -2,7 +2,7 @@
 
 To release Fayde, push a Git tag `vX.Y.Z` for a commit on the `main` branch. GitHub Actions
 builds, tests, and publishes the release files. For more information about versioning, see
-[Versioning and releases](../README.md#versioning-and-releases).
+[Versioning and releases](development.md#versioning-and-releases).
 
 Replace `X.Y.Z` in the commands on this page with the release version, for example `0.3.0`.
 
@@ -86,7 +86,7 @@ following actions:
    wheel from the source distribution and tests it.
 5. Creates the GitHub release with a `SHA256SUMS` file after every required check passes.
 6. Downloads the prebuilt `fayde` binary from the new release on every platform, then checks
-   and installs it with the commands from the README.
+   and installs it with the commands from the [install guide](install.md).
 
 A workflow run that fails before step 5 publishes nothing. Don't move the tag of a release
 that the workflow has already published. To retry a release that failed before publication,
@@ -115,13 +115,14 @@ follow these steps:
    ```
 
 Archive names identify the platform without a version, for example
-`fayde-linux-x86_64.tar.gz`. The download URLs in the README depend on these names. If you
-change a name in the workflow, update the README too.
+`fayde-linux-x86_64.tar.gz`. The download URLs in the [install guide](install.md) depend on
+these names. If you change a name in the workflow, update the install guide too.
 
 ## Publish to PyPI and crates.io
 
-Publish every release to both registries. The install commands in the README use PyPI and
-crates.io, so they install a version only after you publish it.
+Publish every release to both registries. The install commands in the
+[install guide](install.md) use PyPI and crates.io, so they install a version only after you
+publish it.
 
 You can't replace a version after you publish it to PyPI or crates.io. After you check the
 files in the GitHub release, start the separate publishing workflow.
@@ -135,6 +136,10 @@ Before you publish to a registry for the first time, configure its publishing cr
 2. Create an environment named `pypi`.
 
 3. Create an environment named `crates-io`.
+
+   Use the names `pypi` and `crates-io` exactly as shown. The publishing workflow uses these
+   environments. It can't access a secret that you store in an environment with another name,
+   such as `crates.io`.
 
 4. Optional: Add yourself as a required reviewer to both environments. GitHub then asks for
    your approval before a publishing job runs.

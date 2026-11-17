@@ -11,6 +11,10 @@ keywords.workspace = true
 categories = ["command-line-utilities", "science"]
 readme = "README.md"
 
+[lib]
+name = "fayde_cli"
+path = "src/lib.rs"
+
 [[bin]]
 name = "fayde"
 path = "src/main.rs"

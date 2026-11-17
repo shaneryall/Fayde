@@ -48,6 +48,50 @@ pub struct Header {
     cards: Vec<(String, Value)>,
 }
 
+/// Whether `key` (upper case) is a card of a world coordinate system. See
+/// [`Header::without_wcs`].
+fn is_wcs_keyword(key: &str) -> bool {
+    let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
+    // `<stem><n>` with an optional alternate-WCS letter (`CRVAL1`, `CRVAL1A`).
+    let numbered = |stem: &str| {
+        key.strip_prefix(stem).is_some_and(|rest| {
+            let rest = rest
+                .strip_suffix(|c: char| c.is_ascii_uppercase())
+                .unwrap_or(rest);
+            digits(rest)
+        })
+    };
+    // `<stem><i>_<j>` (`CD1_2`, `PC2_1`, `PV1_0`, `A_2_0`, `AP_0_1`).
+    let indexed = |stem: &str| {
+        key.strip_prefix(stem).is_some_and(|rest| {
+            let rest = rest
+                .strip_suffix(|c: char| c.is_ascii_uppercase())
+                .unwrap_or(rest);
+            rest.split_once('_')
+                .is_some_and(|(i, j)| digits(i) && digits(j))
+        })
+    };
+    ["CRVAL", "CRPIX", "CDELT", "CROTA", "CTYPE", "CUNIT"]
+        .iter()
+        .any(|s| numbered(s))
+        || ["CD", "PC", "PV", "PS", "A_", "B_", "AP_", "BP_"]
+            .iter()
+            .any(|s| indexed(s))
+        || matches!(
+            key,
+            "LONPOLE"
+                | "LATPOLE"
+                | "WCSAXES"
+                | "WCSNAME"
+                | "A_ORDER"
+                | "B_ORDER"
+                | "AP_ORDER"
+                | "BP_ORDER"
+                | "A_DMAX"
+                | "B_DMAX"
+        )
+}
+
 impl Header {
     /// Parse card images (one card per item; each up to 80 characters). Cards without a value
     /// indicator (`COMMENT`, `HISTORY`, blank, `END`) and cards with unparseable values are
@@ -92,6 +136,23 @@ impl Header {
     /// Whether a keyword is present.
     pub fn contains(&self, key: &str) -> bool {
         self.get(key).is_some()
+    }
+
+    /// A copy without the cards of a world coordinate system: `CRVALn`, `CRPIXn`, `CDELTn`,
+    /// `CROTAn`, `CTYPEn`, `CUNITn`, the `CDi_j`, `PCi_j` and `PVi_m` matrices, `LONPOLE`,
+    /// `LATPOLE`, `WCSAXES`, `WCSNAME` and the SIP polynomials. What is left says nothing about
+    /// where a pixel is on the sky except through pointing keywords such as `RA` and `DEC`: for
+    /// reading a frame as if no plate solver had written to its header. `RADESYS` and
+    /// `EQUINOX` stay: they also describe the pointing keywords.
+    pub fn without_wcs(&self) -> Self {
+        Self {
+            cards: self
+                .cards
+                .iter()
+                .filter(|(k, _)| !is_wcs_keyword(k))
+                .cloned()
+                .collect(),
+        }
     }
 
     fn f64_or(&self, key: &str, default: f64) -> Result<f64, WcsError> {
@@ -374,6 +435,33 @@ impl TanWcs {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `without_wcs` drops the cards of a WCS, in any of their spellings, and nothing else.
+    #[test]
+    fn without_wcs_drops_only_wcs_cards() {
+        let wcs = [
+            "CRVAL1", "CRVAL2", "CRPIX1", "CRPIX2A", "CDELT1", "CROTA2", "CTYPE1", "CUNIT2",
+            "CD1_1", "CD2_1", "PC1_2", "PC2_2B", "PV1_0", "PS1_0", "LONPOLE", "LATPOLE", "WCSAXES",
+            "WCSNAME", "A_ORDER", "B_ORDER", "AP_ORDER", "BP_ORDER", "A_2_0", "B_0_2", "AP_1_1",
+            "BP_0_3", "A_DMAX", "B_DMAX",
+        ];
+        let other = [
+            "RA", "DEC", "OBJCTRA", "OBJCTDEC", "ROLLANG", "EQUINOX", "RADESYS", "NAXIS1",
+            "DATE-OBS", "EXPTIME", "XBINNING", "CDF", "CD", "PCOUNT", "CRVAL", "CTYPE", "A_",
+            "B_X_1", "PA", "CDELTA", "AIRMASS", "BSCALE", "PV", "CD1_", "CD_1",
+        ];
+        let mut h = Header::default();
+        for k in wcs.iter().chain(&other) {
+            h.set(k, Value::Float(1.0));
+        }
+        let stripped = h.without_wcs();
+        for k in wcs {
+            assert!(h.contains(k) && !stripped.contains(k), "{k} should go");
+        }
+        for k in other {
+            assert!(stripped.contains(k), "{k} should stay");
+        }
+    }
 
     #[test]
     fn non_ascii_cards_are_skipped_not_a_panic() {

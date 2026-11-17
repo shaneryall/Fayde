@@ -8,7 +8,7 @@
 //! and reports no pixel when the iteration does not converge.
 
 use fayde_core::Portable;
-use fayde_core::{PixelPos, SkyPos};
+use fayde_core::{PixelPos, SkyPos, UnitVector};
 
 use crate::{gnomonic, gnomonic_inverse, Parity, TanWcs, WcsError};
 
@@ -24,27 +24,72 @@ pub struct Poly {
 impl Poly {
     /// Evaluate at `(u, v)`.
     pub fn eval(&self, u: f64, v: f64) -> f64 {
-        self.terms
-            .iter()
-            .map(|&(p, q, c)| c * u.ppowi(p as i32) * v.ppowi(q as i32))
-            .sum()
+        self.eval_at(&Powers::of(u, self.order), &Powers::of(v, self.order))
     }
 
     /// Partial derivatives `(∂/∂u, ∂/∂v)` at `(u, v)`.
     pub fn grad(&self, u: f64, v: f64) -> (f64, f64) {
+        self.grad_at(&Powers::of(u, self.order), &Powers::of(v, self.order))
+    }
+
+    /// [`Poly::eval`] from the powers of `u` and `v`.
+    fn eval_at(&self, u: &Powers, v: &Powers) -> f64 {
+        self.terms
+            .iter()
+            .map(|&(p, q, c)| c * u.get(p) * v.get(q))
+            .sum()
+    }
+
+    /// [`Poly::grad`] from the powers of `u` and `v`.
+    fn grad_at(&self, u: &Powers, v: &Powers) -> (f64, f64) {
         self.terms.iter().fold((0.0, 0.0), |(du, dv), &(p, q, c)| {
             let gu = if p > 0 {
-                c * p as f64 * u.ppowi(p as i32 - 1) * v.ppowi(q as i32)
+                c * p as f64 * u.get(p - 1) * v.get(q)
             } else {
                 0.0
             };
             let gv = if q > 0 {
-                c * q as f64 * u.ppowi(p as i32) * v.ppowi(q as i32 - 1)
+                c * q as f64 * u.get(p) * v.get(q - 1)
             } else {
                 0.0
             };
             (du + gu, dv + gv)
         })
+    }
+}
+
+/// Highest SIP order: the convention's limit.
+const MAX_ORDER: usize = 9;
+
+/// The powers `x⁰ … xⁿ` of one number, each from [`Portable::ppowi`]. A polynomial of order n
+/// has (n+1)(n+2)/2 terms, each a product of two powers, and the inverse iteration evaluates
+/// two polynomials and their gradients at the same point: the same few powers, many times.
+struct Powers {
+    x: f64,
+    /// `table[n]` is `x.ppowi(n)` for `n < known`.
+    table: [f64; MAX_ORDER + 1],
+    known: usize,
+}
+
+impl Powers {
+    /// The powers of `x` up to `order` (those above the convention's limit are worked out when
+    /// asked for).
+    fn of(x: f64, order: usize) -> Self {
+        let known = order.min(MAX_ORDER) + 1;
+        let mut table = [0.0; MAX_ORDER + 1];
+        for (n, t) in table.iter_mut().enumerate().take(known) {
+            *t = x.ppowi(n as i32);
+        }
+        Self { x, table, known }
+    }
+
+    /// `x.ppowi(n)`.
+    fn get(&self, n: usize) -> f64 {
+        if n < self.known {
+            self.table[n]
+        } else {
+            self.x.ppowi(n as i32)
+        }
     }
 }
 
@@ -138,7 +183,13 @@ impl Wcs {
 
     /// Pixel of a sky position, or `None` behind the tangent plane.
     pub fn sky_to_pixel(&self, s: SkyPos) -> Option<PixelPos> {
-        let lin = self.tan.sky_to_pixel(s)?;
+        self.vector_to_pixel(s.to_unit_vector())
+    }
+
+    /// [`Wcs::sky_to_pixel`] for a direction given as a unit vector: the same result to the
+    /// last bit for `s.to_unit_vector()` (see [`TanWcs::vector_to_pixel`]).
+    pub fn vector_to_pixel(&self, u: UnitVector) -> Option<PixelPos> {
+        let lin = self.tan.vector_to_pixel(u)?;
         let Some(sip) = &self.sip else {
             return Some(lin);
         };
@@ -147,19 +198,30 @@ impl Wcs {
         // Solve F(u, v) = (u + A − u', v + B − v') = 0 by Newton's method from the fitted
         // inverse, halving steps that do not reduce |F| (a fixed-point iteration converges
         // only while |∂A| < 1 and can settle on a wrong answer).
-        let f = |u: f64, v: f64| (u + sip.a.eval(u, v) - up, v + sip.b.eval(u, v) - vp);
+        let order = sip.a.order.max(sip.b.order);
+        let powers = |u: f64, v: f64| (Powers::of(u, order), Powers::of(v, order));
+        let f = |u: f64, v: f64| {
+            let (pu, pv) = powers(u, v);
+            (
+                u + sip.a.eval_at(&pu, &pv) - up,
+                v + sip.b.eval_at(&pu, &pv) - vp,
+            )
+        };
         let norm = |(a, b): (f64, f64)| a.phypot(b);
         let (mut u, mut v) = (up + sip.ap.eval(up, vp), vp + sip.bp.eval(up, vp));
         if !(u.is_finite() && v.is_finite()) {
             (u, v) = (up, vp);
         }
         let mut r = f(u, v);
+        // |r|, kept beside r: it is compared at every step of the line search.
+        let mut size = norm(r);
         for _ in 0..50 {
-            if norm(r) < 1e-12 {
+            if size < 1e-12 {
                 break;
             }
-            let (au, av) = sip.a.grad(u, v);
-            let (bu, bv) = sip.b.grad(u, v);
+            let (pu, pv) = powers(u, v);
+            let (au, av) = sip.a.grad_at(&pu, &pv);
+            let (bu, bv) = sip.b.grad_at(&pu, &pv);
             let (j11, j12, j21, j22) = (1.0 + au, av, bu, 1.0 + bv);
             let det = j11 * j22 - j12 * j21;
             if !det.is_finite() || det.abs() < 1e-300 {
@@ -171,14 +233,15 @@ impl Wcs {
             loop {
                 let (nu, nv) = (u - step * du, v - step * dv);
                 let nr = f(nu, nv);
-                if norm(nr) < norm(r) || step < 1e-6 {
-                    (u, v, r) = (nu, nv, nr);
+                let next = norm(nr);
+                if next < size || step < 1e-6 {
+                    (u, v, r, size) = (nu, nv, nr, next);
                     break;
                 }
                 step *= 0.5;
             }
         }
-        (u.is_finite() && v.is_finite() && norm(r) <= SIP_INVERSE_TOL_PX)
+        (u.is_finite() && v.is_finite() && size <= SIP_INVERSE_TOL_PX)
             .then(|| PixelPos::new(u + c.x, v + c.y))
     }
 
@@ -454,6 +517,73 @@ mod tests {
         };
         w.fit_inverse(1024.0, 1024.0, 5);
         w
+    }
+
+    /// A polynomial evaluated from shared powers is the term-by-term sum, to the last bit:
+    /// also when a term's degree is above the polynomial's stated order or the convention's.
+    #[test]
+    fn polynomial_from_shared_powers_equals_the_direct_sum() {
+        let polys = [
+            Poly {
+                order: 3,
+                terms: vec![
+                    (3, 0, 2e-8),
+                    (1, 2, -3e-8),
+                    (2, 0, 1e-6),
+                    (0, 3, 7e-9),
+                    (1, 1, 4e-7),
+                ],
+            },
+            // Stated order below its terms, and a term beyond order 9.
+            Poly {
+                order: 1,
+                terms: vec![(2, 2, 1e-12), (0, 11, 1e-30), (12, 1, -1e-33), (0, 0, 0.25)],
+            },
+            Poly {
+                order: 0,
+                terms: vec![],
+            },
+        ];
+        for poly in &polys {
+            for (u, v) in [(0.0, 0.0), (311.25, -487.5), (-0.003, 912.0), (1e3, 1e3)] {
+                let direct: f64 = poly
+                    .terms
+                    .iter()
+                    .map(|&(p, q, c)| c * u.ppowi(p as i32) * v.ppowi(q as i32))
+                    .sum();
+                assert_eq!(poly.eval(u, v).to_bits(), direct.to_bits());
+                let (gu, gv) = poly.terms.iter().fold((0.0, 0.0), |(du, dv), &(p, q, c)| {
+                    let a = if p > 0 {
+                        c * p as f64 * u.ppowi(p as i32 - 1) * v.ppowi(q as i32)
+                    } else {
+                        0.0
+                    };
+                    let b = if q > 0 {
+                        c * q as f64 * u.ppowi(p as i32) * v.ppowi(q as i32 - 1)
+                    } else {
+                        0.0
+                    };
+                    (du + a, dv + b)
+                });
+                let got = poly.grad(u, v);
+                assert_eq!(
+                    (got.0.to_bits(), got.1.to_bits()),
+                    (gu.to_bits(), gv.to_bits())
+                );
+            }
+        }
+    }
+
+    /// Projecting a unit vector through a distorted WCS is projecting its sky position.
+    #[test]
+    fn vector_to_pixel_equals_sky_to_pixel() {
+        let w = distorted();
+        for (x, y) in [(0.0, 0.0), (1023.0, 17.0), (300.25, 900.5), (511.5, 511.5)] {
+            let s = w.pixel_to_sky(PixelPos::new(x, y));
+            assert_eq!(w.vector_to_pixel(s.to_unit_vector()), w.sky_to_pixel(s));
+        }
+        let behind = SkyPos::from_degrees(330.0, -2.0).unwrap();
+        assert_eq!(w.vector_to_pixel(behind.to_unit_vector()), None);
     }
 
     #[test]

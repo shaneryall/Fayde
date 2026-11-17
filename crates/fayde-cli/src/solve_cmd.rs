@@ -16,7 +16,8 @@
 //!   --roll <deg> --roll-sigma <deg> --roll-max <deg> --parity negative|positive
 //!   --trail-length <px> --trail-angle <deg> --epoch <year> --deadline <s> --max-sip-order <n>
 //!   --pixel-error <px> --accept-log-odds <x> --max-hypotheses <n>
-//!   --no-priors --no-pointing --search-outside-pointing --relax-priors-on-failure
+//!   --no-priors --no-pointing --no-header-wcs --search-outside-pointing
+//!   --relax-priors-on-failure
 //!
 //! `--index` may be repeated (one path each); a comma-separated list still works for paths
 //! without commas. `--no-priors` drops every prior; `--no-pointing` only the pointing.
@@ -89,6 +90,7 @@ const FLAGS: &[&str] = &[
     "search-outside-pointing",
     "relax-priors-on-failure",
     "no-pointing",
+    "no-header-wcs",
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -440,6 +442,7 @@ fn request_options(o: &HashMap<String, String>) -> Result<RequestOptions, String
         max_hypotheses: num(o, "max-hypotheses")?,
         no_priors: o.contains_key("no-priors"),
         no_pointing: o.contains_key("no-pointing"),
+        no_header_wcs: o.contains_key("no-header-wcs"),
         search_outside_pointing: o.contains_key("search-outside-pointing"),
         relax_priors_on_failure: o.contains_key("relax-priors-on-failure"),
         header,

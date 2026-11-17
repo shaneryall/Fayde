@@ -18,19 +18,34 @@
 //! instrument is known to do and barely move fits the data determine.
 
 use fayde_core::Portable;
-use fayde_core::{PixelPos, SkyPos};
+use fayde_core::{PixelPos, SkyPos, UnitVector};
 use fayde_wcs::{
-    gnomonic, gnomonic_inverse,
+    gnomonic_inverse,
     sip::{invert_dense, monomials, solve_dense},
-    Parity, Poly, Sip, TanWcs, Wcs,
+    Parity, Poly, Sip, TanWcs, TangentPlane, Wcs,
 };
 
 /// One weighted correspondence.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Pair {
     pub px: [f64; 2],
-    pub sky: SkyPos,
+    /// The catalogue position as a unit vector ([`SkyPos::to_unit_vector`]). A fit projects
+    /// every pair once per pass and once more per candidate order: from the vector that is a
+    /// few multiplications, from right ascension and declination four sines and cosines.
+    pub vec: [f64; 3],
     pub w: f64,
+}
+
+impl Pair {
+    /// A pair from a sky position.
+    #[cfg(test)]
+    pub(crate) fn at(px: [f64; 2], sky: SkyPos, w: f64) -> Self {
+        Self {
+            px,
+            vec: sky.to_unit_vector().0,
+            w,
+        }
+    }
 }
 
 /// Parameter covariance of a fitted WCS.
@@ -229,6 +244,22 @@ pub(crate) fn fit_poly(
         .filter(|p| p.w > 0.0)
         .map(|p| (p.px[0] - crpix.x).abs().max((p.px[1] - crpix.y).abs()))
         .fold(1.0f64, f64::max);
+    // The monomials of each pair: they depend on its pixel alone, so every pass uses them. The
+    // powers of u and v are worked out once per pair, not once per monomial.
+    let fitted: Vec<&Pair> = pairs.iter().filter(|p| p.w > 0.0).collect();
+    let mut monomial = vec![0.0; fitted.len() * k];
+    let mut pu = vec![0.0; order + 1];
+    let mut pv = vec![0.0; order + 1];
+    for (p, f) in fitted.iter().zip(monomial.chunks_exact_mut(k)) {
+        let (u, v) = ((p.px[0] - crpix.x) / norm, (p.px[1] - crpix.y) / norm);
+        for d in 0..=order {
+            pu[d] = u.ppowi(d as i32);
+            pv[d] = v.ppowi(d as i32);
+        }
+        for (fi, &(a, b)) in f.iter_mut().zip(&terms) {
+            *fi = pu[a] * pv[b];
+        }
+    }
     let mut crval = crval0;
     let mut cx = vec![0.0; k];
     let mut cy = vec![0.0; k];
@@ -237,13 +268,9 @@ pub(crate) fn fit_poly(
         normal = vec![0.0; k * k];
         let mut vx = vec![0.0; k];
         let mut vy = vec![0.0; k];
-        for p in pairs.iter().filter(|p| p.w > 0.0) {
-            let (xi, eta) = gnomonic(crval, p.sky)?;
-            let (u, v) = ((p.px[0] - crpix.x) / norm, (p.px[1] - crpix.y) / norm);
-            let f: Vec<f64> = terms
-                .iter()
-                .map(|&(a, b)| u.ppowi(a as i32) * v.ppowi(b as i32))
-                .collect();
+        let plane = TangentPlane::at(crval);
+        for (p, f) in fitted.iter().zip(monomial.chunks_exact(k)) {
+            let (xi, eta) = plane.project(UnitVector(p.vec))?;
             for i in 0..k {
                 for j in 0..k {
                     normal[i * k + j] += p.w * f[i] * f[j];
@@ -327,7 +354,7 @@ pub(crate) fn fit_tan(crval0: SkyPos, crpix: PixelPos, pairs: &[Pair]) -> Option
 pub(crate) fn chi2(wcs: &Wcs, pairs: &[Pair]) -> Option<f64> {
     let mut s = 0.0;
     for p in pairs.iter().filter(|p| p.w > 0.0) {
-        let q = wcs.sky_to_pixel(p.sky)?;
+        let q = wcs.vector_to_pixel(UnitVector(p.vec))?;
         s += p.w * ((p.px[0] - q.x).ppowi(2) + (p.px[1] - q.y).ppowi(2));
     }
     Some(s)
@@ -392,11 +419,7 @@ mod tests {
         (0..60)
             .map(|k| {
                 let px = [(k * 37 % 1000) as f64 + 3.3, (k * 91 % 1000) as f64 + 7.1];
-                Pair {
-                    px,
-                    sky: truth.pixel_to_sky(PixelPos::new(px[0], px[1])),
-                    w: 1.0,
-                }
+                Pair::at(px, truth.pixel_to_sky(PixelPos::new(px[0], px[1])), 1.0)
             })
             .collect()
     }
@@ -598,11 +621,7 @@ mod tests {
                     (i * 397 % 4096) as f64 + 0.25,
                     (i * 1009 % 4096) as f64 + 0.75,
                 ];
-                Pair {
-                    px,
-                    sky: truth.pixel_to_sky(PixelPos::new(px[0], px[1])),
-                    w: 1.0,
-                }
+                Pair::at(px, truth.pixel_to_sky(PixelPos::new(px[0], px[1])), 1.0)
             })
             .collect();
         let fit = fit_poly(tan.crval(), tan.crpix(), &pairs, 3, None).unwrap();

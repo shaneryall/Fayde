@@ -5,11 +5,11 @@
 #
 # Every file is run before it is published: each binary prints its version, each wheel is
 # installed and passes the Python tests on the platform it is for. After publishing, the
-# install-check job follows the README's install steps against the release, on every platform.
+# install-check job follows the install steps in docs/install.md against the release, on every platform.
 #
 # The archives are named by platform, without the version (fayde-linux-x86_64.tar.gz), so that
-# the README's download address, releases/latest/download/<name>, stays valid for every release.
-# If a name changes here, change the README and the install-check job with it.
+# the download address in docs/install.md, releases/latest/download/<name>, stays valid for every release.
+# If a name changes here, change docs/install.md and the install-check job with it.
 # Actions are pinned to a commit, with the release it belongs to in a comment: a moved tag must not
 # change what runs here. Dependabot (.github/dependabot.yml) proposes the updates.
 name: Release
@@ -79,7 +79,7 @@ jobs:
           name="fayde-${{ matrix.platform }}"
           mkdir -p dist "$name/docs"
           cp "$bin" README.md CHANGELOG.md LICENSE NOTICE THIRD-PARTY-LICENSES.md CITATION.cff "$name/"
-          cp docs/index-set.md docs/source-list.md "$name/docs/"
+          cp docs/*.md "$name/docs/"
           cp -R profiles "$name/"
           if [ "$RUNNER_OS" = Windows ]; then
             7z a -tzip "dist/$name.zip" "$name" > /dev/null
@@ -197,9 +197,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
 
-  # The README's steps for the prebuilt binary, run against the release that was just published:
+  # The steps in docs/install.md for the prebuilt binary, run against the release that was just published:
   # the platform table, the download, the install and the checksum check. If you change the
-  # README's steps, change these with them.
+  # steps in docs/install.md, change these with them.
   install-check:
     name: install (${{ matrix.platform }})
     needs: release
@@ -216,7 +216,7 @@ jobs:
     env:
       BASE: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
     steps:
-      - name: Install on Linux or macOS, as the README says
+      - name: Install on Linux or macOS, as docs/install.md says
         if: runner.os != 'Windows'
         shell: bash
         run: |
@@ -234,7 +234,7 @@ jobs:
           sudo mkdir -p /usr/local/bin && sudo install -m 755 "fayde-$platform/fayde" /usr/local/bin/fayde
           fayde --version
           fayde --version | grep -F "${GITHUB_REF_NAME#v}"
-      - name: Install on Windows, as the README says
+      - name: Install on Windows, as docs/install.md says
         if: runner.os == 'Windows'
         shell: pwsh
         run: |

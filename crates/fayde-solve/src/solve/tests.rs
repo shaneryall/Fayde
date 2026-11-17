@@ -149,3 +149,74 @@ fn similarity_seed_is_fitted_at_its_own_crval_near_the_pole() {
         }
     }
 }
+
+/// A [`PairTable`] lookup returns what the sorted list of every pair returns: the pairs a k-d
+/// tree search finds within reach, by separation and then by star numbers, cut to the range.
+#[test]
+fn pair_table_lookup_equals_the_sorted_list() {
+    let mut state = 4242u64;
+    let mut rnd = || {
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        (state >> 11) as f64 / (1u64 << 53) as f64
+    };
+    // Stars over a 5° cap, some of them twice (zero separation) and some in a tight clump.
+    let mut vecs: Vec<[f64; 3]> = (0..700)
+        .map(|i| {
+            let spread = if i % 9 == 0 { 0.02 } else { 5.0 };
+            SkyPos::from_degrees(40.0 + spread * rnd(), 88.0 - spread * rnd())
+                .unwrap()
+                .to_unit_vector()
+                .0
+        })
+        .collect();
+    vecs.extend_from_within(..5);
+    for reach_deg in [0.9f64, 0.05, 20.0] {
+        let reach = chord(reach_deg.to_radians());
+        // The list as it was built before: every star's neighbours from a k-d tree.
+        let tree = KdTree::build(vecs.clone());
+        let mut all: Vec<(f64, u32, u32)> = Vec::new();
+        for i in 0..vecs.len() {
+            for j in tree.within(vecs[i], reach) {
+                if j > i {
+                    all.push((angle(&vecs[i], &vecs[j]), i as u32, j as u32));
+                }
+            }
+        }
+        all.sort_by(|a, b| a.0.total_cmp(&b.0).then((a.1, a.2).cmp(&(b.1, b.2))));
+        let mut table = PairTable::new(&vecs, reach);
+        assert_eq!(table.pairs.len(), all.len(), "reach {reach_deg}°");
+        let widest = all.last().map_or(0.0, |p| p.0);
+        for round in 0..400 {
+            let mid = widest * rnd();
+            let half = match round % 5 {
+                0 => 0.0,
+                1 => widest,
+                _ => widest * 0.02 * rnd(),
+            };
+            let (lo, hi) = match round % 11 {
+                // Ends that fall exactly on a pair.
+                0 if !all.is_empty() => {
+                    let k = (rnd() * all.len() as f64) as usize;
+                    (all[k].0, all[(k + 30).min(all.len() - 1)].0)
+                }
+                1 => (-1.0, mid),
+                2 => (mid, 9.0),
+                _ => (mid - half, mid + half),
+            };
+            let start = all.partition_point(|c| c.0 < lo);
+            let end = all.partition_point(|c| c.0 <= hi);
+            assert_eq!(
+                table.between(lo, hi),
+                all[start..end],
+                "reach {reach_deg}°, {lo} to {hi}"
+            );
+        }
+    }
+    // No stars, one star, no reach.
+    assert!(PairTable::new(&[], 0.1).between(0.0, 1.0).is_empty());
+    assert!(PairTable::new(&vecs[..1], 0.1).between(0.0, 1.0).is_empty());
+    let mut none = PairTable::new(&vecs[..40], 0.0);
+    assert!(none.between(1e-6, 1.0).is_empty());
+}

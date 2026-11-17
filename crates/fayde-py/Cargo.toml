@@ -18,6 +18,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 fayde-api.workspace = true
+fayde-cli.workspace = true
 fayde-core.workspace = true
 fayde-fits.workspace = true
 fayde-solve.workspace = true

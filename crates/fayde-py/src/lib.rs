@@ -64,6 +64,8 @@ struct Opts {
     #[serde(default)]
     no_pointing: bool,
     #[serde(default)]
+    no_header_wcs: bool,
+    #[serde(default)]
     search_outside_pointing: bool,
     #[serde(default)]
     relax_priors_on_failure: bool,
@@ -279,6 +281,7 @@ fn request_options(o: &Opts) -> Result<RequestOptions, String> {
         max_hypotheses: o.max_hypotheses,
         no_priors: o.no_priors,
         no_pointing: o.no_pointing,
+        no_header_wcs: o.no_header_wcs,
         search_outside_pointing: o.search_outside_pointing,
         relax_priors_on_failure: o.relax_priors_on_failure,
         header: o.header.as_ref().map(HeaderIn::to_header).transpose()?,
@@ -481,11 +484,21 @@ impl Solver {
     }
 }
 
+/// Run the `fayde` command with `args`, the arguments after the program name, and return its
+/// exit status. The `fayde` console script of the package calls this, so `pip install fayde`
+/// gives the same command as the release binaries. It prints to the process's own stdout and
+/// stderr, not to Python's `sys.stdout`.
+#[pyfunction]
+fn cli_main(py: Python<'_>, args: Vec<String>) -> u8 {
+    py.detach(|| fayde_cli::run(&args))
+}
+
 /// The compiled part of the `fayde` package.
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Solver>()?;
     m.add_function(wrap_pyfunction!(detect, m)?)?;
+    m.add_function(wrap_pyfunction!(cli_main, m)?)?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add("commit", fayde_api::commit())?;
     Ok(())

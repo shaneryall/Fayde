@@ -13,7 +13,7 @@
 # before either job runs. See docs/releasing.md.
 #
 # After a registry accepts the version, a check job installs that version from the registry with
-# the command the README gives (`pip install fayde`, `cargo install fayde-cli`) and runs it.
+# the command the install guide (docs/install.md) gives (`pip install fayde`, `cargo install fayde-cli`) and runs it.
 # Actions are pinned to a commit, with the release it belongs to in a comment: a moved tag must not
 # change what runs here. Dependabot (.github/dependabot.yml) proposes the updates.
 name: Publish to registries
@@ -75,6 +75,16 @@ jobs:
         run: python3 scripts/check_release.py --tag "$TAG"
         env:
           TAG: ${{ inputs.tag }}
+      # A secret stored in an environment with another name (crates.io, say) is invisible here,
+      # and the token would be empty. Say so at once, before any crate is built.
+      - name: The crates.io token is set
+        run: |
+          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
+            echo "::error::CARGO_REGISTRY_TOKEN is empty. Add the crates.io token as a secret of the environment named crates-io (with a hyphen), then run this workflow again."
+            exit 1
+          fi
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       - name: Rust
         run: |
           rustup toolchain install 1.95 --profile minimal --no-self-update
@@ -88,7 +98,7 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-  # The README's Python install, against the version PyPI just accepted, on every platform.
+  # The install guide's Python install, against the version PyPI just accepted, on every platform.
   # --only-binary proves that the platform gets a prebuilt wheel, not a source build.
   pypi-check:
     name: pip install (${{ matrix.os }})
@@ -119,8 +129,11 @@ jobs:
             sleep 30
           done
           "$py" -c "import fayde; print(fayde.__version__); assert fayde.__version__ == '$version'"
+          # The package also installs the fayde command.
+          fayde=.venv/bin/fayde; [ -x "$fayde" ] || fayde=.venv/Scripts/fayde.exe
+          "$fayde" --version | grep -F "fayde $version "
 
-  # The README's Cargo install, against the version crates.io just accepted.
+  # The install guide's Cargo install, against the version crates.io just accepted.
   crates-check:
     name: cargo install
     needs: crates-io

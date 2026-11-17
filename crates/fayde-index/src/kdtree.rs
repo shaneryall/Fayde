@@ -44,6 +44,27 @@ impl<const D: usize> KdTree<D> {
         out
     }
 
+    /// Whether any point is within Euclidean distance `r` of `q`: `!within(q, r).is_empty()`,
+    /// stopping at the first point found.
+    pub fn any_within(&self, q: [f64; D], r: f64) -> bool {
+        self.any_rec(0, self.order.len(), 0, q, r * r, r)
+    }
+
+    fn any_rec(&self, lo: usize, hi: usize, depth: usize, q: [f64; D], r2: f64, r: f64) -> bool {
+        if lo >= hi {
+            return false;
+        }
+        let mid = lo + (hi - lo) / 2;
+        let p = self.points[self.order[mid] as usize];
+        let d2: f64 = (0..D).map(|k| (p[k] - q[k]) * (p[k] - q[k])).sum();
+        if d2 <= r2 {
+            return true;
+        }
+        let diff = q[depth % D] - p[depth % D];
+        (diff - r <= 0.0 && self.any_rec(lo, mid, depth + 1, q, r2, r))
+            || (diff + r >= 0.0 && self.any_rec(mid + 1, hi, depth + 1, q, r2, r))
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn within_rec(
         &self,
@@ -120,6 +141,12 @@ mod tests {
                 .filter(|&i| (0..3).map(|k| (pts[i][k] - q[k]).ppowi(2)).sum::<f64>() <= r * r)
                 .collect();
             assert_eq!(tree.within(q, r), brute);
+            assert_eq!(tree.any_within(q, r), !brute.is_empty());
+        }
+        // Radii that find nothing, and one that is not a number.
+        for r in [0.0, 1e-9, f64::NAN] {
+            let q = [rnd(), rnd(), rnd()];
+            assert_eq!(tree.any_within(q, r), !tree.within(q, r).is_empty());
         }
         assert!(KdTree::<3>::build(vec![]).within([0.0; 3], 1.0).is_empty());
     }

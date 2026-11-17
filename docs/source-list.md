@@ -74,4 +74,4 @@ image is 4,096 by 4,096 pixels. To write and solve a source list, follow these s
    - `UCAC4_DIR`: The path to the directory that contains `u4b`
    - `OUTPUT`: The path to the WCS file to write
 
-   For more information about solving a frame, see [Solve a frame](../README.md#solve-a-frame).
+   For more information about solving a frame, see [Solve a frame](usage.md#solve-a-frame).

@@ -20,7 +20,7 @@
 //! same threshold.
 
 use fayde_core::Portable;
-use std::{collections::HashMap, f64::consts::PI, time::Instant};
+use std::{f64::consts::PI, time::Instant};
 
 use fayde_catalog::{Catalog, Star, StarQuery};
 use fayde_core::{PixelPos, SkyPos, UnitVector};
@@ -36,6 +36,8 @@ use crate::{
     fit::{
         fit_best_order, LinearPrior, Pair, WcsCovariance, FINAL_OBS_PER_PARAM, GROWTH_OBS_PER_PARAM,
     },
+    grid::Grid,
+    refset::RefSet,
     request::{
         Match, Outcome, Priors, ScalePrior, Solution, SolveError, SolveMethod, SolveRequest,
         StageTrace, Verification,
@@ -87,6 +89,15 @@ const FINAL_FIT_MAX_ITERATIONS: usize = 20;
 const TRUNCATED_SIGMA_FACTOR: f64 = 4.0;
 /// Most passes of a similarity fit while its tangent point moves to the fitted `CRVAL`.
 const SIMILARITY_TANGENT_PASSES: usize = 8;
+/// Pair seeds look first among fields centred within this many σ of the pointing: 98.9% of a
+/// two-dimensional Gaussian.
+const PAIR_INNER_SIGMAS: f64 = 3.0;
+/// That first look is made only when its radius is at most this fraction of the hard limit.
+/// The work of a pair-seed stage grows with the area of its cone, so a first look in a cone
+/// nearly as wide as the limit costs almost as much as the search it is meant to spare, and a
+/// frame it cannot solve would pay for both. With the default σ of a quarter of the limit
+/// there is no first look.
+const PAIR_INNER_MAX_FRACTION: f64 = 0.5;
 
 struct Ranked {
     /// Index into the request's sources.
@@ -96,39 +107,6 @@ struct Ranked {
     distractor: f64,
     /// Cut by the frame edge: evidence for a match, never fitted, never a seed.
     truncated: bool,
-}
-
-/// Catalogue stars sorted by magnitude, with a tree over their unit vectors.
-struct RefSet {
-    stars: Vec<Star>,
-    vecs: Vec<[f64; 3]>,
-    tree: KdTree<3>,
-}
-
-impl RefSet {
-    fn from_cone(
-        catalog: &dyn Catalog,
-        centre: SkyPos,
-        radius: f64,
-        query: &StarQuery,
-    ) -> Result<Self, SolveError> {
-        // A cone wider than the sky is the whole sky.
-        let radius = radius.min(std::f64::consts::PI - 1e-9);
-        let mut stars: Vec<Star> = catalog
-            .cone(centre, radius, query)?
-            .into_iter()
-            .filter(|s| s.mag.is_some_and(f32::is_finite))
-            .collect();
-        stars.sort_by(|a, b| {
-            a.mag
-                .unwrap()
-                .total_cmp(&b.mag.unwrap())
-                .then(a.id.cmp(&b.id))
-        });
-        let vecs: Vec<[f64; 3]> = stars.iter().map(|s| s.pos.to_unit_vector().0).collect();
-        let tree = KdTree::build(vecs.clone());
-        Ok(Self { stars, vecs, tree })
-    }
 }
 
 /// A final fit iterated to convergence.
@@ -171,8 +149,8 @@ struct Ctx<'a> {
     best: Option<f64>,
     /// Ignore the pointing prior's hard limit (out-of-prior fallback stage).
     outside_pointing: bool,
-    /// Catalogue cone covering the whole pointing prior, built on first use.
-    prior_cone: Option<std::rc::Rc<RefSet>>,
+    /// The catalogue stars of the whole pointing prior, read as hypotheses need them.
+    prior_cone: Option<std::rc::Rc<RefSet<'a>>>,
     /// Stages executed so far.
     trace: Vec<StageTrace>,
     /// Seeds skipped, and refined fits rejected, for lying outside the hard limits: reported
@@ -181,7 +159,7 @@ struct Ctx<'a> {
     limit_fits: std::cell::Cell<u64>,
 }
 
-impl Ctx<'_> {
+impl<'a> Ctx<'a> {
     fn half_diag_px(&self) -> f64 {
         0.5 * self.w.phypot(self.h)
     }
@@ -258,13 +236,11 @@ impl Ctx<'_> {
     fn refs(&self, set: &RefSet, wcs: &Wcs) -> Vec<RefStar> {
         let scale = wcs.pixel_scale_arcsec();
         let (centre, r) = self.footprint(wcs);
-        let mut idx = set.tree.within(centre.to_unit_vector().0, chord(r * 1.05));
-        idx.sort_unstable(); // RefSet is in magnitude order
         let mut out = Vec::new();
-        for k in idx {
-            if let Some(px) = wcs.sky_to_pixel(set.stars[k].pos) {
+        set.within(centre, r * 1.05, |k, star, v| {
+            if let Some(px) = wcs.vector_to_pixel(UnitVector(*v)) {
                 if px.x > -0.5 && px.y > -0.5 && px.x < self.w - 0.5 && px.y < self.h - 0.5 {
-                    let e = set.stars[k].pos_err_mas;
+                    let e = star.pos_err_mas;
                     // Per-axis 1σ: RMS of the two axis errors, mas → px.
                     let sigma_mas =
                         (0.5 * (f64::from(e[0]).ppowi(2) + f64::from(e[1]).ppowi(2))).sqrt();
@@ -273,12 +249,10 @@ impl Ctx<'_> {
                         star: k,
                         sigma_px: sigma_mas / 1000.0 / scale,
                     });
-                    if out.len() == self.n_ref {
-                        break;
-                    }
                 }
             }
-        }
+            out.len() < self.n_ref
+        });
         out
     }
 
@@ -380,10 +354,7 @@ impl Ctx<'_> {
             let dist = (r.px[0] - anchor[0]).phypot(r.px[1] - anchor[1]);
             let tol_px = 3.0 * r.sigma + 2.0 + 0.01 * dist;
             let sky = wcs.pixel_to_sky(PixelPos::new(r.px[0], r.px[1]));
-            if !tree
-                .within(sky.to_unit_vector().0, chord(tol_px * scale))
-                .is_empty()
-            {
+            if tree.any_within(sky.to_unit_vector().0, chord(tol_px * scale)) {
                 hits += 1;
                 if hits >= need {
                     return true;
@@ -399,15 +370,16 @@ impl Ctx<'_> {
         refs: &[RefStar],
         radius: impl Fn(&Ranked) -> f64,
     ) -> Vec<(usize, usize)> {
-        let tree = KdTree::build(refs.iter().map(|r| r.px).collect());
+        let grid = Grid::build(refs.iter().map(|r| r.px).collect());
         let mut used = vec![false; refs.len()];
         let mut out = Vec::new();
+        let mut c = Vec::new();
         for (i, r) in self.ranked.iter().enumerate() {
-            let mut c = tree.within(r.px, radius(r));
+            grid.within(r.px, radius(r), &mut c);
             let d2 =
                 |k: usize| (refs[k].px[0] - r.px[0]).ppowi(2) + (refs[k].px[1] - r.px[1]).ppowi(2);
             c.sort_by(|&x, &y| d2(x).total_cmp(&d2(y)).then(x.cmp(&y)));
-            if let Some(k) = c.into_iter().find(|&k| !used[k]) {
+            if let Some(k) = c.iter().copied().find(|&k| !used[k]) {
                 used[k] = true;
                 out.push((i, k));
             }
@@ -440,7 +412,7 @@ impl Ctx<'_> {
         if m.len() < AFFINE_MIN_MATCHES {
             let pairs: Vec<([f64; 2], SkyPos)> = m
                 .iter()
-                .map(|&(i, k)| (self.ranked[i].px, set.stars[refs[k].star].pos))
+                .map(|&(i, k)| (self.ranked[i].px, set.star(refs[k].star).pos))
                 .collect();
             let (fitted, _) = similarity_seed(&pairs, wcs.parity(), self.crpix)?;
             return Some((m.len(), fitted.into()));
@@ -454,7 +426,7 @@ impl Ctx<'_> {
                 // Cauchy IRLS (Holland & Welsch 1977), with Fayde's r0 = 3σ_tot.
                 Pair {
                     px,
-                    sky: set.stars[refs[k].star].pos,
+                    vec: set.vec(refs[k].star),
                     w: 1.0 / (variance * (1.0 + r2 / (9.0 * variance))),
                 }
             })
@@ -556,6 +528,20 @@ impl Ctx<'_> {
         set: &RefSet,
         seed: TanWcs,
         seed_sources: &[usize],
+    ) -> Result<Option<Box<Solution>>, SolveError> {
+        let found = self.refit_and_verify(set, seed, seed_sources);
+        // A catalogue read that failed part-way left the hypothesis judged on missing stars:
+        // the failure is the outcome, whatever the verdict.
+        set.check()?;
+        Ok(found)
+    }
+
+    /// [`Ctx::try_hypothesis`] without its check that the catalogue could be read.
+    fn refit_and_verify(
+        &mut self,
+        set: &RefSet,
+        seed: TanWcs,
+        seed_sources: &[usize],
     ) -> Option<Box<Solution>> {
         let linear = self.local_refit(set, seed)?;
         if !self.within_priors(&linear) {
@@ -641,7 +627,7 @@ impl Ctx<'_> {
                     .iter()
                     .map(|h| Pair {
                         px: self.ranked[h.source].px,
-                        sky: set.stars[refs[h.reference].star].pos,
+                        vec: set.vec(refs[h.reference].star),
                         // Preserve the effective relative weights, including each source's
                         // sigma floor and the unscaled catalogue error. Factor out the common
                         // scale for BIC/Birge estimation; covariance restores it below.
@@ -744,7 +730,7 @@ impl Ctx<'_> {
         let (mut ss, mut wsum) = (0.0f64, 0.0f64);
         for h in &a.hits {
             let r = &self.ranked[h.source];
-            let star = &set.stars[refs[h.reference].star];
+            let star = set.star(refs[h.reference].star);
             let px = wcs.sky_to_pixel(star.pos)?;
             let res = [r.px[0] - px.x, r.px[1] - px.y];
             ss += h.inlier_prob * (res[0] * res[0] + res[1] * res[1]);
@@ -767,7 +753,7 @@ impl Ctx<'_> {
             if r.truncated {
                 continue;
             }
-            let star = &set.stars[refs[h.reference].star];
+            let star = set.star(refs[h.reference].star);
             let Some(px) = wcs.sky_to_pixel(star.pos) else {
                 continue;
             };
@@ -821,21 +807,23 @@ impl Ctx<'_> {
         }
     }
 
-    /// The catalogue cone covering the whole pointing prior (pointing + scale priors needed).
-    fn prior_cone(&mut self) -> Result<Option<std::rc::Rc<RefSet>>, SolveError> {
+    /// The catalogue stars of the whole pointing prior: every star a frame centred within the
+    /// prior can hold (pointing and scale priors needed). Nothing is read until a hypothesis
+    /// asks for stars, and then only around it ([`RefSet::on_demand`]).
+    fn prior_cone(&mut self) -> Option<std::rc::Rc<RefSet<'a>>> {
         let (Some(pt), true) = (self.req.priors.pointing, self.s_hi.is_finite()) else {
-            return Ok(None);
+            return None;
         };
         if self.prior_cone.is_none() {
             let r = pt.max_radius + self.half_diag_px() * (self.s_hi / 3600.0).to_radians();
-            self.prior_cone = Some(std::rc::Rc::new(RefSet::from_cone(
+            self.prior_cone = Some(std::rc::Rc::new(RefSet::on_demand(
                 self.catalog,
                 pt.centre,
                 r,
-                &self.query,
-            )?));
+                self.query,
+            )));
         }
-        Ok(self.prior_cone.clone())
+        self.prior_cone.clone()
     }
 }
 
@@ -926,7 +914,7 @@ fn new_ctx<'a>(req: &'a SolveRequest, catalog: &'a dyn Catalog) -> Result<Ctx<'a
     // only be in the 3×3 cells around a source, so this is linear in the number of sources
     // (the all-pairs check took seconds for tens of thousands).
     let mut demoted = Vec::new();
-    let mut grid: HashMap<(i64, i64), Vec<[f64; 2]>> = HashMap::new();
+    let mut grid: crate::hash::Map<(i64, i64), Vec<[f64; 2]>> = Default::default();
     let cell = |v: f64| (v / DUPLICATE_PX).floor() as i64;
     for (i, r) in ranked.iter_mut().enumerate() {
         let (x, y) = (r.2.px[0], r.2.px[1]);
@@ -1014,8 +1002,8 @@ fn new_ctx<'a>(req: &'a SolveRequest, catalog: &'a dyn Catalog) -> Result<Ctx<'a
 /// One stage of an adaptive search plan.
 #[derive(Debug, Clone)]
 enum Stage {
-    /// Star-pair seeds in the pointing-prior cone.
-    PairSeeds,
+    /// Star-pair seeds for fields centred within `radius` (radians) of the pointing.
+    PairSeeds { radius: f64 },
     /// Pattern hash in one index, optionally restricted to a sky region (centre, radius of the
     /// field centre), optionally ignoring the pointing limit.
     Hash {
@@ -1029,7 +1017,7 @@ enum Stage {
 ///
 /// | Known                     | Stages                                                        |
 /// |---------------------------|---------------------------------------------------------------|
-/// | pointing + tight scale    | pair seeds → hash inner ring (2σ) → hash to the hard radius     |
+/// | pointing + tight scale    | pair seeds within 3σ (if ≤ half the limit) → pair seeds to the hard radius → hash inner ring (2σ) → hash to the hard radius |
 /// | pointing (loose/no scale) | hash inner ring → hash to the hard radius                       |
 /// | scale only                | hash, whole index, scale-pruned                                 |
 /// | nothing                   | hash, whole index, every band (blind)                           |
@@ -1041,8 +1029,17 @@ fn plan(ctx: &Ctx<'_>, indexes: &[Index]) -> Vec<Stage> {
     let pr = &ctx.req.priors;
     let mut stages = Vec::new();
     let tight = matches!((pr.pointing, pr.scale), (Some(_), Some(sc)) if sc.sigma <= TIGHT_SCALE * sc.arcsec_per_px);
-    if tight {
-        stages.push(Stage::PairSeeds);
+    if let (true, Some(pt)) = (tight, pr.pointing) {
+        // A pointing known far better than its hard limit: look close to it first. The seeds
+        // of that look come from a cone a fraction of the size, and so does its cost; the
+        // full cone follows for the frame whose pointing was in the tail.
+        let inner = PAIR_INNER_SIGMAS * pt.sigma;
+        if pt.sigma > 0.0 && inner <= PAIR_INNER_MAX_FRACTION * pt.max_radius {
+            stages.push(Stage::PairSeeds { radius: inner });
+        }
+        stages.push(Stage::PairSeeds {
+            radius: pt.max_radius,
+        });
     }
     let mut order: Vec<usize> = (0..indexes.len()).collect();
     match pr.scale {
@@ -1319,15 +1316,10 @@ fn solve_auto_once(
     for stage in stages {
         let (t0, h0) = (Instant::now(), ctx.tested);
         let (label, result) = match stage {
-            Stage::PairSeeds => {
-                let r = ctx
-                    .req
-                    .priors
-                    .pointing
-                    .map_or(0.0, |p| p.max_radius)
-                    .to_degrees();
-                (format!("pair seeds r<{r:.2}°"), pair_seeds(&mut ctx)?)
-            }
+            Stage::PairSeeds { radius } => (
+                format!("pair seeds r<{:.2}°", radius.to_degrees()),
+                pair_seeds(&mut ctx, radius)?,
+            ),
             Stage::Hash {
                 index,
                 region,
@@ -1374,7 +1366,7 @@ fn solve_auto_once(
 }
 
 /// Catalogue stars around the field of an existing WCS.
-fn cone_around(ctx: &Ctx<'_>, wcs: &Wcs) -> Result<RefSet, SolveError> {
+fn cone_around<'a>(ctx: &Ctx<'a>, wcs: &Wcs) -> Result<RefSet<'a>, SolveError> {
     let (centre, r) = ctx.footprint(wcs);
     RefSet::from_cone(ctx.catalog, centre, r * 1.2, &ctx.query)
 }
@@ -1395,7 +1387,7 @@ pub fn verify_wcs(
     let (mut ss, mut wsum) = (0.0f64, 0.0f64);
     for h in &a.hits {
         let r = &ctx.ranked[h.source];
-        let star = &set.stars[refs[h.reference].star];
+        let star = set.star(refs[h.reference].star);
         let Some(px) = wcs.sky_to_pixel(star.pos) else {
             continue;
         };
@@ -1501,34 +1493,34 @@ pub fn solve_with_indexes(
     solve_auto(req, catalog, indexes)
 }
 
-/// Pair-seed hypotheses. `Ok(None)` when all seeds are exhausted without a solution.
-fn pair_seeds(ctx: &mut Ctx<'_>) -> Result<Option<Stop>, SolveError> {
+/// Pair-seed hypotheses from the catalogue stars a field centred within `radius` (radians) of
+/// the pointing can hold. A hypothesis is held to the priors' hard limits, not to `radius`: a
+/// field just outside it, found from the stars it shares with the cone, is a solution.
+/// `Ok(None)` when all seeds are exhausted without a solution.
+fn pair_seeds(ctx: &mut Ctx<'_>, radius: f64) -> Result<Option<Stop>, SolveError> {
     let pointing = ctx.req.priors.pointing.expect("checked by caller");
     let scale = ctx.req.priors.scale.expect("checked by caller");
     let as2rad = |a: f64| (a / 3600.0).to_radians();
     let field_r_max = ctx.half_diag_px() * as2rad(ctx.s_hi);
-    let cone_r = pointing.max_radius + field_r_max;
-    let set = RefSet::from_cone(ctx.catalog, pointing.centre, cone_r, &ctx.query)?;
-    if set.stars.len() < 4 {
-        return Ok(None);
-    }
+    let cone_r = radius + field_r_max;
 
     let field_area = ctx.w * ctx.h * as2rad(scale.arcsec_per_px).ppowi(2);
     let cone_area = 2.0 * PI * (1.0 - cone_r.pcos());
     let n_seed_src = ctx.req.policy.seed_sources.clamp(3, ctx.ranked.len());
-    let n_seed_cat = ((SEED_STARS_PER_SOURCE * n_seed_src as f64 * cone_area / field_area).ceil()
+    // Seeds come from the brightest catalogue stars of the cone: so many per frame area and
+    // seed source, and no fewer than the seed sources. Only these are read here; the fainter
+    // stars a hypothesis is verified against are read around the hypotheses that need them.
+    let wanted = ((SEED_STARS_PER_SOURCE * n_seed_src as f64 * cone_area / field_area).ceil()
         as usize)
-        .clamp(n_seed_src.min(set.stars.len()), set.stars.len());
-    let seed_tree = KdTree::build(set.vecs[..n_seed_cat].to_vec());
-    let mut cat_pairs: Vec<(f64, u32, u32)> = Vec::new();
-    for i in 0..n_seed_cat {
-        for j in seed_tree.within(set.vecs[i], chord(2.0 * field_r_max)) {
-            if j > i {
-                cat_pairs.push((angle(&set.vecs[i], &set.vecs[j]), i as u32, j as u32));
-            }
-        }
+        .max(n_seed_src);
+    let seeds = SeedStars::brightest(ctx, pointing.centre, cone_r, wanted.max(4))?;
+    if seeds.stars.len() < 4 {
+        return Ok(None);
     }
-    cat_pairs.sort_by(|a, b| a.0.total_cmp(&b.0).then((a.1, a.2).cmp(&(b.1, b.2))));
+    let n_seed_cat = wanted.min(seeds.stars.len());
+    let set = ctx.prior_cone().expect("pointing and scale priors given");
+    let seed_tree = KdTree::build(seeds.vecs[..n_seed_cat].to_vec());
+    let mut cat_pairs = PairTable::new(&seeds.vecs[..n_seed_cat], chord(2.0 * field_r_max));
     let parities: Vec<Parity> = match ctx.req.priors.parity {
         Some(par) => vec![par],
         None => vec![Parity::Negative, Parity::Positive],
@@ -1547,18 +1539,16 @@ fn pair_seeds(ctx: &mut Ctx<'_>) -> Result<Option<Stop>, SolveError> {
             let tol = 3.0 * (ctx.ranked[a].sigma + ctx.ranked[b].sigma) * as2rad(ctx.s_hi);
             let lo = d_px * as2rad(ctx.s_lo) - tol;
             let hi = d_px * as2rad(ctx.s_hi) + tol;
-            let start = cat_pairs.partition_point(|c| c.0 < lo);
-            let end = cat_pairs.partition_point(|c| c.0 <= hi);
-            let candidates = &cat_pairs[start..end];
+            let candidates = cat_pairs.between(lo, hi);
             let mean = d_px * as2rad(scale.arcsec_per_px);
-            for &(_, ci, cj) in pairs_from_mean(candidates, mean) {
+            for &(_, ci, cj) in pairs_from_mean(&candidates, mean) {
                 for (c1, c2) in [(ci, cj), (cj, ci)] {
                     for &parity in &parities {
                         if ctx.out_of_budget() {
                             return Ok(Some(Stop::Budget));
                         }
                         let Some(seed) = seed_wcs(
-                            &set.stars,
+                            &seeds.stars,
                             c1 as usize,
                             c2 as usize,
                             pa,
@@ -1577,7 +1567,7 @@ fn pair_seeds(ctx: &mut Ctx<'_>) -> Result<Option<Stop>, SolveError> {
                         if !ctx.prefilter(&seed, &[a, b], anchor, &seed_tree, 2) {
                             continue;
                         }
-                        if let Some(sol) = ctx.try_hypothesis(&set, seed, &[a, b]) {
+                        if let Some(sol) = ctx.try_hypothesis(&set, seed, &[a, b])? {
                             return Ok(Some(Stop::Solved(sol)));
                         }
                     }
@@ -1586,6 +1576,154 @@ fn pair_seeds(ctx: &mut Ctx<'_>) -> Result<Option<Stop>, SolveError> {
         }
     }
     Ok(None)
+}
+
+/// The brightest catalogue stars of the pointing prior's cone, brightest first: the stars
+/// pair seeds are made from.
+struct SeedStars {
+    stars: Vec<Star>,
+    /// `stars[k].pos.to_unit_vector()`.
+    vecs: Vec<[f64; 3]>,
+}
+
+impl SeedStars {
+    fn brightest(ctx: &Ctx<'_>, centre: SkyPos, radius: f64, n: usize) -> Result<Self, SolveError> {
+        // A cone wider than the sky is the whole sky.
+        let radius = radius.min(std::f64::consts::PI - 1e-9);
+        let stars = ctx.catalog.cone_brightest(centre, radius, &ctx.query, n)?;
+        let vecs = stars.iter().map(|s| s.pos.to_unit_vector().0).collect();
+        Ok(Self { stars, vecs })
+    }
+}
+
+/// Number of separation bins of a [`PairTable`].
+const PAIR_BINS: usize = 1024;
+
+/// Every pair of seed stars closer than a frame's diagonal, for looking up the pairs whose
+/// separation fits an image pair: the role of Mortari's k-vector (Mortari 1997; Mortari & Neta
+/// 2000), which answers a range query from a list sorted by separation.
+///
+/// The whole list is some 10⁵ pairs for a 2° prior, and a search that ends at its first image
+/// pairs looks at a few percent of it. So the pairs are only put in bins by squared chord
+/// length here, a subtraction and a multiplication each; the separation itself (an arctangent)
+/// and the sort are left to the bins a lookup touches. A lookup returns exactly what the sorted
+/// list of all pairs would.
+struct PairTable<'s> {
+    vecs: &'s [[f64; 3]],
+    /// Largest squared chord length held.
+    reach2: f64,
+    /// Pairs `(separation, i, j)`, `i < j`, grouped by bin of squared chord length: bin `b` is
+    /// `pairs[start[b]..start[b + 1]]`. The separations of a bin are filled in, and the bin
+    /// sorted, when a lookup first reaches it (`ready`).
+    pairs: Vec<(f64, u32, u32)>,
+    start: Vec<u32>,
+    ready: Vec<bool>,
+}
+
+impl<'s> PairTable<'s> {
+    /// The pairs of `vecs` no farther apart than the chord length `reach`.
+    fn new(vecs: &'s [[f64; 3]], reach: f64) -> Self {
+        let reach2 = reach * reach;
+        let mut table = Self {
+            vecs,
+            reach2,
+            pairs: Vec::new(),
+            start: vec![0; PAIR_BINS + 1],
+            ready: vec![false; PAIR_BINS],
+        };
+        let mut found: Vec<(u16, u32, u32)> = Vec::new();
+        // Walk the stars in order along the axis they are most spread over: a star's partners
+        // are then the next few in line, and the walk stops at the first one out of reach.
+        let spread = |axis: usize| {
+            let (lo, hi) = vecs
+                .iter()
+                .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), v| {
+                    (lo.min(v[axis]), hi.max(v[axis]))
+                });
+            hi - lo
+        };
+        let axis = (0..3)
+            .max_by(|&a, &b| spread(a).total_cmp(&spread(b)))
+            .expect("three axes");
+        let mut order: Vec<u32> = (0..vecs.len() as u32).collect();
+        order.sort_by(|&a, &b| {
+            vecs[a as usize][axis]
+                .total_cmp(&vecs[b as usize][axis])
+                .then(a.cmp(&b))
+        });
+        for (at, &i) in order.iter().enumerate() {
+            let p = &vecs[i as usize];
+            for &j in &order[at + 1..] {
+                let q = &vecs[j as usize];
+                let along = q[axis] - p[axis];
+                // One term of the sum below: once it is too large alone, so is every later one.
+                if along * along > reach2 {
+                    break;
+                }
+                // The form a k-d tree search uses, so the pairs are those it would find.
+                let d2: f64 = (0..3).map(|k| (q[k] - p[k]) * (q[k] - p[k])).sum();
+                if d2 <= reach2 {
+                    found.push((table.bin(d2) as u16, i.min(j), i.max(j)));
+                }
+            }
+        }
+        // Group by bin (a counting sort).
+        for &(bin, ..) in &found {
+            table.start[bin as usize + 1] += 1;
+        }
+        for b in 0..PAIR_BINS {
+            table.start[b + 1] += table.start[b];
+        }
+        let mut next = table.start.clone();
+        table.pairs = vec![(f64::NAN, 0, 0); found.len()];
+        for (bin, i, j) in found {
+            let at = &mut next[bin as usize];
+            table.pairs[*at as usize] = (f64::NAN, i, j);
+            *at += 1;
+        }
+        table
+    }
+
+    fn bin(&self, chord2: f64) -> usize {
+        // A ratio that is not a number (no reach at all) lands in bin 0 with everything else.
+        ((chord2 / self.reach2 * PAIR_BINS as f64) as usize).min(PAIR_BINS - 1)
+    }
+
+    /// The pairs separated by `lo` to `hi` radians (inclusive), by separation and then by star
+    /// numbers.
+    fn between(&mut self, lo: f64, hi: f64) -> Vec<(f64, u32, u32)> {
+        let order = |a: &(f64, u32, u32), b: &(f64, u32, u32)| {
+            a.0.total_cmp(&b.0).then((a.1, a.2).cmp(&(b.1, b.2)))
+        };
+        // The bins the range reaches, and one more on each side: a pair's bin comes from its
+        // chord length and its place in the range from its separation, two computations that
+        // agree to rounding, which is far less than a bin.
+        let bin_of = |angle: f64| {
+            let c = chord(angle.clamp(0.0, PI));
+            self.bin(c * c)
+        };
+        let first = bin_of(lo).saturating_sub(1);
+        let last = (bin_of(hi) + 1).min(PAIR_BINS - 1);
+        let mut out = Vec::new();
+        for b in first..=last {
+            let bin = &mut self.pairs[self.start[b] as usize..self.start[b + 1] as usize];
+            if !self.ready[b] {
+                for pair in bin.iter_mut() {
+                    pair.0 = angle(&self.vecs[pair.1 as usize], &self.vecs[pair.2 as usize]);
+                }
+                bin.sort_by(order);
+                self.ready[b] = true;
+            }
+            out.extend_from_slice(bin);
+        }
+        // Already in order but for pairs within rounding of a bin's edge.
+        out.sort_by(order);
+        let start = out.partition_point(|c| c.0 < lo);
+        let end = out.partition_point(|c| c.0 <= hi);
+        out.truncate(end);
+        out.drain(..start.min(end));
+        out
+    }
 }
 
 /// Start at the prior mean and alternate outward through the sorted separation list.
@@ -1624,18 +1762,18 @@ fn pattern_hash(
     let index_tree = index.star_tree();
     let index_fov = index.meta().params.fov_deg.to_radians();
     let as2rad = |a: f64| (a / 3600.0).to_radians();
-    // Within the pointing prior one catalogue cone serves every hypothesis.
+    // Within the pointing prior one set of catalogue stars serves every hypothesis.
     let shared = if ctx.outside_pointing {
         None
     } else {
-        ctx.prior_cone()?
+        ctx.prior_cone()
     };
     let region = region.map(|(c, r)| (c.to_unit_vector().0, r));
     let m = ctx.req.policy.pattern_sources.max(4).min(ctx.ranked.len());
     // Without a pointing prior each hypothesis needs its own catalogue cone. Cache cones by
     // (HEALPix cell of the field centre, field-radius bucket): a cone around the cell centre,
     // padded by the cell size, serves every hypothesis whose centre falls in that cell.
-    let mut cones: std::collections::HashMap<(u64, i32), std::rc::Rc<RefSet>> =
+    let mut cones: std::collections::HashMap<(u64, i32), std::rc::Rc<RefSet<'_>>> =
         std::collections::HashMap::new();
     for n in 4..=m {
         let last = n - 1;
@@ -1712,7 +1850,7 @@ fn pattern_hash(
                             if !ctx.prefilter(&seed, &used, anchor, index_tree, 1) {
                                 continue;
                             }
-                            let local: std::rc::Rc<RefSet>;
+                            let local: std::rc::Rc<RefSet<'_>>;
                             let set = match &shared {
                                 Some(s) => s,
                                 None => {
@@ -1754,7 +1892,7 @@ fn pattern_hash(
                                     &local
                                 }
                             };
-                            if let Some(sol) = ctx.try_hypothesis(set, seed, &ids) {
+                            if let Some(sol) = ctx.try_hypothesis(set, seed, &ids)? {
                                 return Ok(Some(Stop::Solved(sol)));
                             }
                         }

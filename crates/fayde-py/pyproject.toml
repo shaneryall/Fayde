@@ -28,6 +28,10 @@ classifiers = [
 dynamic = ["version"]
 dependencies = []
 
+[project.scripts]
+# The same command as the release binaries: `fayde_cli::run`, through the extension module.
+fayde = "fayde._cli:main"
+
 [project.urls]
 Repository = "https://github.com/shaneryall/Fayde"
 Changelog = "https://github.com/shaneryall/Fayde/blob/main/CHANGELOG.md"

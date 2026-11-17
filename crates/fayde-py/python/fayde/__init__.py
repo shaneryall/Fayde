@@ -17,8 +17,8 @@ Options (keyword arguments), the same as the command line's:
 ``scale_sigma`` (fraction), ``roll``, ``roll_sigma``, ``roll_max``, ``parity``
 (``"negative"``/``"positive"``), ``trail_length``, ``trail_angle``, ``epoch`` (Julian year),
 ``deadline``, ``max_hypotheses``, ``max_sip_order``, ``pixel_error``, ``accept_log_odds``, ``no_priors``,
-``no_pointing``, ``search_outside_pointing``, ``relax_priors_on_failure``, ``header``,
-``instrument``, ``origin``.
+``no_pointing``, ``no_header_wcs``, ``search_outside_pointing``, ``relax_priors_on_failure``,
+``header``, ``instrument``, ``origin``.
 
 ``header`` is a dict, a list of 80-character cards, or an ``astropy.io.fits.Header``.
 ``instrument`` is a profile dict or the path of a profile JSON file.

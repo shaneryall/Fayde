@@ -7,7 +7,7 @@ returns a verified world coordinate system (WCS) solution with its measured accu
 
 Fayde reads the UCAC4 star catalog from a local copy. The catalog isn't included with this
 crate. To download it, see
-[Get the UCAC4 catalog](https://github.com/shaneryall/Fayde#get-the-ucac4-catalog).
+[Get the UCAC4 catalog](https://github.com/shaneryall/Fayde/blob/main/docs/catalog.md).
 
 ## Install the command
 
@@ -18,7 +18,7 @@ cargo install --locked fayde-cli
 ```
 
 To install a prebuilt binary for Linux, macOS, or Windows without Rust, see
-[Install the command-line tool](https://github.com/shaneryall/Fayde#install-the-command-line-tool).
+[Install the command-line tool](https://github.com/shaneryall/Fayde/blob/main/docs/install.md#install-the-command-line-tool).
 
 ## Use the command
 

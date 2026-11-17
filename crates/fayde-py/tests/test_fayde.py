@@ -191,6 +191,32 @@ def test_header_and_instrument_profile(solver, frame):
     assert r["priors"]["scale"]["origin"] == "instrument profile"
 
 
+def test_header_wcs_can_be_left_unread_and_a_profile_gives_the_pointing_error(solver, frame):
+    x, y, flux = frame
+    # A header WCS that points 40 degrees away, and pointing keywords that are right.
+    header = {"CTYPE1": "RA---TAN", "CTYPE2": "DEC--TAN", "CRVAL1": CRVAL[0] + 40.0,
+              "CRVAL2": CRVAL[1], "RA": CRVAL[0] + 0.01, "DEC": CRVAL[1] - 0.01,
+              "IMAGEW": SIZE, "IMAGEH": SIZE}
+    profile = {"name": "test camera", "scale_arcsec": SCALE, "scale_sigma_arcsec": 0.003,
+               "parity": "negative", "pointing_sigma_deg": 0.02, "pointing_radius_deg": 0.15}
+    r = solver.solve(x, y, flux=flux, header=header, instrument=profile, epoch=2000.0,
+                     no_header_wcs=True, deadline=20.0)
+    assert r["solved"], r.get("reason")
+    assert r["priors"]["pointing"]["origin"] == "RA/DEC"
+    assert r["priors"]["pointing"]["sigma_deg"] == 0.02
+    assert r["priors"]["pointing"]["radius_deg"] == 0.15
+    # 3 sigma is at most half the limit: the search starts close to the pointing.
+    assert r["search"][0]["stage"] == "pair seeds r<0.06°"
+    # The profile can ask for the same.
+    r = solver.solve(x, y, flux=flux, header=header, instrument={**profile, "header_wcs": False},
+                     epoch=2000.0, deadline=20.0)
+    assert r["solved"] and r["priors"]["pointing"]["origin"] == "RA/DEC"
+    # Read as it stands, the header's WCS is the pointing, and it is wrong.
+    r = solver.solve(x, y, flux=flux, header=header, instrument=profile, epoch=2000.0,
+                     deadline=20.0)
+    assert not r["solved"] and r["priors"]["pointing"]["origin"].startswith("CRVAL")
+
+
 def test_optional_columns_follow_the_source_list_rules(solver, frame):
     np = pytest.importorskip("numpy")
     x, y, flux = frame

@@ -75,6 +75,20 @@ pub struct InstrumentProfile {
     /// Binning from header keywords: scales `scale_arcsec` per frame.
     #[serde(default)]
     pub binning: Option<BinningRule>,
+    /// 1σ of the pointing a frame's header gives, degrees: how far the header's pointing is
+    /// from the true field centre, per axis. With it the search starts in a small cone around
+    /// the pointing and widens to the hard limit only when that finds nothing.
+    #[serde(default)]
+    pub pointing_sigma_deg: Option<f64>,
+    /// Hard limit on the pointing error, degrees: the search goes no farther from the header's
+    /// pointing.
+    #[serde(default)]
+    pub pointing_radius_deg: Option<f64>,
+    /// Whether a world coordinate system in a frame's header may supply the pointing and the
+    /// scale (the default). `false` for an instrument whose headers can carry a plate solver's
+    /// solution: the pointing then comes from the header's pointing keywords only.
+    #[serde(default)]
+    pub header_wcs: Option<bool>,
 }
 
 /// Priors an instrument profile gives for one frame.
@@ -128,6 +142,14 @@ impl InstrumentProfile {
         if let Some(p) = &self.parity {
             if parse_parity(p).is_none() {
                 return bad("parity must be \"negative\" or \"positive\"");
+            }
+        }
+        for (name, v) in [
+            ("pointing_sigma_deg", self.pointing_sigma_deg),
+            ("pointing_radius_deg", self.pointing_radius_deg),
+        ] {
+            if v.is_some_and(|v| !(v.is_finite() && v > 0.0)) {
+                return bad(&format!("{name} must be positive"));
             }
         }
         if let Some(r) = &self.roll {
@@ -231,5 +253,20 @@ mod tests {
         assert!(b.priors(&Header::default()).scale.is_none());
         let bad: InstrumentProfile = serde_json::from_str(r#"{"parity": "sideways"}"#).unwrap();
         assert!(bad.validate().is_err());
+        // Pointing uncertainty and the header-WCS switch are optional and validated.
+        assert_eq!(
+            (p.pointing_sigma_deg, p.pointing_radius_deg, p.header_wcs),
+            (None, None, None)
+        );
+        let q = InstrumentProfile::from_json(
+            r#"{"pointing_sigma_deg": 0.02, "pointing_radius_deg": 1.5, "header_wcs": false}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            (q.pointing_sigma_deg, q.pointing_radius_deg, q.header_wcs),
+            (Some(0.02), Some(1.5), Some(false))
+        );
+        assert!(InstrumentProfile::from_json(r#"{"pointing_sigma_deg": 0}"#).is_err());
+        assert!(InstrumentProfile::from_json(r#"{"pointing_radius_deg": -1}"#).is_err());
     }
 }

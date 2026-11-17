@@ -5,6 +5,8 @@ from typing import List, Optional, Tuple
 __version__: str
 commit: str
 
+def cli_main(args: List[str]) -> int: ...
+
 def detect(
     path: Optional[str], data: Optional[bytes], width: int, height: int, options_json: str
 ) -> str: ...

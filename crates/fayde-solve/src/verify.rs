@@ -28,7 +28,8 @@
 //! random list is just its own seed stars.
 
 use fayde_core::Portable;
-use fayde_index::kdtree::KdTree;
+
+use crate::grid::Grid;
 
 /// A ranked source prepared for verification.
 #[derive(Debug, Clone, Copy)]
@@ -87,7 +88,9 @@ pub(crate) fn assess(
     seed: &[usize],
 ) -> Assessment {
     let n_ref = refs.len().max(1) as f64;
-    let tree = KdTree::build(refs.iter().map(|r| r.px).collect());
+    let grid = Grid::build(refs.iter().map(|r| r.px).collect());
+    let mut cands = Vec::new();
+    let mut ranked: Vec<(f64, usize)> = Vec::new();
     let mut used = vec![false; refs.len()];
     let mut log_odds = 0.0;
     let mut best = f64::NEG_INFINITY;
@@ -124,10 +127,17 @@ pub(crate) fn assess(
             let (a, c) = comb(k);
             (da / a).ppowi(2) + (dc / c).ppowi(2)
         };
-        let mut cands = tree.within(s.px, 5.0 * sigma_along.phypot(max_ref_sigma));
-        cands.retain(|&k| m2(k) <= 25.0);
-        cands.sort_by(|&a, &b| m2(a).total_cmp(&m2(b)).then(a.cmp(&b)));
-        match cands.into_iter().find(|&k| !used[k]) {
+        grid.within(s.px, 5.0 * sigma_along.phypot(max_ref_sigma), &mut cands);
+        // Nearest first in units of the combined error, each distance worked out once.
+        ranked.clear();
+        ranked.extend(
+            cands
+                .iter()
+                .map(|&k| (m2(k), k))
+                .filter(|&(m, _)| m <= 25.0),
+        );
+        ranked.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)));
+        match ranked.iter().map(|&(_, k)| k).find(|&k| !used[k]) {
             Some(k) => {
                 let (sa_k, sc_k) = comb(k);
                 let (da, dc) = split(k);

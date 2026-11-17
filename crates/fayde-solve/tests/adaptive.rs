@@ -158,3 +158,61 @@ fn indexes_that_cannot_cover_the_pointing_are_skipped() {
         Outcome::Solved(_) => panic!("solved far outside the index region"),
     }
 }
+
+/// A pointing known far better than its hard limit is searched close in first: within 3σ when
+/// that is at most half the limit. The seeds of that look come from a small cone, and a field
+/// a little outside it is still found from the stars it shares with the cone.
+#[test]
+fn a_small_pointing_sigma_searches_close_to_the_pointing_first() {
+    let (cat, mut f, _) = setup();
+    let mut pt = f.request.priors.pointing.unwrap();
+    pt.max_radius = 2f64.to_radians();
+    // The truth is 0.2° from the prior: outside 3σ = 0.06°, well inside the frame around it.
+    pt.sigma = 0.02f64.to_radians();
+    f.request.priors.pointing = Some(pt);
+    let sol = solved(solve_auto(&f.request, &cat, &[]).unwrap());
+    let s = stages(&sol);
+    eprintln!("small sigma: {s:?}");
+    assert_eq!(s, ["pair seeds r<0.06°"]);
+    assert_eq!(sol.method, SolveMethod::PairSeeds);
+    assert!(!sol.prior_violated);
+    accurate(&sol, &f);
+
+    // A σ of more than a sixth of the limit: no first look, one search to the limit.
+    pt.sigma = 0.4f64.to_radians();
+    f.request.priors.pointing = Some(pt);
+    let wide = solved(solve_auto(&f.request, &cat, &[]).unwrap());
+    assert_eq!(stages(&wide), ["pair seeds r<2.00°"]);
+    accurate(&wide, &f);
+    // Both searches end at the same field.
+    let p = PixelPos::new(0.0, 0.0);
+    let apart = to_arcsec(sol.wcs.pixel_to_sky(p).separation(wide.wcs.pixel_to_sky(p)));
+    assert!(apart < 0.5, "{apart}″ between the two solutions");
+    // A σ of zero says nothing about the pointing's spread: no first look either.
+    pt.sigma = 0.0;
+    f.request.priors.pointing = Some(pt);
+    let flat = solved(solve_auto(&f.request, &cat, &[]).unwrap());
+    assert_eq!(stages(&flat), ["pair seeds r<2.00°"]);
+}
+
+/// A pointing in the tail of its error: the first look finds nothing and the search to the
+/// hard limit solves the frame.
+#[test]
+fn a_pointing_in_the_tail_is_found_by_the_search_to_the_limit() {
+    let (cat, mut f, _) = setup();
+    // 1.6° from the truth: the frame (0.6° to its corners) shares no star with a first look
+    // of 0.15° around the pointing.
+    f.request.priors.pointing = Some(PointingPrior {
+        centre: SkyPos::from_degrees(CENTRE.0 + 1.6, CENTRE.1).unwrap(),
+        sigma: 0.05f64.to_radians(),
+        max_radius: 2f64.to_radians(),
+    });
+    let sol = solved(solve_auto(&f.request, &cat, &[]).unwrap());
+    let s = stages(&sol);
+    eprintln!("pointing in the tail: {s:?}");
+    assert_eq!(s, ["pair seeds r<0.15°", "pair seeds r<2.00°"]);
+    assert_eq!(sol.search[0].outcome, "exhausted");
+    assert_eq!(sol.search[1].outcome, "solved");
+    assert!(!sol.prior_violated);
+    accurate(&sol, &f);
+}

@@ -10,6 +10,9 @@
 
 mod at;
 mod fit;
+mod grid;
+mod hash;
+mod refset;
 mod request;
 mod solve;
 mod verify;

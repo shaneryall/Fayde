@@ -14,7 +14,7 @@ To use the package, you need the following:
   to install it.
 - A local copy of the UCAC4 catalog. The catalog isn't included with this package.
   For download instructions, see
-  [Get the UCAC4 catalog](https://github.com/shaneryall/Fayde#get-the-ucac4-catalog).
+  [Get the UCAC4 catalog](https://github.com/shaneryall/Fayde/blob/main/docs/catalog.md).
 
 To install the package from PyPI, follow these steps:
 
@@ -26,8 +26,11 @@ To install the package from PyPI, follow these steps:
    python -m pip install fayde
    ```
 
+   The package also installs the `fayde` command. It runs the same code as the release
+   binaries.
+
 For more information about installation, see
-[Install the Python package](https://github.com/shaneryall/Fayde#install-the-python-package).
+[Install the Python package](https://github.com/shaneryall/Fayde/blob/main/docs/install.md#install-the-python-package).
 
 ## Solve a frame
 

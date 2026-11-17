@@ -79,7 +79,7 @@ binaries:linux:
     # glibc 2.17 floor, as the manylinux2014 wheels.
     - for t in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu; do
         cargo zigbuild --release -p fayde-cli --target $t.2.17 || exit 1;
-        tar -czf "dist/fayde-${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}-$t.tar.gz" -C target/$t/release fayde -C "$CI_PROJECT_DIR" README.md CHANGELOG.md LICENSE NOTICE THIRD-PARTY-LICENSES.md CITATION.cff docs/index-set.md docs/source-list.md profiles || exit 1;
+        tar -czf "dist/fayde-${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}-$t.tar.gz" -C target/$t/release fayde -C "$CI_PROJECT_DIR" README.md CHANGELOG.md LICENSE NOTICE THIRD-PARTY-LICENSES.md CITATION.cff docs/*.md profiles || exit 1;
       done
     - ls -l dist
   artifacts:
