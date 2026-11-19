@@ -91,20 +91,16 @@ def test_detect_finds_stars_in_an_array():
     r = fayde.detect(img)
     assert r["count"] == 3, r["count"]
     found = sorted((s["x"], s["y"]) for s in r["sources"])
-    # Array row 0 is FITS row 1: a star at column 70.3, row 50.6 is FITS (71.3, 51.6).
     want = sorted((x + 1, y + 1) for x, y, _ in stars)
     for (fx, fy), (wx, wy) in zip(found, want):
         assert abs(fx - wx) < 0.05 and abs(fy - wy) < 0.05
-    # The hot pixel is set aside as "sharp", at FITS (11, 11).
     assert r["classes"]["sharp"] >= 1 and r["rejected_narrow"] == r["classes"]["sharp"]
     assert any(
         s["class"] == "sharp" and abs(s["x"] - 11) < 1 and abs(s["y"] - 11) < 1 for s in r["rejected"]
     )
     assert all(s["class"] == "star" and s["p_star"] > 0.9 for s in r["sources"])
     assert r["streaks"] == []
-    # The stars' width is measured from the three stars.
     assert r["fwhm_estimated"] is True and abs(r["fwhm_px"] - 3.0) < 0.3
-    # A float32 array and a masked array work too.
     assert fayde.detect(img.astype(np.float32))["count"] == 3
     masked = np.ma.masked_array(img, mask=np.zeros_like(img, bool))
     masked.mask[0:5, :] = True

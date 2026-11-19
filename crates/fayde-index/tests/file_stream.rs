@@ -1,6 +1,3 @@
-//! Reading and writing index files as streams: round trip, every rejection case, and the
-//! version 1 layout. Uses a small synthetic index, so it runs without catalogue data.
-
 use fayde_catalog::{CatalogId, Star};
 use fayde_core::SkyPos;
 use fayde_index::{build, BuildParams, Index, IndexFileError};
@@ -40,7 +37,6 @@ fn fnv(bytes: &[u8]) -> u64 {
     })
 }
 
-/// Replace the trailing hash with the hash of the (edited) content.
 fn rehash(bytes: &mut Vec<u8>) {
     let content = bytes.len() - 8;
     let h = fnv(&bytes[..content]);
@@ -48,12 +44,10 @@ fn rehash(bytes: &mut Vec<u8>) {
     bytes.extend(h.to_le_bytes());
 }
 
-/// Offset of the star count: magic, version, metadata length, metadata.
 fn star_count_at(bytes: &[u8]) -> usize {
     16 + u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize
 }
 
-/// A scratch file holding `bytes`, removed on drop.
 struct Scratch(std::path::PathBuf);
 
 impl Scratch {
@@ -71,7 +65,6 @@ impl Drop for Scratch {
     }
 }
 
-/// The error text of reading `bytes`, which must be the same from memory and from a file.
 fn rejection(tag: &str, bytes: &[u8]) -> String {
     let from_memory = Index::from_bytes(bytes).unwrap_err();
     let file = Scratch::new(tag, bytes);
@@ -89,7 +82,6 @@ fn round_trip_through_a_file_and_through_bytes() {
     let file = Scratch::new("round", &[]);
     index.write(&file.0).unwrap();
     let bytes = std::fs::read(&file.0).unwrap();
-    // Layout: content, then the FNV-1a 64 of the content, which is the content hash.
     assert_eq!(
         u64::from_le_bytes(bytes[bytes.len() - 8..].try_into().unwrap()),
         index.content_hash()
@@ -102,7 +94,6 @@ fn round_trip_through_a_file_and_through_bytes() {
         assert_eq!(back, index);
         assert_eq!(back.content_hash(), index.content_hash());
     }
-    // Writing again over an existing file gives the same bytes.
     index.write(&file.0).unwrap();
     assert_eq!(std::fs::read(&file.0).unwrap(), bytes);
 }
@@ -114,7 +105,6 @@ fn damaged_files_are_rejected_before_parsing() {
     index.write(&file.0).unwrap();
     let good = std::fs::read(&file.0).unwrap();
 
-    // One flipped bit anywhere: header, metadata, star table, slot table, the hash itself.
     let stars_at = star_count_at(&good);
     for at in [
         9,
@@ -129,18 +119,15 @@ fn damaged_files_are_rejected_before_parsing() {
         bad[at] ^= 0x01;
         assert!(rejection("flip", &bad).contains("hash"), "byte {at}");
     }
-    // Truncated: at the end, in the middle, down to less than a header.
     for keep in [good.len() - 1, good.len() - 100, good.len() / 2, 40, 16] {
         assert!(rejection("short", &good[..keep]).contains("hash"), "{keep}");
     }
     for keep in [15, 8, 0] {
         assert_eq!(rejection("tiny", &good[..keep]), "not a Fayde index file");
     }
-    // Extra bytes after the hash.
     let mut longer = good.clone();
     longer.extend([0u8; 5]);
     assert!(rejection("long", &longer).contains("hash"));
-    // Not an index at all.
     let mut other = good.clone();
     other[0] = b'X';
     assert_eq!(rejection("magic", &other), "not a Fayde index file");
@@ -152,8 +139,6 @@ fn damaged_files_are_rejected_before_parsing() {
 
 #[test]
 fn intact_hash_over_a_broken_structure_is_still_rejected() {
-    // Files whose hash matches their content but whose content is inconsistent. Counts are
-    // checked against what the file holds, so a wrong count cannot trigger a huge allocation.
     let index = index();
     let file = Scratch::new("structure", &[]);
     index.write(&file.0).unwrap();
@@ -168,19 +153,15 @@ fn intact_hash_over_a_broken_structure_is_still_rejected() {
         rehash(&mut b);
         b
     };
-    // Star count far beyond the file.
     let b = edit(&|b| b[stars_at..stars_at + 8].copy_from_slice(&u64::MAX.to_le_bytes()));
     assert_eq!(rejection("stars", &b), "truncated");
-    // Slot count one too many, and far too many.
     let m = u64::from_le_bytes(good[slots_at..slots_at + 8].try_into().unwrap());
     for count in [m + 1, u64::MAX / 2] {
         let b = edit(&|b| b[slots_at..slots_at + 8].copy_from_slice(&count.to_le_bytes()));
         assert_eq!(rejection("slots", &b), "truncated");
     }
-    // Slot count one too few: bytes are left over.
     let b = edit(&|b| b[slots_at..slots_at + 8].copy_from_slice(&(m - 1).to_le_bytes()));
     assert_eq!(rejection("leftover", &b), "trailing bytes after slot table");
-    // A pattern naming a star that does not exist.
     let first_used = (0..m as usize)
         .map(|k| slots_at + 8 + 22 * k)
         .find(|&at| good[at..at + 4] != u32::MAX.to_le_bytes())
@@ -190,7 +171,6 @@ fn intact_hash_over_a_broken_structure_is_still_rejected() {
         rejection("star", &b),
         "pattern refers to a star outside the star table"
     );
-    // An unknown format version, and metadata that is not JSON.
     let b = edit(&|b| b[8..12].copy_from_slice(&9u32.to_le_bytes()));
     assert!(rejection("version", &b).starts_with("format version 9"));
     let b = edit(&|b| b[16] = b'!');
@@ -199,7 +179,6 @@ fn intact_hash_over_a_broken_structure_is_still_rejected() {
 
 #[test]
 fn version_1_files_still_read() {
-    // Version 1 has no flags byte per star (36-byte records): every star is a pattern star.
     let index = index();
     let file = Scratch::new("v2", &[]);
     index.write(&file.0).unwrap();
@@ -222,6 +201,10 @@ fn version_1_files_still_read() {
         Index::read(&old.0).unwrap(),
         Index::from_bytes(&v1).unwrap(),
     ] {
+        assert_eq!(
+            back.content_hash(),
+            u64::from_le_bytes(v1[v1.len() - 8..].try_into().unwrap())
+        );
         assert_eq!(back.stars().len(), n);
         assert!(back.stars().iter().all(|s| s.pattern));
         for (a, b) in back.stars().iter().zip(index.stars()) {

@@ -1,15 +1,3 @@
-//! FITS input and output for Fayde (FITS Standard 4.0, Pence et al. 2010 for 3.0).
-//!
-//! - [`FitsFile`]: header-and-data units of a FITS file, read without external libraries.
-//! - [`read_image`]: a 2-D image as `f32`, for source extraction.
-//! - [`write_sources`]: write sources as such a table (X, Y, FLUX, SIGMA, P_STAR, TRUNCATED).
-//! - [`read_sources`]: a source list from a FITS binary table (Fayde's format, `frame.sources.fits`: any table
-//!   with `X`/`Y` columns), converted from FITS 1-based to Fayde's zero-based pixels.
-//! - [`header_priors`]: pointing, pixel scale and observation epoch from an image header, with
-//!   strict validation.
-//! - [`write_wcs_file`]: a header-only FITS file holding a solved WCS, like `solve-field`'s
-//!   `.wcs` output.
-
 #![forbid(unsafe_code)]
 
 mod image;
@@ -19,22 +7,25 @@ mod sources;
 
 use std::{fmt, path::Path};
 
-use fayde_wcs::Header;
+use fayde_wcs::{Header, Value};
 
-pub use image::{image_from_file, read_image, Image};
+pub use image::{image_from_file, read_image, read_image_header, Image};
 pub use instrument::{parse_parity, InstrumentPriors, InstrumentProfile, RollRule};
-pub use priors::{header_priors, mjd_from_iso, parse_sexagesimal, HeaderPriors};
+pub use priors::{
+    header_priors, header_priors_for_size, mjd_from_iso, parse_sexagesimal, HeaderPriors,
+};
 pub use sources::{file_kind, read_sources, write_sources, FileKind, SourceList};
+
+fn pixel_dimension(value: f64) -> Option<u32> {
+    (value.fract() == 0.0 && (1.0..=f64::from(u32::MAX)).contains(&value)).then_some(value as u32)
+}
 
 const BLOCK: usize = 2880;
 const CARD: usize = 80;
 
-/// Errors reading or writing FITS.
 #[derive(Debug)]
 pub enum FitsError {
-    /// I/O failure.
     Io(std::io::Error),
-    /// The file is not valid FITS or lacks what was asked for.
     Invalid(String),
 }
 
@@ -47,7 +38,14 @@ impl fmt::Display for FitsError {
     }
 }
 
-impl std::error::Error for FitsError {}
+impl std::error::Error for FitsError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Io(e) => Some(e),
+            _ => None,
+        }
+    }
+}
 
 impl From<std::io::Error> for FitsError {
     fn from(e: std::io::Error) -> Self {
@@ -55,32 +53,46 @@ impl From<std::io::Error> for FitsError {
     }
 }
 
-/// One header-and-data unit.
 #[derive(Debug, Clone)]
 pub struct Hdu {
-    /// Parsed header values.
     pub header: Header,
-    /// Raw card images, in order.
     pub cards: Vec<String>,
-    /// Byte range of the data in the file.
     pub data: std::ops::Range<usize>,
 }
 
 impl Hdu {
-    /// `XTENSION` value (`None` for the primary HDU).
     pub fn xtension(&self) -> Option<&str> {
         self.header.get("XTENSION").and_then(|v| v.as_str())
     }
 
-    fn int(&self, key: &str) -> Option<i64> {
+    fn number(&self, key: &str) -> Result<Option<f64>, FitsError> {
         self.header
-            .get(key)
-            .and_then(|v| v.as_f64())
-            .map(|v| v as i64)
+            .number(key)
+            .map_err(|e| FitsError::Invalid(e.to_string()))
+    }
+
+    fn int(&self, key: &str) -> Result<Option<i64>, FitsError> {
+        match self
+            .header
+            .get_checked(key)
+            .map_err(|e| FitsError::Invalid(e.to_string()))?
+        {
+            Some(Value::Int(value)) => Ok(Some(*value)),
+            None => Ok(None),
+            Some(_) => Err(FitsError::Invalid(format!("{key} must be an integer"))),
+        }
+    }
+
+    fn dimension(&self, key: &str, default: usize) -> Result<usize, FitsError> {
+        match self.int(key)? {
+            Some(value) => {
+                usize::try_from(value).map_err(|_| FitsError::Invalid(format!("{key} = {value}")))
+            }
+            None => Ok(default),
+        }
     }
 }
 
-/// A FITS file held in memory.
 #[derive(Debug, Clone)]
 pub struct FitsFile {
     bytes: Vec<u8>,
@@ -88,12 +100,10 @@ pub struct FitsFile {
 }
 
 impl FitsFile {
-    /// Read and index a FITS file.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, FitsError> {
         Self::from_bytes(std::fs::read(path)?)
     }
 
-    /// Index FITS bytes.
     pub fn from_bytes(bytes: Vec<u8>) -> Result<Self, FitsError> {
         let mut hdus = Vec::new();
         let mut at = 0usize;
@@ -128,30 +138,24 @@ impl FitsFile {
                 data: pos..pos,
             };
             let bitpix = hdu
-                .int("BITPIX")
+                .int("BITPIX")?
                 .ok_or_else(|| FitsError::Invalid("no BITPIX".into()))?;
             if ![8, 16, 32, 64, -32, -64].contains(&bitpix) {
                 return Err(FitsError::Invalid(format!("BITPIX = {bitpix}")));
             }
-            let naxis = hdu.int("NAXIS").unwrap_or(0);
+            let naxis = hdu.int("NAXIS")?.unwrap_or(0);
             if !(0..=999).contains(&naxis) {
                 return Err(FitsError::Invalid(format!("NAXIS = {naxis}")));
             }
-            // Sizes come from the file: every step is checked, so a hostile header gives an
-            // error rather than an overflow and an out-of-range slice.
             let too_big = || FitsError::Invalid("data size overflows".into());
-            let dim = |k: &str, default: i64| -> Result<usize, FitsError> {
-                let v = hdu.int(k).unwrap_or(default);
-                usize::try_from(v).map_err(|_| FitsError::Invalid(format!("{k} = {v}")))
-            };
             let mut n: usize = if naxis == 0 { 0 } else { 1 };
             for k in 1..=naxis {
                 n = n
-                    .checked_mul(dim(&format!("NAXIS{k}"), 0)?)
+                    .checked_mul(hdu.dimension(&format!("NAXIS{k}"), 0)?)
                     .ok_or_else(too_big)?;
             }
-            let pcount = dim("PCOUNT", 0)?;
-            let gcount = dim("GCOUNT", 1)?.max(1);
+            let pcount = hdu.dimension("PCOUNT", 0)?;
+            let gcount = hdu.dimension("GCOUNT", 1)?.max(1);
             let len = (bitpix.unsigned_abs() as usize / 8)
                 .checked_mul(gcount)
                 .and_then(|v| v.checked_mul(pcount.checked_add(n)?))
@@ -176,17 +180,14 @@ impl FitsFile {
         Ok(Self { bytes, hdus })
     }
 
-    /// All HDUs.
     pub fn hdus(&self) -> &[Hdu] {
         &self.hdus
     }
 
-    /// Primary header.
     pub fn primary(&self) -> &Hdu {
         &self.hdus[0]
     }
 
-    /// Data bytes of an HDU.
     pub fn data(&self, hdu: &Hdu) -> &[u8] {
         &self.bytes[hdu.data.clone()]
     }
@@ -200,11 +201,16 @@ pub(crate) fn pad_card(s: &str) -> String {
     c
 }
 
-/// Write a header-only FITS file: `SIMPLE`, `BITPIX = 8`, `NAXIS = 0`, then `cards` (80-character
-/// images, e.g. from [`fayde_wcs::Wcs::to_cards`]), then `END`. The file is written to a temporary
-/// name in the same directory and renamed into place.
 pub fn write_wcs_file(path: impl AsRef<Path>, cards: &[String]) -> Result<(), FitsError> {
     let path = path.as_ref();
+    if cards
+        .iter()
+        .any(|card| !card.bytes().all(|b| (b' '..=b'~').contains(&b)))
+    {
+        return Err(FitsError::Invalid(
+            "header cards must contain printable ASCII".into(),
+        ));
+    }
     let mut text = String::new();
     for c in [
         "SIMPLE  =                    T / conforms to FITS standard",
@@ -221,22 +227,9 @@ pub fn write_wcs_file(path: impl AsRef<Path>, cards: &[String]) -> Result<(), Fi
     while text.len() % BLOCK != 0 {
         text.push(' ');
     }
-    let (mut f, tmp) = fayde_core::fsutil::create_temp_beside(path)?;
-    let write = || -> std::io::Result<()> {
-        use std::io::Write;
-        f.write_all(text.as_bytes())?;
-        f.sync_all()?;
-        drop(f);
-        std::fs::rename(&tmp, path)
-    };
-    // A failed write must not leave the temporary file behind.
-    write().map_err(|e| {
-        let _ = std::fs::remove_file(&tmp);
-        FitsError::from(e)
-    })
+    fayde_core::fsutil::write_atomic(path, text.as_bytes()).map_err(FitsError::from)
 }
 
-/// A comment card (`COMMENT text`), wrapped at 72 characters.
 pub fn comment_cards(text: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut line = String::new();
@@ -248,7 +241,13 @@ pub fn comment_cards(text: &str) -> Vec<String> {
         if !line.is_empty() {
             line.push(' ');
         }
-        line.push_str(word);
+        for c in word.chars() {
+            if line.len() == 72 {
+                out.push(format!("COMMENT {line}"));
+                line.clear();
+            }
+            line.push(if c.is_ascii_graphic() { c } else { '?' });
+        }
     }
     if !line.is_empty() {
         out.push(format!("COMMENT {line}"));

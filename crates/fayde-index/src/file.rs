@@ -1,19 +1,3 @@
-//! Index file format, version 1. All integers little-endian.
-//!
-//! ```text
-//! magic        8  b"FAYDEIDX"
-//! version      u32
-//! meta_len     u32
-//! meta         meta_len bytes, JSON (IndexMeta)
-//! star_count   u64
-//! stars        star_count × { x f64, y f64, z f64, mag f32, id u64, flags u8 } (37 bytes;
-//!              flags bit 0 = pattern tier). Version 1 files lack `flags`; all their stars
-//!              count as pattern stars.
-//! slot_count   u64
-//! slots        slot_count × { s0 u32, s1 u32, s2 u32, s3 u32, check u16, largest f32 } (22 bytes)
-//! hash         u64   FNV-1a 64 of every preceding byte (Fowler–Noll–Vo; IETF draft-eastlake-fnv)
-//! ```
-
 use std::{
     fmt,
     io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write},
@@ -26,19 +10,13 @@ use crate::{
 };
 
 const MAGIC: &[u8; 8] = b"FAYDEIDX";
-/// Bytes of one slot record.
 const SLOT_BYTES: usize = 22;
-/// Chunk size for streamed hashing and serialization.
 const CHUNK: usize = 1 << 16;
-/// Buffer size of file readers and writers.
 const FILE_BUFFER: usize = 1 << 20;
 
-/// Errors reading or writing an index file.
 #[derive(Debug)]
 pub enum IndexFileError {
-    /// I/O failure.
     Io(PathBuf, std::io::Error),
-    /// Not a Fayde index, wrong version, truncated, or corrupted.
     Invalid(PathBuf, String),
 }
 
@@ -51,7 +29,14 @@ impl fmt::Display for IndexFileError {
     }
 }
 
-impl std::error::Error for IndexFileError {}
+impl std::error::Error for IndexFileError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Io(_, e) => Some(e),
+            _ => None,
+        }
+    }
+}
 
 struct Fnv(u64);
 
@@ -67,9 +52,6 @@ impl Fnv {
     }
 }
 
-/// Feed the serialized index to `sink` in chunks: every byte the trailing hash covers, in file
-/// order. Nothing is materialized. The slot table of an all-sky index is tens of gigabytes, and
-/// a copy of it used to be the largest single allocation of a build.
 fn emit<E>(index: &Index, mut sink: impl FnMut(&[u8]) -> Result<(), E>) -> Result<(), E> {
     let meta = serde_json::to_vec(&index.meta).expect("metadata serializes");
     let mut b: Vec<u8> = Vec::with_capacity(CHUNK + 64);
@@ -117,13 +99,11 @@ pub(crate) fn content_hash(index: &Index) -> u64 {
     }
 }
 
-/// Why parsing stopped.
 enum ParseError {
     Io(std::io::Error),
     Invalid(String),
 }
 
-/// A reader over the hashed content of an index file, counting what is left of it.
 struct Input<R> {
     r: R,
     left: u64,
@@ -149,17 +129,14 @@ impl<R: Read> Input<R> {
     fn u64(&mut self) -> Result<u64, ParseError> {
         self.arr().map(u64::from_le_bytes)
     }
-    /// How many `size`-byte records the remaining content can hold.
     fn room_for(&self, size: usize) -> usize {
         usize::try_from(self.left / size as u64).unwrap_or(usize::MAX)
     }
 }
 
-/// Parse the content of an index file (everything before the trailing hash, which the caller
-/// has verified), reading it once, front to back.
-fn parse<R: Read>(r: &mut Input<R>) -> Result<Index, ParseError> {
+fn parse<R: Read>(r: &mut Input<R>, content_hash: u64) -> Result<Index, ParseError> {
     let invalid = ParseError::Invalid;
-    r.arr::<8>()?; // magic, checked by the caller
+    r.arr::<8>()?;
     let version = r.u32()?;
     if version != FORMAT_VERSION && version != 1 {
         return Err(invalid(format!(
@@ -218,8 +195,6 @@ fn parse<R: Read>(r: &mut Input<R>) -> Result<Index, ParseError> {
     if table.len() != meta.pattern_count || n != meta.star_count {
         return Err(invalid("counts disagree with metadata".into()));
     }
-    // A matching checksum proves the bytes are as written, not that they are usable: check the
-    // invariants lookups rely on.
     if !(2..=crate::pattern::MAX_BINS).contains(&meta.bins) {
         return Err(invalid(format!(
             "bins = {} outside 2..={}",
@@ -227,12 +202,16 @@ fn parse<R: Read>(r: &mut Input<R>) -> Result<Index, ParseError> {
             crate::pattern::MAX_BINS
         )));
     }
-    Ok(Index::new(meta, stars, table))
+    Ok(Index {
+        meta,
+        stars,
+        table,
+        content_hash,
+        tree: Default::default(),
+    })
 }
 
 impl Index {
-    /// Write to a file (atomically: a temporary file in the same directory, then rename). The
-    /// bytes are streamed; memory use does not grow with the index.
     pub fn write(&self, path: impl AsRef<Path>) -> Result<(), IndexFileError> {
         let path = path.as_ref();
         let (file, tmp) = fayde_core::fsutil::create_temp_beside(path)
@@ -249,16 +228,12 @@ impl Index {
             file.sync_all()?;
             std::fs::rename(&tmp, path)
         };
-        // A failed write must not leave the temporary file behind: it can be tens of GB.
         write().map_err(|e| {
             let _ = std::fs::remove_file(&tmp);
             IndexFileError::Io(path.into(), e)
         })
     }
 
-    /// Read and verify a file. Two streamed passes: the hash first, so no count in the file is
-    /// trusted before the file is known to be intact, then the content. The file is never held
-    /// in memory next to the index built from it.
     pub fn read(path: impl AsRef<Path>) -> Result<Self, IndexFileError> {
         let path = path.as_ref();
         let io = |e| IndexFileError::Io(path.into(), e);
@@ -294,13 +269,12 @@ impl Index {
             r: BufReader::with_capacity(FILE_BUFFER, file),
             left: content,
         };
-        parse(&mut input).map_err(|e| match e {
+        parse(&mut input, h.0).map_err(|e| match e {
             ParseError::Io(e) => io(e),
             ParseError::Invalid(s) => invalid(&s),
         })
     }
 
-    /// Parse and verify file bytes.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
         if bytes.len() < 8 + 8 || &bytes[..8] != MAGIC {
             return Err("not a Fayde index file".into());
@@ -316,7 +290,7 @@ impl Index {
             r: content,
             left: content.len() as u64,
         };
-        parse(&mut input).map_err(|e| match e {
+        parse(&mut input, h.0).map_err(|e| match e {
             ParseError::Io(e) => e.to_string(),
             ParseError::Invalid(s) => s,
         })

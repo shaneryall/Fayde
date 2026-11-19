@@ -1,22 +1,11 @@
 use std::fmt;
 
-/// Errors building a WCS or reading one from a FITS header.
 #[derive(Debug, Clone, PartialEq)]
 pub enum WcsError {
-    /// A required value was NaN or infinite.
     NonFinite(&'static str),
-    /// The CD matrix is singular, so pixels cannot be recovered from sky positions.
     SingularMatrix,
-    /// A required header keyword is missing.
     MissingKey(String),
-    /// A header keyword has the wrong type or an unparseable value.
-    InvalidValue {
-        /// Keyword.
-        key: String,
-        /// What was wrong.
-        reason: String,
-    },
-    /// The header describes something this crate does not support (yet).
+    InvalidValue { key: String, reason: String },
     Unsupported(String),
 }
 

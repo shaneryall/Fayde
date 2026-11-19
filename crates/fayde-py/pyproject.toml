@@ -8,7 +8,6 @@ description = "Astrometric plate solver: a verified WCS from a source list, agai
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
-# Copies of the root files (CI checks they match): the wheel must carry all three.
 license-files = ["LICENSE", "NOTICE", "THIRD-PARTY-LICENSES.md"]
 authors = [{ name = "Shane Ryall" }]
 keywords = ["astronomy", "astrometry", "plate solving", "WCS", "FITS", "UCAC4"]
@@ -29,7 +28,6 @@ dynamic = ["version"]
 dependencies = []
 
 [project.scripts]
-# The same command as the release binaries: `fayde_cli::run`, through the extension module.
 fayde = "fayde._cli:main"
 
 [project.urls]

@@ -1,17 +1,3 @@
-//! `fayde calibrate`: an instrument profile from frames Fayde has solved.
-//!
-//! ```text
-//! fayde calibrate --solved <list> [--roll-keyword <KEY>] [--binning <XKEY>[,<YKEY>]]
-//!                 [--name <text>] [--no-header-wcs] [-o <profile.json>]
-//! ```
-//!
-//! `<list>` is a text file with one solved frame per line: the frame's FITS file (for its
-//! header), a tab, and the WCS file of its solution (`fayde solve -o`). Blank lines and lines
-//! starting with `#` are skipped. The profile (JSON) goes to stdout, and to `-o` when given.
-//!
-//! A profile needs no other solver: solve some frames with their pointing and a nominal scale
-//! (`--scale`), then calibrate from those solutions.
-
 use fayde_api::{calibrate_profile, CalibrateOptions, SolvedFrame};
 use fayde_fits::{header_priors, FitsFile};
 use fayde_wcs::Wcs;
@@ -31,6 +17,7 @@ pub(crate) fn run(args: &[&str]) -> Result<(), String> {
     let out_path = o.get("o").or_else(|| o.get("output"));
     if let Some(path) = out_path {
         crate::check_output_path(path)?;
+        crate::check_output_against_input(path, list_path, "the --solved input")?;
     }
     let binning = o.get("binning").map(|v| {
         let mut keys = v.split(',').map(|k| k.trim().to_ascii_uppercase());
@@ -52,11 +39,14 @@ pub(crate) fn run(args: &[&str]) -> Result<(), String> {
             .map(|(a, b)| (a.trim(), b.trim()))
             .filter(|(a, b)| !a.is_empty() && !b.is_empty())
             .ok_or_else(|| at("expected the frame's FITS file, a tab, and its WCS file"))?;
-        let header = FitsFile::open(frame)
-            .map_err(|e| at(&format!("{frame}: {e}")))?
-            .primary()
-            .header
-            .clone();
+        if let Some(path) = out_path {
+            crate::check_output_against_input(path, frame, "a frame in the --solved list")
+                .map_err(|e| at(&e))?;
+            crate::check_output_against_input(path, wcs, "a WCS in the --solved list")
+                .map_err(|e| at(&e))?;
+        }
+        let header =
+            fayde_fits::read_image_header(frame).map_err(|e| at(&format!("{frame}: {e}")))?;
         let (width, height) = header_priors(&header).size.ok_or_else(|| {
             at(&format!(
                 "{frame}: no image size (NAXIS1, NAXIS2) in its header"
@@ -84,7 +74,8 @@ pub(crate) fn run(args: &[&str]) -> Result<(), String> {
     let text = serde_json::to_string_pretty(&profile).expect("json");
     crate::out(&text)?;
     if let Some(path) = out_path {
-        std::fs::write(path, format!("{text}\n")).map_err(|e| format!("{path}: {e}"))?;
+        fayde_core::fsutil::write_atomic(path.as_ref(), format!("{text}\n").as_bytes())
+            .map_err(|e| format!("{path}: {e}"))?;
     }
     Ok(())
 }

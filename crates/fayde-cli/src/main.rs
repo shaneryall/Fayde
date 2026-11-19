@@ -1,5 +1,3 @@
-//! The `fayde` binary. All of the command lives in the library, [`fayde_cli::run`].
-
 use std::process::ExitCode;
 
 fn main() -> ExitCode {

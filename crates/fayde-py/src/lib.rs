@@ -1,10 +1,3 @@
-//! Python bindings: `fayde._native`, wrapped by the pure-Python `fayde` package.
-//!
-//! The Python side passes sources as float lists and every other option as one JSON object
-//! (`Opts`); this module turns them into a [`fayde_api::RequestOptions`], runs the solver with
-//! the GIL released, and returns the report as JSON text: the same report `fayde solve`,
-//! `fayde verify` and `fayde refit` print.
-
 use std::time::Duration;
 
 use fayde_api::{build_request, AtCheck, AtPosition, RequestOptions, Solver as ApiSolver};
@@ -17,7 +10,6 @@ use pyo3::prelude::*;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
-/// A header given as a mapping (`{"CRVAL1": 81.07, ...}`) or as 80-character cards.
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum HeaderIn {
@@ -34,8 +26,6 @@ impl HeaderIn {
     }
 }
 
-/// Every option the Python functions accept besides the sources. Unknown keys are errors, so a
-/// misspelt option is reported instead of ignored.
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 struct Opts {
@@ -70,30 +60,18 @@ struct Opts {
     #[serde(default)]
     relax_priors_on_failure: bool,
     header: Option<HeaderIn>,
-    /// Instrument profile as an object (the profile file's JSON).
     instrument: Option<Value>,
-    /// Instrument profile file.
     instrument_path: Option<String>,
-    /// WCS for verify/refit.
     wcs: Option<HeaderIn>,
-    /// Pixel origin of the input `x`, `y`: 0 (NumPy, default) or 1 (FITS).
     #[serde(default)]
     origin: u8,
-    /// `stars_at` only: 1σ of the WCS, arcsec.
     wcs_sigma_arcsec: Option<f64>,
-    /// `stars_at` only: search radius, arcsec.
     search_radius_arcsec: Option<f64>,
-    /// `stars_at` only: stars reported per position.
     max_stars: Option<usize>,
-    /// Images only: stellar FWHM, px (default: estimated).
     fwhm: Option<f64>,
-    /// Images only: pixel threshold of the filtered image, σ.
     detect_threshold: Option<f64>,
-    /// Images only: saturation level (default: the header's SATURATE).
     saturation: Option<f64>,
-    /// Images only: gain, e⁻ per image unit (default: the header's GAIN/EGAIN).
     gain: Option<f64>,
-    /// Images only: most sources kept.
     max_sources: Option<usize>,
 }
 
@@ -117,8 +95,6 @@ impl Opts {
     }
 }
 
-/// An image from a FITS path, or from little-endian `f32` bytes (`width × height`, row by row,
-/// first row = FITS row 1) with the header the caller gives.
 fn load_image(
     path: Option<String>,
     data: Option<&[u8]>,
@@ -159,7 +135,6 @@ fn load_image(
     Ok(image)
 }
 
-/// Detect stars in an image (path or `f32` bytes); returns the detection report (JSON).
 #[pyfunction]
 #[pyo3(signature = (path, data, width, height, options_json))]
 fn detect(
@@ -170,7 +145,6 @@ fn detect(
     height: usize,
     options_json: &str,
 ) -> PyResult<String> {
-    // detect() takes the detection options and a header; anything else would be ignored.
     let given: serde_json::Map<String, Value> = serde_json::from_str(options_json)
         .map_err(|e| PyValueError::new_err(format!("options: {e}")))?;
     const ALLOWED: &[&str] = &[
@@ -198,7 +172,6 @@ fn detect(
     serde_json::to_string(&report).map_err(|e| PyRuntimeError::new_err(e.to_string()))
 }
 
-/// Sources from the Python lists, in the internal (0-based) convention.
 fn sources(
     x: Vec<f64>,
     y: Vec<f64>,
@@ -225,9 +198,6 @@ fn sources(
         1 => PixelConvention::Fits,
         o => return Err(format!("origin must be 0 or 1, not {o}")),
     };
-    // Same rules as the source-list reader (fayde_fits::sources): a non-finite value is absent (NaN
-    // marks "no value"; NumPy has no missing floats), and so is a sigma that is not > 0 or a
-    // star probability outside [0, 1].
     let opt = |v: &Option<Vec<f64>>, i: usize| v.as_ref().map(|v| v[i]).filter(|v| v.is_finite());
     Ok((0..n)
         .map(|i| {
@@ -289,8 +259,6 @@ fn request_options(o: &Opts) -> Result<RequestOptions, String> {
     })
 }
 
-/// A UCAC4 catalogue and pattern indexes, opened once. Thread-safe: solves from several Python
-/// threads run in parallel (the GIL is released while solving).
 #[pyclass(frozen, module = "fayde._native")]
 struct Solver {
     inner: ApiSolver,
@@ -307,7 +275,6 @@ impl Solver {
         Ok(Self { inner })
     }
 
-    /// Run `mode` ("solve", "verify" or "refit"). Returns `(report_json, error)`.
     #[allow(clippy::too_many_arguments)]
     #[pyo3(signature = (mode, x, y, flux, sigma_px, p_star, truncated, options_json))]
     fn run(
@@ -334,8 +301,6 @@ impl Solver {
         self.finish(py, mode, src, (None, None), &o, None, None)
     }
 
-    /// Like `run`, with the sources detected in an image (path or `f32` bytes). The image's
-    /// header is used for the priors unless the options give one.
     #[allow(clippy::too_many_arguments)]
     #[pyo3(signature = (mode, path, data, width, height, options_json))]
     fn run_image(
@@ -367,10 +332,6 @@ impl Solver {
         self.finish(py, mode, src, size, &o, Some(image.header), Some(detection))
     }
 
-    /// "Is there a catalogue star here?" under the WCS in `options_json` (`fayde verify --at`).
-    /// Pixel positions `x`, `y` (with optional `sigma_px`) and sky positions `ra`, `dec`
-    /// (degrees, optional `sigma_arcsec`); NaN sigma means "default". Returns the report JSON
-    /// and whether it is an error.
     #[allow(clippy::too_many_arguments)]
     #[pyo3(signature = (x, y, sigma_px, ra, dec, sigma_arcsec, options_json))]
     fn at(
@@ -484,16 +445,11 @@ impl Solver {
     }
 }
 
-/// Run the `fayde` command with `args`, the arguments after the program name, and return its
-/// exit status. The `fayde` console script of the package calls this, so `pip install fayde`
-/// gives the same command as the release binaries. It prints to the process's own stdout and
-/// stderr, not to Python's `sys.stdout`.
 #[pyfunction]
 fn cli_main(py: Python<'_>, args: Vec<String>) -> u8 {
     py.detach(|| fayde_cli::run(&args))
 }
 
-/// The compiled part of the `fayde` package.
 #[pymodule]
 fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Solver>()?;

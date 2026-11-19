@@ -31,8 +31,6 @@ fn crowded_local_refit_resists_offset_false_sources() {
             p_star: None,
             truncated: false,
         });
-        // Brighter false detections steal two thirds of the initial reference claims.
-        // They lie 8–11 px from the truth, inside the first refit radius.
         if i % 3 != 0 {
             sources.push(Source {
                 x: x + 8.0 + (i % 4) as f64,
@@ -55,7 +53,7 @@ fn crowded_local_refit_resists_offset_false_sources() {
         priors: Priors::default(),
         policy: Policy::default(),
     };
-    let ctx = new_ctx(&req, &cat).unwrap();
+    let ctx = new_ctx(&req, &cat, &req.priors).unwrap();
     let set = RefSet::from_cone(&cat, truth.crval(), 1f64.to_radians(), &ctx.query).unwrap();
     let fitted = ctx
         .local_refit(&set, truth)
@@ -115,8 +113,6 @@ fn similarity_recovers_both_parities_and_rejects_shear() {
         assert_eq!(seed.parity(), truth.parity());
         assert!((seed.pixel_scale_arcsec() / truth.pixel_scale_arcsec() - 1.0).abs() < 1e-5);
         let sheared = pts.map(|p| [p[0] + 0.01 * (p[1] - crpix.y), p[1]]);
-        // The loose edge tolerance admits this shape, but the four-parameter fit
-        // cannot absorb shear as the former affine seed could.
         assert!(pattern_seeds(&sheared, &skies, 0.02, 0.1, crpix).is_empty());
     }
     let sky = SkyPos::from_degrees(150.0, 2.0).unwrap();
@@ -125,9 +121,6 @@ fn similarity_recovers_both_parities_and_rejects_shear() {
 
 #[test]
 fn similarity_seed_is_fitted_at_its_own_crval_near_the_pole() {
-    // Two stars in one corner of a frame at Dec 88.5°: their centroid is 0.4° from the frame
-    // centre. A transform fitted in the centroid's tangent plane and reused at CRVAL is rotated
-    // by (east offset × tan δ), tens of pixels across the frame here.
     let crpix = PixelPos::new(511.5, 511.5);
     for sign in [-1.0, 1.0] {
         let truth = TanWcs::new(
@@ -150,8 +143,6 @@ fn similarity_seed_is_fitted_at_its_own_crval_near_the_pole() {
     }
 }
 
-/// A [`PairTable`] lookup returns what the sorted list of every pair returns: the pairs a k-d
-/// tree search finds within reach, by separation and then by star numbers, cut to the range.
 #[test]
 fn pair_table_lookup_equals_the_sorted_list() {
     let mut state = 4242u64;
@@ -161,7 +152,6 @@ fn pair_table_lookup_equals_the_sorted_list() {
             .wrapping_add(1442695040888963407);
         (state >> 11) as f64 / (1u64 << 53) as f64
     };
-    // Stars over a 5° cap, some of them twice (zero separation) and some in a tight clump.
     let mut vecs: Vec<[f64; 3]> = (0..700)
         .map(|i| {
             let spread = if i % 9 == 0 { 0.02 } else { 5.0 };
@@ -174,7 +164,6 @@ fn pair_table_lookup_equals_the_sorted_list() {
     vecs.extend_from_within(..5);
     for reach_deg in [0.9f64, 0.05, 20.0] {
         let reach = chord(reach_deg.to_radians());
-        // The list as it was built before: every star's neighbours from a k-d tree.
         let tree = KdTree::build(vecs.clone());
         let mut all: Vec<(f64, u32, u32)> = Vec::new();
         for i in 0..vecs.len() {
@@ -185,7 +174,7 @@ fn pair_table_lookup_equals_the_sorted_list() {
             }
         }
         all.sort_by(|a, b| a.0.total_cmp(&b.0).then((a.1, a.2).cmp(&(b.1, b.2))));
-        let mut table = PairTable::new(&vecs, reach);
+        let mut table = PairTable::new(&vecs, reach, || false).unwrap();
         assert_eq!(table.pairs.len(), all.len(), "reach {reach_deg}°");
         let widest = all.last().map_or(0.0, |p| p.0);
         for round in 0..400 {
@@ -196,7 +185,6 @@ fn pair_table_lookup_equals_the_sorted_list() {
                 _ => widest * 0.02 * rnd(),
             };
             let (lo, hi) = match round % 11 {
-                // Ends that fall exactly on a pair.
                 0 if !all.is_empty() => {
                     let k = (rnd() * all.len() as f64) as usize;
                     (all[k].0, all[(k + 30).min(all.len() - 1)].0)
@@ -214,9 +202,25 @@ fn pair_table_lookup_equals_the_sorted_list() {
             );
         }
     }
-    // No stars, one star, no reach.
-    assert!(PairTable::new(&[], 0.1).between(0.0, 1.0).is_empty());
-    assert!(PairTable::new(&vecs[..1], 0.1).between(0.0, 1.0).is_empty());
-    let mut none = PairTable::new(&vecs[..40], 0.0);
+    assert!(PairTable::new(&[], 0.1, || false)
+        .unwrap()
+        .between(0.0, 1.0)
+        .is_empty());
+    assert!(PairTable::new(&vecs[..1], 0.1, || false)
+        .unwrap()
+        .between(0.0, 1.0)
+        .is_empty());
+    let mut none = PairTable::new(&vecs[..40], 0.0, || false).unwrap();
     assert!(none.between(1e-6, 1.0).is_empty());
+}
+
+#[test]
+fn pair_table_can_expire_after_setup_starts() {
+    let checks = std::cell::Cell::new(0);
+    let vecs = [[1., 0., 0.]; 32];
+    let table = PairTable::new(&vecs, 0.1, || {
+        checks.set(checks.get() + 1);
+        checks.get() == 3
+    });
+    assert!(table.is_none());
 }

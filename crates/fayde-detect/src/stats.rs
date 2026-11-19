@@ -1,14 +1,13 @@
-//! Normal tail probabilities and the false-alarm threshold.
-
 use fayde_core::Portable;
 
-/// Upper tail of the standard normal distribution, `P(Z > z)`.
 pub(crate) fn normal_tail(z: f64) -> f64 {
     0.5 * (z / std::f64::consts::SQRT_2).perfc()
 }
 
-/// `z` with `P(Z > z) = p`, by bisection on [`normal_tail`]: `p` in `(0, 0.5]`.
-#[cfg(test)]
+pub(crate) fn normal_density(z: f64) -> f64 {
+    (-0.5 * z * z).pexp() / (2.0 * std::f64::consts::PI).sqrt()
+}
+
 pub(crate) fn normal_quantile_upper(p: f64) -> f64 {
     let (mut lo, mut hi) = (0.0f64, 40.0f64);
     for _ in 0..80 {
@@ -22,24 +21,14 @@ pub(crate) fn normal_quantile_upper(p: f64) -> f64 {
     0.5 * (lo + hi)
 }
 
-/// Expected number of local maxima above `u` (in units of the noise) per pixel of white noise
-/// smoothed by a Gaussian of standard deviation `sigma_k` pixels.
-///
-/// Two bounds, of which the smaller is used. For a continuous field the density of maxima
-/// above `u` tends to `u·φ(u) / (4π σk²)` (Bond & Efstathiou 1987, MNRAS 226, 655, eq. A1.12;
-/// Cheng & Schwartzman 2017, Ann. Stat. 45, 529, with κ = 1 for a Gaussian kernel). On pixels a
-/// maximum above `u` is a pixel above `u`, so there are no more of them than `P(Z > u)` per
-/// pixel, which is the smaller figure for narrow kernels. Counted on empty synthetic frames,
-/// the smaller bound is within 45% of the number of peaks found for σk from 0.7 to 2 px.
 pub(crate) fn noise_peaks_above(u: f64, sigma_k: f64) -> f64 {
-    let phi = (-0.5 * u * u).pexp() / (2.0 * std::f64::consts::PI).sqrt();
+    let phi = normal_density(u);
     let peaks = u.max(0.0) * phi / (4.0 * std::f64::consts::PI * sigma_k * sigma_k);
     normal_tail(u).min(peaks.max(0.0))
 }
 
 /// The threshold above which `count` noise peaks are expected among `pixels` pixels.
 pub(crate) fn threshold_for(count: f64, pixels: f64, sigma_k: f64) -> f64 {
-    // The density falls with u above 1: bisect there.
     let (mut lo, mut hi) = (1.0f64, 40.0f64);
     for _ in 0..80 {
         let mid = 0.5 * (lo + hi);
@@ -52,7 +41,6 @@ pub(crate) fn threshold_for(count: f64, pixels: f64, sigma_k: f64) -> f64 {
     0.5 * (lo + hi)
 }
 
-/// Median of `v` (the upper middle for an even count); `None` when empty. Reorders `v`.
 pub(crate) fn median(v: &mut [f64]) -> Option<f64> {
     if v.is_empty() {
         return None;
@@ -79,7 +67,6 @@ mod tests {
 
     #[test]
     fn noise_peak_density_and_threshold() {
-        // A narrow kernel: the pixel bound. A wide one: the peak density, which is lower.
         assert_eq!(noise_peaks_above(5.0, 0.7), normal_tail(5.0));
         let wide = noise_peaks_above(5.0, 2.0);
         assert!((wide / 1.479e-7 - 1.0).abs() < 1e-3, "{wide}");

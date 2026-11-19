@@ -87,6 +87,26 @@ noise correlation.
 - Between tile centres the values are bilinear; beyond the outermost centres the background is
   extrapolated in a straight line, so a gradient running off the frame is followed to the edge.
 
+**Clipped sky.** If at least a quarter of the valid raw pixels equal the frame minimum, Fayde
+checks the distribution of those pixels in each tile. A tile is padding if at least 99% of its
+valid pixels equal the floor, or if transitions between floor and above-floor pixels occur at
+most a quarter as often as in a random mix. The detector checks the transition rate in tiles
+with at least eight floor pixels.
+
+Fayde uses the clipped-sky model when more than half of the sky tiles with at least 24 valid
+pixels yield a fit. To fit a tile, at least a quarter of its valid pixels must be at the floor
+and at least 16 must be above it. The singly left-censored normal fit uses the floor fraction
+and an empirical quantile near the middle of the surviving values. Tiles without a fit use the
+frame's typical fit. When the model applies, floor pixels in padding tiles are undefined for
+detection. Otherwise, Fayde uses the standard filtered mesh.
+
+The fit estimates the sky before clipping. Its clipped moments give the background and noise of
+the recorded pixels. Fayde propagates these through the point filter and accounts for the skew
+of the filtered noise when setting the peak threshold. On a simulated frame of 100 stars with
+90% of the sky clipped at zero, 95 of 579 detections were stars before; with the model, 100 of
+100, and every star is found. On 35 real frames with 25–36% of their pixels at zero, every frame
+still solves and the fit residual fell on 31 of them (median 0.40 to 0.35 px).
+
 ### 3.3 Star width
 
 For a peak of the filtered image, the variance of the star's profile is the fitted variance

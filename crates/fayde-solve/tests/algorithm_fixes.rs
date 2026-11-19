@@ -1,8 +1,8 @@
-//! Regression fields for the algorithm corrections.
 mod common;
 
-use common::{field, field_full};
+use common::{field, field_full, field_with_noise, Field};
 use fayde_catalog::memory::MemoryCatalog;
+use fayde_core::{to_arcsec, PixelPos};
 use fayde_solve::{solve, Outcome, Solution, SolveRequest};
 use fayde_wcs::Parity;
 
@@ -50,7 +50,6 @@ fn barrel_with_default_sigma_selects_sip() {
 #[test]
 fn pair_prior_rejections_do_not_count_as_hypotheses() {
     let (cat, mut f) = field((150.0, 2.0), 37.0, Parity::Negative, 1);
-    // No noisy seed can have this exact roll. Every candidate fails a hard prior.
     f.request.priors.roll = Some(fayde_solve::RollPrior {
         angle: 1.23456789,
         sigma: 0.1,
@@ -72,8 +71,6 @@ fn pair_search_starts_at_scale_prior_mean() {
     let (cat, f) = field((150.0, 2.0), 37.0, Parity::Negative, 1);
     let sol = solved(&f.request, &cat);
     eprintln!("scale-prior ordering: {} hypotheses", sol.hypotheses_tested);
-    // Measured with this fixture and hard-prior accounting fixed, before changing
-    // the low-edge traversal: 78 tested hypotheses. Require at least a 2× reduction.
     const LOW_EDGE_HYPOTHESES: u64 = 78;
     assert!(2 * sol.hypotheses_tested < LOW_EDGE_HYPOTHESES);
 }
@@ -99,7 +96,41 @@ fn low_probability_sources_preserve_log_odds() {
         "low-p sources: log odds {:.4} -> {:.4}, loss {loss:.4}",
         baseline.log_odds, augmented.log_odds
     );
-    // Six effective sources plus their small distractor penalties should cost little
-    // relative to the hundreds of log-odds from the real stars.
     assert!(loss < 15.0, "log-odds loss {loss}");
+}
+
+#[test]
+fn a_hint_scale_outside_its_limits_gives_no_bent_solution() {
+    for seed in [11u64, 12, 13, 14, 15, 16] {
+        let (cat, mut f) = field_with_noise((150.0, 2.0), 37.0, Parity::Negative, seed, 1.0);
+        let s = 3.0 * 1.03;
+        f.request.priors.scale = Some(fayde_solve::ScalePrior {
+            arcsec_per_px: s,
+            sigma: s * 0.02 / 3.0,
+        });
+        if let Outcome::Solved(sol) = solve(&f.request, &cat).unwrap() {
+            let err = worst_error(&sol, &f);
+            assert!(
+                err < 3.0,
+                "seed {seed}: {err}″ off, order {}",
+                sol.wcs.sip_order()
+            );
+        }
+    }
+}
+
+fn worst_error(sol: &Solution, f: &Field) -> f64 {
+    [
+        (0.0, 0.0),
+        (1023.0, 0.0),
+        (0.0, 1023.0),
+        (1023.0, 1023.0),
+        (511.5, 511.5),
+    ]
+    .iter()
+    .map(|&(x, y)| {
+        let p = PixelPos::new(x, y);
+        to_arcsec(sol.wcs.pixel_to_sky(p).separation(f.truth.pixel_to_sky(p)))
+    })
+    .fold(0.0, f64::max)
 }

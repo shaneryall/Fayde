@@ -1,16 +1,3 @@
-//! Cross-check against an independent UCAC4 reader on real zone files.
-//!
-//! Needs local UCAC4 data and an oracle file, neither of which is in the repository:
-//! - `$FAYDE_UCAC4_DIR` (default `<workspace>/data/ucac4`) with `u4b/` and `u4i/`;
-//! - `ucac4_oracle.json` in that directory: cone searches made with another UCAC4 reader.
-//!
-//! Oracle format: `{"cones": [{"name", "ra_deg", "dec_deg", "radius_arcsec", "epoch", "stars":
-//! [{"id", "sep_arcsec", "ra_deg", "dec_deg", "mag"}]}]}`. `epoch` is a Julian year, or null for
-//! catalogue-epoch (J2000) positions; `id` is the UCAC4 designation `UCAC4-zzz-nnnnnn`; `mag` is
-//! the model magnitude, or the aperture magnitude where the model one is the 20.000 placeholder.
-//!
-//! When the data is absent the tests print a notice and pass without checking anything.
-
 use std::path::PathBuf;
 
 use fayde_catalog::{
@@ -57,10 +44,7 @@ fn designation(h: &Ucac4Hit) -> String {
     format!("UCAC4-{:03}-{:06}", h.zone, h.record)
 }
 
-/// The oracle's reader measures separation with a flat-sky approximation; stars within this
-/// margin of the cone edge may legitimately fall on different sides.
 const EDGE_MARGIN_ARCSEC: f64 = 1.0;
-/// Both readers propagate the same proper motions; they differ only at second order.
 const POS_TOL_MAS: f64 = 1.0;
 
 #[test]
@@ -95,8 +79,6 @@ fn matches_independent_reader() {
                 .get(&s.id)
                 .unwrap_or_else(|| panic!("{}: {} missing from Fayde", cone.name, s.id));
             if h.raw.is_high_pm() {
-                // The oracle's reader does not load u4hpm.dat and keeps these at J2000; Fayde
-                // moves them.
                 high_pm_seen += 1;
                 let j2000 = h.raw.position_j2000();
                 let theirs = SkyPos::from_degrees(s.ra_deg, s.dec_deg).unwrap();
@@ -167,10 +149,8 @@ fn index_seek_equals_full_scan() {
         let b = cat.cone_hits_full_scan(centre, arcsec(r), &q).unwrap();
         assert_eq!(a, b, "({ra}, {dec}, {r}\")");
         assert!(!a.is_empty());
-        // The search a catalogue without `u4index.unf` makes reads the same records.
         let c = cat.cone_hits_ra_search(centre, arcsec(r), &q).unwrap();
         assert_eq!(a, c, "({ra}, {dec}, {r}\") by RA search");
-        // The brightest-n query is the cone, sorted and cut.
         let stars: Vec<_> = a.iter().map(|h| h.star).collect();
         for n in [1, 25, usize::MAX] {
             assert_eq!(
@@ -187,7 +167,7 @@ fn index_seek_equals_full_scan() {
 fn strict_query_reports_missing_zone() {
     let Some(dir) = data_dir() else { return };
     let cat = Ucac4Catalog::open(&dir).unwrap();
-    let centre = SkyPos::from_degrees(10.0, -45.0).unwrap(); // zone 226: not copied locally
+    let centre = SkyPos::from_degrees(10.0, -45.0).unwrap();
     if cat.zone_path(226).exists() {
         return;
     }

@@ -1,9 +1,3 @@
-//! World coordinate systems for Fayde: the gnomonic (TAN) projection and FITS WCS header cards.
-//!
-//! Pixel coordinates follow the Fayde convention (first pixel centre at `(0, 0)`). FITS
-//! `CRPIX` values are 1-based; [`TanWcs::from_header`] and [`TanWcs::to_cards`] convert at that
-//! boundary and nowhere else.
-
 #![forbid(unsafe_code)]
 
 mod error;

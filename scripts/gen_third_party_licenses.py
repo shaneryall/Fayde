@@ -20,7 +20,6 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUTPUTS = [ROOT / "THIRD-PARTY-LICENSES.md", ROOT / "crates" / "fayde-py" / "THIRD-PARTY-LICENSES.md"]
-# File names a crate uses for licence texts and notices (compared in upper case).
 PREFIXES = ("LICENSE", "LICENCE", "COPYING", "COPYRIGHT", "NOTICE", "UNLICENSE")
 
 
@@ -63,8 +62,7 @@ def render():
         "| Crate | Version | Licence | Source |",
         "|---|---|---|---|",
     ]
-    # Identical texts (the Apache licence, mostly) are printed once and shared.
-    texts = {}  # digest -> (text, [(crate, version, file name)])
+    texts = {}
     missing = []
     for p in pkgs:
         if not p.get("license"):
@@ -82,7 +80,6 @@ def render():
         raise SystemExit("cannot write the licence file:\n  " + "\n  ".join(missing))
     lines += ["", "## Licence texts", ""]
     for text, users in sorted(texts.values(), key=lambda v: v[1]):
-        # A fence longer than any run of backticks inside the text.
         fence = "```"
         while fence in text:
             fence += "`"

@@ -1,10 +1,3 @@
-//! `fayde bench`: blind solves of synthetic frames drawn from the real UCAC4 sky.
-//!
-//! For each frame: a random sky position (uniform on the sphere), random roll and parity, the
-//! UCAC4 stars brighter than `--image-mag` projected through a TAN WCS, 20% of them dropped, 30%
-//! false sources added, 0.3 px centroid noise. The frame is solved with no priors. Every other
-//! frame is replaced by pure random sources to measure false solutions.
-
 use fayde_core::Portable;
 use std::time::Instant;
 
@@ -68,7 +61,6 @@ pub(crate) fn run(args: &[&str]) -> Result<(), String> {
     let mut hyps = Vec::new();
     for f in 0..frames {
         let is_random = f % 2 == 1;
-        // Uniform sky position.
         let z = 2.0 * rng.uniform() - 1.0;
         let phi = 2.0 * std::f64::consts::PI * rng.uniform();
         let s = (1.0 - z * z).sqrt();
@@ -256,8 +248,6 @@ pub(crate) fn run(args: &[&str]) -> Result<(), String> {
     Ok(())
 }
 
-/// Why did a real frame abstain? Over the top `pattern_sources` sources by flux: how many are
-/// real, how many are index stars, and how many of their true 4-star patterns the index holds.
 fn diagnose(req: &SolveRequest, ids: &[Option<u64>], index: &Index) -> String {
     use fayde_index::pattern::{angle, shape_of};
     let by_id: std::collections::HashMap<u64, u32> = index
@@ -281,7 +271,6 @@ fn diagnose(req: &SolveRequest, ids: &[Option<u64>], index: &Index) -> String {
         .filter_map(|&i| ids[i].and_then(|id| by_id.get(&id).copied()))
         .collect();
     let n_index = in_index.len();
-    // Patterns exist only among pattern-tier stars.
     let in_index: Vec<u32> = in_index
         .into_iter()
         .filter(|&s| index.stars()[s as usize].pattern)

@@ -1,9 +1,3 @@
-//! Solves against the real UCAC4 catalogue (local zones z458–z463; ignored by default: `cargo test -- --include-ignored`).
-//!
-//! The image is synthesized from UCAC4 itself at epoch 2025.0 (the real sky's clustering,
-//! magnitude distribution and doubles), with 20% of stars dropped, 30% false sources added and
-//! 0.3 px noise.
-
 use fayde_core::Portable;
 use std::path::PathBuf;
 
@@ -154,9 +148,6 @@ fn check(name: &str, f: &RealField, out: Outcome) -> SolveMethod {
         sol.hypotheses_tested,
         sol.elapsed
     );
-    // Noise-limited bound: an affine fit of N stars spread over the frame has a 1σ radial error
-    // of about σ·√(14/N) at a corner (√(7/N) per axis). Allow 5σ. Without noise this field is
-    // recovered to < 0.001″ (checked 2026-11-15), so any excess here is a real defect.
     let bound = 5.0 * 0.3 * (14.0 / conf.len() as f64).sqrt() * 3.0;
     assert!(worst < bound, "{name}: {worst}″ > {bound}″");
     assert!(conf.len() >= 10 && correct == conf.len(), "{name}");

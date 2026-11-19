@@ -1,5 +1,3 @@
-//! Read files written by Astropy (`scripts/gen_fits_fixtures.py`) and round-trip WCS files.
-
 use fayde_core::Portable;
 use std::path::PathBuf;
 
@@ -19,7 +17,7 @@ fn reads_a_source_list_and_converts_to_zero_based() {
     assert_eq!((x.width, x.height), (Some(768), Some(768)));
     assert_eq!(x.sources.len(), 4);
     let s = x.sources[1];
-    assert_eq!((s.x, s.y), (199.25, 299.75)); // 200.25, 300.75 in FITS 1-based
+    assert_eq!((s.x, s.y), (199.25, 299.75));
     assert_eq!(s.flux, Some(500.5));
     assert_eq!((x.sources[3].x, x.sources[3].y), (0.0, 767.0));
 }
@@ -29,13 +27,15 @@ fn header_priors_cd_sexagesimal_iso_date() {
     let f = FitsFile::open(fixture("frame.fits")).unwrap();
     let p = header_priors(&f.primary().header);
     let (ptg, origin) = p.pointing.unwrap();
-    assert_eq!(origin, "CRVAL1/CRVAL2");
-    assert!(ptg.separation(SkyPos::from_degrees(80.9212084123, 0.121863492816).unwrap()) < 1e-12);
+    assert_eq!(origin, "WCS image centre");
+    assert!(
+        ptg.separation(SkyPos::from_degrees(80.53050445062628, -0.09797037407292904).unwrap())
+            < 1e-12
+    );
     let (scale, origin) = p.scale_arcsec.unwrap();
     assert_eq!(origin, "header linear WCS");
     let det: f64 = 0.000799901108658f64.ppowi(2) + 0.000225f64.ppowi(2);
     assert!((scale - det.sqrt() * 3600.0).abs() < 1e-9);
-    // DATE-OBS 2020-11-21T16:46:40.074 is the start; mid-exposure adds 3.001 s / 2.
     let (e, _) = p.epoch.unwrap();
     let want = Epoch::from_mjd(59_174.699_075_000_0 + 1.5005 / 86_400.0).unwrap();
     assert!(
@@ -62,7 +62,6 @@ fn mixed_cd_pc_gives_no_scale() {
     let p = header_priors(&f.primary().header);
     assert!(p.scale_arcsec.is_none());
     assert_eq!(p.warnings.len(), 1);
-    // Pointing is still available.
     assert!(p.pointing.is_some());
 }
 
@@ -77,7 +76,16 @@ fn wcs_file_round_trip() {
     .into();
     let path = std::env::temp_dir().join(format!("fayde-wcs-{}.wcs", std::process::id()));
     let mut cards = w.to_cards();
-    cards.extend(fayde_fits::comment_cards("Solved by Fayde test."));
+    let comments = fayde_fits::comment_cards(&format!("{}λ", "a".repeat(80)));
+    assert_eq!(
+        comments,
+        [
+            format!("COMMENT {}", "a".repeat(72)),
+            "COMMENT aaaaaaaa?".into()
+        ]
+    );
+    cards.extend(comments);
+    assert!(write_wcs_file(&path, &["OBJECT  = 'β'".into()]).is_err());
     write_wcs_file(&path, &cards).unwrap();
     let bytes = std::fs::read(&path).unwrap();
     assert_eq!(bytes.len() % 2880, 0);

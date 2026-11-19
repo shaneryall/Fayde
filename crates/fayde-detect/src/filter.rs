@@ -1,26 +1,13 @@
-//! Separable Gaussian smoothing and block binning.
-//!
-//! Smoothing an image with the point-spread function is the matched filter: among linear
-//! filters it gives the highest signal-to-noise ratio for a point source of that shape in white
-//! noise (Stetson 1987, PASP 99, 191, §III; Zackay & Ofek 2017, ApJ 836, 187). A Gaussian of
-//! standard deviation `sigma` stands in for the PSF. Every operation is `+` and `×` in a fixed
-//! order, so the result is the same on every machine.
-
 use fayde_core::Portable;
 
-/// A normalised 1-D Gaussian kernel; the 2-D kernel is its outer product with itself.
 #[derive(Debug, Clone)]
 pub(crate) struct Kernel {
-    /// Taps, `2 × radius + 1` of them, summing to 1.
     pub taps: Vec<f32>,
-    /// Half-width, pixels.
     pub radius: usize,
-    /// Standard deviation, pixels.
     pub sigma: f64,
 }
 
 impl Kernel {
-    /// A Gaussian of standard deviation `sigma` pixels, cut at 3σ.
     pub fn gaussian(sigma: f64) -> Self {
         let radius = (3.0 * sigma).ceil().max(1.0) as usize;
         let raw: Vec<f64> = (0..=2 * radius)
@@ -37,8 +24,6 @@ impl Kernel {
         }
     }
 
-    /// Variance of the filtered image over the variance of white noise in the input, for the
-    /// 2-D kernel: the sum of its squared taps.
     pub fn noise_gain2(&self) -> f64 {
         let g: f64 = self
             .taps
@@ -48,23 +33,18 @@ impl Kernel {
         g * g
     }
 
-    /// Noise of the filtered image over the noise of the input (white noise).
     pub fn noise_gain(&self) -> f64 {
         self.noise_gain2().sqrt()
     }
 }
 
-/// Index `i` reflected into `0..n` about the first and last samples (`-1 → 1`, `n → n − 2`).
 #[inline]
 fn reflect(i: isize, n: usize) -> usize {
-    // One sample (or none) reflects onto itself; the loop below would never end.
     if n <= 1 {
         return 0;
     }
     let n = n as isize;
     let mut i = i;
-    // A kernel is never wider than the image here, so one reflection each way is enough; the
-    // loop covers the general case.
     loop {
         if i < 0 {
             i = -i;
@@ -76,7 +56,6 @@ fn reflect(i: isize, n: usize) -> usize {
     }
 }
 
-/// `dst = src ⊛ kernel` in both axes, borders reflected. `tmp` and `dst` are resized.
 pub(crate) fn smooth(
     src: &[f32],
     w: usize,
@@ -91,8 +70,6 @@ pub(crate) fn smooth(
     dst.clear();
     dst.resize(w * h, 0.0);
 
-    // Rows. The interior is a sum of shifted copies of the row, one per tap: each is a loop
-    // over two slices that the compiler turns into vector instructions.
     for y in 0..h {
         let row = &src[y * w..(y + 1) * w];
         let out = &mut tmp[y * w..(y + 1) * w];
@@ -113,7 +90,6 @@ pub(crate) fn smooth(
             out[x] = acc;
         }
     }
-    // Columns: each output row is a weighted sum of input rows.
     for y in 0..h {
         let out = &mut dst[y * w..(y + 1) * w];
         for (j, &kj) in k.taps.iter().enumerate() {
@@ -125,8 +101,6 @@ pub(crate) fn smooth(
     }
 }
 
-/// The mean of each `b × b` block. Rows and columns left over at the high edges are dropped.
-/// Returns `(pixels, width, height)`.
 pub(crate) fn bin(src: &[f32], w: usize, h: usize, b: usize) -> (Vec<f32>, usize, usize) {
     let (bw, bh) = (w / b, h / b);
     let mut out = vec![0f32; bw * bh];
@@ -186,7 +160,6 @@ mod tests {
                 assert!((got - want).abs() < 1e-7);
             }
         }
-        // Flux is kept.
         let sum: f32 = out.iter().sum();
         assert!((sum - 1.0).abs() < 1e-5);
     }
@@ -224,7 +197,6 @@ mod tests {
         let src: Vec<f32> = (0..30).map(|v| v as f32).collect();
         let (out, w, h) = bin(&src, 6, 5, 2);
         assert_eq!((w, h), (3, 2));
-        // Block (0, 0): 0, 1, 6, 7.
         assert_eq!(out[0], 3.5);
         assert_eq!(out[5], (16.0 + 17.0 + 22.0 + 23.0) / 4.0);
     }

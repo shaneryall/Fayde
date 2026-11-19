@@ -16,7 +16,6 @@ class Stage(TypedDict):
     stage: str
     hypotheses: int
     seconds: float
-    #: "solved", "exhausted", "deadline" or "hypothesis limit".
     outcome: str
 
 
@@ -82,7 +81,6 @@ class Report(TypedDict, total=False):
     error: bool
     reason: str
     warnings: List[str]
-    # Solved / refit
     method: str
     crval_deg: Tuple[float, float]
     pixel_scale_arcsec: float
@@ -108,17 +106,13 @@ class Report(TypedDict, total=False):
     wcs_cards: List[str]
     covariance: Covariance
     pairs: List[Pair]
-    # Abstained
     best_log_odds: Optional[float]
-    # Verify
     accepted: bool
     threshold: float
     confident_matches: int
     references: int
     sources: int
-    # With an image
     detection: Dict[str, Any]
-    # Always
     priors: Dict[str, Any]
     identity: Identity
 
@@ -130,7 +124,6 @@ class AtStar(TypedDict):
     mag: Optional[float]
     pixel: Optional[Tuple[float, float]]
     separation_arcsec: float
-    #: Combined per-axis 1σ.
     sigma_arcsec: float
     p_consistent: float
     p_chance: float
@@ -168,18 +161,14 @@ class DetectedSource(TypedDict):
 
     x: float
     y: float
-    #: 1-sigma position error per axis, px.
     sigma_px: float
     flux: float
     snr: float
-    #: Probability that this is a real star, 0 to 1.
     p_star: float
     fwhm: float
-    #: Gaussian sigma along each axis, px; ``None`` along a ridge.
     sigma_major_px: Optional[float]
     sigma_minor_px: float
     theta_deg: float
-    #: Index into ``streaks`` for a detection on a streak.
     streak: Optional[int]
     truncated: bool
     saturated: bool
@@ -194,15 +183,13 @@ class DetectedStreak(TypedDict):
     y1: float
     length_px: float
     angle_deg: float
-    #: Gaussian sigma of the cross-section, px.
     width_sigma_px: float
     flux: float
     snr: float
-    #: Fraction of the length above the trace threshold.
     coverage: float
     touches_edge: bool
-    #: Narrower than the stars: the track of a cosmic ray, not an object seen through the optics.
     cosmic_ray: bool
+    photometry_masked: bool
 
 
 class DetectImage(TypedDict):
@@ -222,11 +209,8 @@ class DetectReport(TypedDict, total=False):
     threshold_sigma: float
     saturation: Optional[float]
     gain: Optional[float]
-    #: Number of ``sources``.
     count: int
-    #: Detections by class: star, saturated, extended, sharp, streak.
     classes: Dict[str, int]
-    #: Detections set aside as hot pixels or cosmic-ray hits (``classes["sharp"]``).
     rejected_narrow: int
     bin: int
     kernel_sigma_px: float
@@ -235,7 +219,5 @@ class DetectReport(TypedDict, total=False):
     seconds: float
     streaks: List[DetectedStreak]
     warnings: List[str]
-    #: The stars, in the order handed to the solver (``pairs[].source`` indexes this list).
     sources: List[DetectedSource]
-    #: Detections set aside: hot pixels, cosmic-ray hits, anything on a streak.
     rejected: List[DetectedSource]

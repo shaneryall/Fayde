@@ -1,6 +1,3 @@
-//! Build parameters are checked before any work: a value that would exhaust memory or switch a
-//! cut off without saying so is an error.
-
 use fayde_index::BuildParams;
 
 fn check(edit: impl FnOnce(&mut BuildParams)) -> Result<(), String> {
@@ -31,7 +28,6 @@ fn unbounded_lattices_are_rejected() {
         let e = check(|p| p.field_oversampling = v).unwrap_err();
         assert!(e.contains("field_oversampling"), "{e}");
     }
-    // The default oversampling on a 0.01° field: about 5e10 fields.
     let e = check(|p| {
         p.fov_deg = 0.01;
         p.min_edge_deg = 0.001;
@@ -47,6 +43,5 @@ fn values_that_would_silently_disable_a_cut_are_rejected() {
     assert!(check(|p| p.motion_years = -1.0).is_err());
     assert!(check(|p| p.epoch_year = 99_999.0).is_err());
     assert!(check(|p| p.epoch_year = f64::NAN).is_err());
-    // Too fine a pattern tolerance for the key: the file could not be read back.
     assert!(check(|p| p.pattern_max_error = 1e-6).is_err());
 }

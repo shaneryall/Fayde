@@ -540,7 +540,13 @@ false-accept rate. The false-accept rate is measured on random source lists (§9
   global solution; Bernstein et al. 2017) and supplied as the instrument distortion prior (§6.5).
   Per-frame SIP is only a small correction on top of that prior, with the order chosen by BIC
   (or leave-one-out residuals), never by default. Fitting order-3 SIP per frame on 30–60 stars
-  overfits.
+  overfits. Two checks follow BIC. An order is kept only if no lower order predicts held-out
+  cells of the frame as well (with matches in fewer than four of the nine cells, no
+  distortion; when the order cannot be scored, BIC's choice stands). When the request has a
+  scale or roll prior, a solution with distortion is converged again as TAN with scale and roll
+  free of the priors: a TAN outside the hint's limits that explains the sources at least as
+  well replaces it and is then refused, and a TAN inside them replaces it only with higher
+  posterior odds. Distortion must not stand in for a scale or roll the hint held back.
 - Output: CRVAL, CRPIX (at image centre, matching `--crpix-center`), CD, SIP A/B (+AP/BP),
   parameter covariance, per-star residuals, RMS, median and 95th-percentile residual.
 

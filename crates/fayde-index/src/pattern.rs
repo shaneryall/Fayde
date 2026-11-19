@@ -1,33 +1,31 @@
-//! Four-star patterns: shape, canonical star order, hash keys, and the pattern hash table.
-//!
-//! Sources: Brown & Stubis 2017 (Tetra) and ESA tetra3 for the pattern shape, key and canonical
-//! order; cedar-solve for the table layout (linear probing, key check, largest-edge prune);
-//! Knuth, TAOCP vol. 3 §6.4, for multiplicative hashing. See `docs/references.md`.
-//!
-//! Following tetra3 / cedar-solve: a pattern's shape is its 6 pairwise angular distances,
-//! sorted; dividing the 5 smaller ones by the largest gives 5 ratios in (0, 1] that do not
-//! change with rotation, translation or scale. The ratios are binned into an integer key, and
-//! the key is hashed into an open-addressed table with linear probing (cedar-solve). Each slot
-//! also stores a 16-bit check derived from the key, so most probe collisions are rejected
-//! without touching the star table, and the largest edge, so a scale prior can prune by size.
-
 use fayde_core::Portable;
-/// Shape of a 4-star pattern.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Shape {
-    /// The 5 smaller edges divided by the largest, ascending.
     pub ratios: [f64; 5],
-    /// Largest edge (radians on the sky, or tangent-plane radians for image patterns).
     pub largest: f64,
 }
 
-/// Shape of a pattern and its stars in canonical order (ascending distance from the pattern
-/// centroid, ties by input index). Canonical order lets a catalogue pattern and an image pattern
-/// be matched star to star.
 pub fn shape_of<const D: usize>(
     points: &[[f64; D]; 4],
     dist: impl Fn(&[f64; D], &[f64; D]) -> f64,
 ) -> (Shape, [usize; 4]) {
+    let shape = edge_shape(points, dist);
+    let mut centroid = [0.0; D];
+    for p in points {
+        for d in 0..D {
+            centroid[d] += p[d] / 4.0;
+        }
+    }
+    let mut order = [0usize, 1, 2, 3];
+    let r = |i: usize| -> f64 { (0..D).map(|d| (points[i][d] - centroid[d]).ppowi(2)).sum() };
+    order.sort_by(|&a, &b| r(a).total_cmp(&r(b)).then(a.cmp(&b)));
+    (shape, order)
+}
+
+pub(crate) fn edge_shape<const D: usize>(
+    points: &[[f64; D]; 4],
+    dist: impl Fn(&[f64; D], &[f64; D]) -> f64,
+) -> Shape {
     let mut edges = [0.0f64; 6];
     let mut k = 0;
     for i in 0..4 {
@@ -46,19 +44,9 @@ pub fn shape_of<const D: usize>(
             0.0
         };
     }
-    let mut centroid = [0.0; D];
-    for p in points {
-        for d in 0..D {
-            centroid[d] += p[d] / 4.0;
-        }
-    }
-    let mut order = [0usize, 1, 2, 3];
-    let r = |i: usize| -> f64 { (0..D).map(|d| (points[i][d] - centroid[d]).ppowi(2)).sum() };
-    order.sort_by(|&a, &b| r(a).total_cmp(&r(b)).then(a.cmp(&b)));
-    (Shape { ratios, largest }, order)
+    Shape { ratios, largest }
 }
 
-/// Angle between unit vectors (accurate at all separations).
 pub fn angle(a: &[f64; 3], b: &[f64; 3]) -> f64 {
     let c = [
         a[1] * b[2] - a[2] * b[1],
@@ -70,15 +58,12 @@ pub fn angle(a: &[f64; 3], b: &[f64; 3]) -> f64 {
         .patan2(a[0] * b[0] + a[1] * b[1] + a[2] * b[2])
 }
 
-/// Euclidean distance in a plane.
 pub fn planar(a: &[f64; 2], b: &[f64; 2]) -> f64 {
     (a[0] - b[0]).phypot(a[1] - b[1])
 }
 
-/// Largest bin count whose 5-digit keys fit in a `u64` (`bins^5 < 2^64`).
 pub const MAX_BINS: u32 = 7131;
 
-/// Number of bins per ratio for a ratio tolerance `max_error` (tetra3: `1 / (4·max_error)`).
 pub fn bins_for(max_error: f64) -> u32 {
     ((0.25 / max_error).round() as u32).max(1)
 }
@@ -87,35 +72,86 @@ fn bin(r: f64, bins: u32) -> u64 {
     ((r * f64::from(bins)).floor().max(0.0) as u64).min(u64::from(bins) - 1)
 }
 
-/// Key of a shape: the binned ratios as digits base `bins`.
 pub fn key(ratios: &[f64; 5], bins: u32) -> u64 {
-    ratios
-        .iter()
-        .rev()
-        .fold(0u64, |acc, &r| acc * u64::from(bins) + bin(r, bins))
+    pack_key(ratios.map(|r| bin(r, bins)), bins)
 }
 
-/// All keys whose bins intersect `ratios ± tol`, in ascending order of distance from the
-/// central key (nearest bins first, as in cedar-solve), ties by key.
-pub fn keys_within(ratios: &[f64; 5], tol: f64, bins: u32) -> Vec<u64> {
-    let ranges: Vec<(u64, u64)> = ratios
-        .iter()
-        .map(|&r| (bin(r - tol, bins), bin(r + tol, bins)))
-        .collect();
-    let centre: Vec<u64> = ratios.iter().map(|&r| bin(r, bins)).collect();
-    let mut out: Vec<(u64, u64)> = vec![(0, 0)];
-    for i in (0..5).rev() {
-        let (lo, hi) = ranges[i];
-        let mut next = Vec::with_capacity(out.len() * (hi - lo + 1) as usize);
-        for &(k, d) in &out {
-            for b in lo..=hi {
-                next.push((k * u64::from(bins) + b, d + b.abs_diff(centre[i])));
-            }
+fn pack_key(digits: [u64; 5], bins: u32) -> u64 {
+    digits
+        .into_iter()
+        .rev()
+        .fold(0, |key, digit| key * u64::from(bins) + digit)
+}
+
+pub(crate) struct KeyWindow {
+    bounds: [(u64, u64); 5],
+    bins: u32,
+}
+
+impl KeyWindow {
+    pub(crate) fn new(ratios: &[f64; 5], tol: f64, bins: u32) -> Self {
+        Self {
+            bounds: ratios.map(|r| (bin(r - tol, bins), bin(r + tol, bins))),
+            bins,
         }
-        out = next;
     }
-    out.sort_by_key(|&(k, d)| (d, k));
-    out.into_iter().map(|(k, _)| k).collect()
+
+    pub(crate) fn len(&self) -> u64 {
+        self.bounds
+            .iter()
+            .map(|&(lo, hi)| hi.checked_sub(lo).map_or(0, |d| d + 1))
+            .product()
+    }
+
+    pub(crate) fn contains(&self, ratios: &[f64; 5]) -> bool {
+        self.bounds
+            .iter()
+            .zip(ratios)
+            .all(|(&(lo, hi), &ratio)| (lo..=hi).contains(&bin(ratio, self.bins)))
+    }
+
+    pub(crate) fn keys(&self) -> impl Iterator<Item = u64> + '_ {
+        self.digits().map(|digits| pack_key(digits, self.bins))
+    }
+
+    fn digits(&self) -> impl Iterator<Item = [u64; 5]> + '_ {
+        let mut next = self
+            .bounds
+            .iter()
+            .all(|&(lo, hi)| lo <= hi)
+            .then(|| self.bounds.map(|(lo, _)| lo));
+        std::iter::from_fn(move || {
+            let digits = next.take()?;
+            let mut following = digits;
+            for (digit, &(lo, hi)) in following.iter_mut().zip(&self.bounds) {
+                if *digit < hi {
+                    *digit += 1;
+                    next = Some(following);
+                    break;
+                }
+                *digit = lo;
+            }
+            Some(digits)
+        })
+    }
+}
+
+pub fn keys_within(ratios: &[f64; 5], tol: f64, bins: u32) -> Vec<u64> {
+    let window = KeyWindow::new(ratios, tol, bins);
+    let centre = ratios.map(|r| bin(r, bins));
+    let mut ranked: Vec<_> = window
+        .digits()
+        .map(|digits| {
+            let distance: u64 = digits
+                .into_iter()
+                .zip(centre)
+                .map(|(digit, at)| digit.abs_diff(at))
+                .sum();
+            (distance, pack_key(digits, bins))
+        })
+        .collect();
+    ranked.sort_unstable();
+    ranked.into_iter().map(|(_, key)| key).collect()
 }
 
 const MAGIC_MULT: u128 = 2_654_435_761;
@@ -124,37 +160,29 @@ fn home(key: u64, size: usize) -> usize {
     ((u128::from(key) * MAGIC_MULT) % size as u128) as usize
 }
 
-/// 16-bit check stored with each slot.
 pub fn key_check(key: u64) -> u16 {
     (key.wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 48) as u16
 }
 
-/// One table slot.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Slot {
-    /// Index-star numbers in canonical order. `stars[0] == u32::MAX` marks an empty slot.
     pub stars: [u32; 4],
-    /// [`key_check`] of the pattern's key.
     pub check: u16,
-    /// Largest edge, radians.
     pub largest: f32,
 }
 
 impl Slot {
-    /// An empty slot.
     pub const EMPTY: Slot = Slot {
         stars: [u32::MAX; 4],
         check: 0,
         largest: 0.0,
     };
 
-    /// Whether this slot is empty.
     pub fn is_empty(&self) -> bool {
         self.stars[0] == u32::MAX
     }
 }
 
-/// Open-addressed pattern table.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PatternTable {
     slots: Vec<Slot>,
@@ -162,7 +190,6 @@ pub struct PatternTable {
 }
 
 impl PatternTable {
-    /// A table sized for `n` patterns: the next prime above `3n` (load factor ≤ 1/3).
     pub fn for_patterns(n: usize) -> Self {
         Self {
             slots: vec![Slot::EMPTY; next_prime(3 * n.max(1) + 1)],
@@ -170,29 +197,23 @@ impl PatternTable {
         }
     }
 
-    /// From stored slots (index file).
     pub fn from_slots(slots: Vec<Slot>) -> Self {
         let len = slots.iter().filter(|s| !s.is_empty()).count();
         Self { slots, len }
     }
 
-    /// Slots.
     pub fn slots(&self) -> &[Slot] {
         &self.slots
     }
 
-    /// Number of stored patterns.
     pub fn len(&self) -> usize {
         self.len
     }
 
-    /// Whether no patterns are stored.
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
 
-    /// Insert a pattern under `key`. Panics if the table is full (cannot happen when sized with
-    /// [`PatternTable::for_patterns`]).
     pub fn insert(&mut self, key: u64, stars: [u32; 4], largest: f64) {
         assert!(self.len < self.slots.len(), "pattern table full");
         let size = self.slots.len();
@@ -208,16 +229,17 @@ impl PatternTable {
         self.len += 1;
     }
 
-    /// Slots stored under `key` (plus rare 16-bit check collisions; callers verify the shape).
     pub fn probe(&self, key: u64) -> impl Iterator<Item = &Slot> + '_ {
-        let size = self.slots.len();
         let check = key_check(key);
-        // An empty table has no home slot (and `0..size` below yields nothing).
+        self.probe_chain(key).filter(move |s| s.check == check)
+    }
+
+    pub(crate) fn probe_chain(&self, key: u64) -> impl Iterator<Item = &Slot> + '_ {
+        let size = self.slots.len();
         let start = if size == 0 { 0 } else { home(key, size) };
         (0..size)
             .map(move |k| &self.slots[(start + k) % size])
             .take_while(|s| !s.is_empty())
-            .filter(move |s| s.check == check)
     }
 }
 
@@ -252,7 +274,6 @@ mod tests {
     }
 
     fn rot(v: [f64; 3], axis: [f64; 3], a: f64) -> [f64; 3] {
-        // Rodrigues rotation.
         let (s, c) = a.psin_cos();
         let d = axis[0] * v[0] + axis[1] * v[1] + axis[2] * v[2];
         let x = [
@@ -289,7 +310,6 @@ mod tests {
         }
         assert!((s1.largest - s2.largest).abs() < 1e-14);
         assert_eq!(o1, o2);
-        // Shuffle input order: canonical order still names the same stars.
         let shuffled = [p[2], p[0], p[3], p[1]];
         let (_, o3) = shape_of(&shuffled, angle);
         let names = [2, 0, 3, 1];

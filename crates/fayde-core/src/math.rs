@@ -1,60 +1,28 @@
-//! Portable floating-point maths: the same bits on every OS and CPU.
-//!
-//! `f64::sin`, `cos`, `atan2`, `ln`, `exp`, `hypot`, `powf` and friends call the platform's
-//! maths library (Apple's libm, glibc, the MSVC CRT), which are not correctly rounded and differ
-//! in the last bit. `powi`'s precision is documented as unspecified and differs between debug and
-//! release builds. Index files are hashed and that hash is part of the solver's identity, so
-//! Fayde must build the same bytes from the same catalogue on macOS, Linux and Windows.
-//!
-//! [`Portable`] routes every such call through the `libm` crate, a pure-Rust port of musl's libm
-//! (itself from FreeBSD msun / Sun fdlibm), built without its `arch` feature so no
-//! platform-specific instruction is used. `+ − × ÷` and `sqrt` are correctly rounded by IEEE 754
-//! and need no wrapper; Rust never contracts `a * b + c` into a fused multiply-add on its own.
-//!
-//! The std methods are banned workspace-wide by `clippy.toml` (`disallowed-methods`).
-//!
-//! Supported targets: any with IEEE 754 binary64 arithmetic in SSE2-class registers, i.e. every
-//! 64-bit target (x86_64, aarch64) and 32-bit x86 with SSE2 (the standard `i686` targets). On
-//! x86 without SSE2 (`i586`) plain `+ − × ÷` use the x87 FPU's extended precision and `libm`
-//! must use x87 instructions, so results cannot match other machines: the build refuses it.
-
 #[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]
 compile_error!(
     "Fayde needs SSE2 on 32-bit x86: x87 arithmetic is not reproducible across machines"
 );
 
-/// Transcendental functions with platform-independent results. The `p` prefix marks the portable
-/// version of the std method of the same name.
+#[doc(hidden)]
+pub fn round_decimal(value: f64, places: usize) -> f64 {
+    format!("{value:.places$}").parse().unwrap_or(value)
+}
+
 pub trait Portable: Copy {
-    /// Sine.
     fn psin(self) -> Self;
-    /// Cosine.
     fn pcos(self) -> Self;
-    /// `(sin, cos)`.
     fn psin_cos(self) -> (Self, Self);
-    /// Tangent.
     fn ptan(self) -> Self;
-    /// Arcsine.
     fn pasin(self) -> Self;
-    /// Arccosine.
     fn pacos(self) -> Self;
-    /// Arctangent.
     fn patan(self) -> Self;
-    /// Four-quadrant arctangent of `self / x`.
     fn patan2(self, x: Self) -> Self;
-    /// `e^self`.
     fn pexp(self) -> Self;
-    /// Natural logarithm.
     fn pln(self) -> Self;
-    /// Base-10 logarithm.
     fn plog10(self) -> Self;
-    /// `self^e`.
     fn ppowf(self, e: Self) -> Self;
-    /// `self^n` by binary exponentiation in a fixed order.
     fn ppowi(self, n: i32) -> Self;
-    /// `sqrt(self² + other²)` without undue overflow.
     fn phypot(self, other: Self) -> Self;
-    /// Complementary error function, `1 − erf(self)`.
     fn perfc(self) -> Self;
 }
 
@@ -130,8 +98,6 @@ macro_rules! portable {
                 } else if acc.is_finite() {
                     1.0 / acc
                 } else {
-                    // |self|^|n| overflowed, but self^n may still be a (subnormal) number:
-                    // exponentiate the reciprocal instead.
                     (1.0 / self).ppowi(n.saturating_neg().max(1))
                         * if n == i32::MIN { 1.0 / self } else { 1.0 }
                 }
@@ -167,14 +133,12 @@ mod tests {
         assert_eq!(x.ppowi(3), x * (x * x));
         assert_eq!(2f64.ppowi(-2), 0.25);
         assert_eq!(3f32.ppowi(4), 81.0);
-        // Overflowing positive power, representable negative power.
         assert_eq!(2f64.ppowi(-1024), f64::from_bits(1 << 50));
         assert_eq!(2f32.ppowi(-128), f32::from_bits(1 << 21));
         assert_eq!(2f64.ppowi(i32::MIN), 0.0);
         assert_eq!(0.5f64.ppowi(i32::MIN), f64::INFINITY);
     }
 
-    /// Fixed bit patterns: any platform that disagrees is not running the portable code.
     #[test]
     fn results_are_pinned_to_the_bit() {
         let x = 0.7_f64;

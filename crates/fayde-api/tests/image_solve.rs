@@ -1,8 +1,3 @@
-//! From pixels to a WCS with no source list: a frame of a synthetic sky is rendered through a
-//! known WCS (stars from mag 6, which saturate, to mag 16 at the detection limit; noise; hot
-//! pixels; two streaks), its sources are detected, and the solver's WCS is compared with the
-//! truth. No external data is needed.
-
 use fayde_api::{build_request, detect_sources, DetectOptions, RequestOptions};
 use fayde_catalog::{memory::MemoryCatalog, Star};
 use fayde_core::{to_arcsec, PixelPos, Portable, SkyPos, UnitVector};
@@ -15,7 +10,6 @@ use fayde_wcs::TanWcs;
 const SIZE: usize = 1024;
 const SCALE: f64 = 3.0; // arcsec per pixel
 
-/// Stars in a cap around `centre`: 400 per deg² to mag 16, N(<m) ∝ 10^(0.3 m) from mag 6.
 fn sky(centre: SkyPos, radius_deg: f64, rng: &mut Rng) -> Vec<Star> {
     let r = radius_deg.to_radians();
     let area =
@@ -57,7 +51,6 @@ struct Frame {
     pixels: Vec<f32>,
 }
 
-/// A frame centred on `(ra, dec)` degrees at position angle `roll`, stars of σ `psf` pixels.
 fn frame(ra: f64, dec: f64, roll_deg: f64, psf: Psf, seed: u64) -> Frame {
     let mut rng = Rng(seed);
     let centre = SkyPos::from_degrees(ra, dec).unwrap();
@@ -76,7 +69,6 @@ fn frame(ra: f64, dec: f64, roll_deg: f64, psf: Psf, seed: u64) -> Frame {
     scene.gradient = (0.03, -0.02);
     scene.saturation = Some(65_535.0);
     scene.quantise = true;
-    // A mag-16 star at four times the noise of the matched filter: the detection limit.
     let faintest = 4.0 * scene.sky_noise() * 2.0 * std::f64::consts::PI.sqrt() * scene.psf_sigma();
     for st in &stars {
         let Some(p) = truth.sky_to_pixel(st.pos) else {
@@ -93,7 +85,6 @@ fn frame(ra: f64, dec: f64, roll_deg: f64, psf: Psf, seed: u64) -> Frame {
         });
     }
     let noise = scene.sky_noise();
-    // A satellite crossing the whole frame, and a short, brighter one inside it.
     scene.streaks.push(Streak {
         x0: -30.0,
         y0: 310.0,
@@ -124,8 +115,6 @@ fn frame(ra: f64, dec: f64, roll_deg: f64, psf: Psf, seed: u64) -> Frame {
     }
 }
 
-/// Detect, solve with a pointing 0.3° off and the scale known to 1%, and return the worst sky
-/// error over the corners and centre, arcsec.
 fn solve_frame(f: &Frame, ra: f64, dec: f64, name: &str) -> f64 {
     let image = Image {
         width: SIZE,
@@ -150,7 +139,6 @@ fn solve_frame(f: &Frame, ra: f64, dec: f64, name: &str) -> f64 {
         report["seconds"].as_f64().unwrap() * 1e3,
     );
     assert_eq!(report["count"], sources.len());
-    // Both streaks are found, and nothing on them is handed to the solver.
     assert_eq!(streaks.len(), 2, "{name}: {streaks:?}");
     let on_a_streak = |x: f64, y: f64| {
         f.scene.streaks.iter().any(|t| {
@@ -175,7 +163,6 @@ fn solve_frame(f: &Frame, ra: f64, dec: f64, name: &str) -> f64 {
         fragments, 0,
         "{name}: streak fragments among the solver's sources"
     );
-    // No hot pixel either.
     let hot =
         sources
             .iter()
@@ -230,13 +217,11 @@ fn solve_frame(f: &Frame, ra: f64, dec: f64, name: &str) -> f64 {
 fn a_frame_with_streaks_solves_from_its_pixels() {
     let f = frame(81.0, 12.0, 25.0, Psf::Gaussian(1.4), 11);
     let worst = solve_frame(&f, 81.0, 12.0, "gaussian 1.4 px");
-    // A tenth of a pixel anywhere in the frame.
     assert!(worst < 0.3, "{worst}″");
 }
 
 #[test]
 fn seeing_limited_and_oversampled_stars_solve_too() {
-    // A Moffat profile (the shape of atmospheric seeing), stars 7 pixels wide: detection bins.
     let f = frame(
         200.0,
         -35.0,

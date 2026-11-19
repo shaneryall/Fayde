@@ -64,9 +64,22 @@ fayde detect --image FRAME -o SOURCES
 Fayde prints a JSON report with the background, the noise, the width of the stars, and every
 source that it found. The report also lists the streaks that cross the image, such as satellite
 trails, and the hot pixels and cosmic-ray hits that Fayde set aside. With `-o`, Fayde also
-writes the sources to `SOURCES`, in the format that `--sources` reads. To
-list the detection options and their default values, run `fayde detect --help`. The same
-options work with `fayde solve --image`.
+writes the sources to `SOURCES`, in the format that `--sources` reads.
+
+When the stars' full width at half maximum (FWHM) is about one pixel or less at full
+resolution, Fayde keeps point sources that are too sharp for the usual shape checks. A star
+this narrow can put nearly all its light in one pixel, so the source list can also include
+hot pixels and compact cosmic-ray hits.
+
+If background subtraction clipped many sky pixels to the same minimum value, such as zero,
+Fayde accounts for the clipping when estimating the background and setting the detection
+threshold. The clipped-sky model requires floor pixels mixed with sky noise across most of the
+image's sky tiles. Frames with a constant border and ordinary sky use the standard background
+estimate.
+
+To list the detection options and their default values, run `fayde detect --help`. The same
+options work with `fayde solve --image`. The `--detect-threshold` option sets the peak threshold
+in σ of the filtered image, and its value must be at least 1.5.
 
 ### Specify the pointing and scale
 

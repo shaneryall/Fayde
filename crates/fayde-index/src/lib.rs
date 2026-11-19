@@ -1,9 +1,3 @@
-//! Pattern index for Fayde: uniform star selection, 4-star pattern hash table, and a versioned
-//! on-disk format.
-//!
-//! See `docs/design/plate-solver.md` §5.2. Blind solving uses these pattern indexes in scale bands;
-//! astrometry.net-style quad codes were considered and not adopted (`docs/references.md`).
-
 #![forbid(unsafe_code)]
 
 pub mod build;
@@ -19,59 +13,41 @@ pub use build::{
 };
 pub use file::IndexFileError;
 
-use pattern::{angle, keys_within, planar, shape_of, PatternTable, Shape};
+use pattern::{
+    angle, edge_shape, key_check, planar, shape_of, KeyWindow, PatternTable, Shape, Slot,
+};
 
-/// On-disk format version. Bump on any incompatible change.
 pub const FORMAT_VERSION: u32 = 2;
 
-/// Index metadata, stored as JSON in the file header.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct IndexMeta {
-    /// [`FORMAT_VERSION`] at build time.
     pub format_version: u32,
-    /// Source catalogue name.
     pub catalog_name: String,
-    /// Source catalogue release.
     pub catalog_release: String,
-    /// Build parameters (including epoch and region).
     pub params: BuildParams,
-    /// HEALPix resolution used for star selection.
     pub healpix_nside: u32,
-    /// Number of lattice fields over the whole sky.
     pub lattice_fields: usize,
-    /// Bins per ratio in pattern keys.
     pub bins: u32,
-    /// Stars in the index.
     pub star_count: usize,
-    /// Patterns in the table.
     pub pattern_count: usize,
-    /// Table slots.
     pub table_size: usize,
-    /// Builder name and version.
     pub builder: String,
 }
 
-/// A star as stored in the index.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct IndexStar {
-    /// Unit vector at the index epoch.
     pub vec: [f64; 3],
-    /// Magnitude in the build band.
     pub mag: f32,
-    /// Catalogue identifier.
     pub id: u64,
-    /// Member of the sparse pattern tier (patterns are built only from these).
     pub pattern: bool,
 }
 
-/// A loaded or freshly built index.
 #[derive(Debug, Clone)]
 pub struct Index {
     meta: IndexMeta,
     stars: Vec<IndexStar>,
     table: PatternTable,
     content_hash: u64,
-    /// k-d tree over star vectors, built on first use and kept.
     tree: std::sync::OnceLock<kdtree::KdTree<3>>,
 }
 
@@ -84,15 +60,10 @@ impl PartialEq for Index {
     }
 }
 
-/// A catalogue pattern matching an image pattern.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PatternMatch {
-    /// Index-star numbers in canonical order. Element `i` corresponds to the image star at
-    /// canonical position `i` of the query.
     pub stars: [u32; 4],
-    /// Largest |Δratio| between the catalogue and image shapes.
     pub ratio_error: f64,
-    /// Catalogue largest edge, radians.
     pub largest: f64,
 }
 
@@ -109,80 +80,192 @@ impl Index {
         idx
     }
 
-    /// Metadata.
     pub fn meta(&self) -> &IndexMeta {
         &self.meta
     }
 
-    /// Stars, addressed by the numbers stored in patterns.
     pub fn stars(&self) -> &[IndexStar] {
         &self.stars
     }
 
-    /// k-d tree over the star unit vectors (indices into [`Index::stars`]), built once.
     pub fn star_tree(&self) -> &kdtree::KdTree<3> {
         self.tree
             .get_or_init(|| kdtree::KdTree::build(self.stars.iter().map(|s| s.vec).collect()))
     }
 
-    /// Pattern table.
     pub fn table(&self) -> &PatternTable {
         &self.table
     }
 
-    /// 64-bit FNV-1a hash of the serialized content; goes into solution provenance.
+    /// FNV-1a hash of the serialized index. A loaded index retains its original file hash.
     pub fn content_hash(&self) -> u64 {
         self.content_hash
     }
 
-    /// Catalogue patterns whose shape matches `shape` within `tol` in every ratio, optionally
-    /// restricted to a range of largest-edge sizes (radians). Results are ordered by ratio error,
-    /// then by star numbers (deterministic).
     pub fn lookup(
         &self,
         shape: &Shape,
         tol: f64,
         largest_range: Option<(f64, f64)>,
     ) -> Vec<PatternMatch> {
+        self.lookup_with_cancel(shape, tol, largest_range, || false)
+            .expect("lookup is never cancelled")
+    }
+
+    pub fn lookup_with_cancel(
+        &self,
+        shape: &Shape,
+        tol: f64,
+        largest_range: Option<(f64, f64)>,
+        mut cancelled: impl FnMut() -> bool,
+    ) -> Option<Vec<PatternMatch>> {
+        if cancelled() {
+            return None;
+        }
+        if self.table.is_empty() {
+            return Some(Vec::new());
+        }
+        let window = KeyWindow::new(&shape.ratios, tol, self.meta.bins);
+        let scan = window.len() > self.table.slots().len() as u64;
+        let mut work = 0usize;
+        let mut stop = || {
+            work = work.wrapping_add(1);
+            work % 64 == 0 && cancelled()
+        };
         let mut out = Vec::new();
         let mut seen = std::collections::HashSet::new();
-        for k in keys_within(&shape.ratios, tol, self.meta.bins) {
-            for slot in self.table.probe(k) {
-                if let Some((lo, hi)) = largest_range {
-                    let l = f64::from(slot.largest);
-                    if l < lo * (1.0 - 1e-6) || l > hi * (1.0 + 1e-6) {
-                        continue;
+        let mut consider = |slot: &Slot| {
+            let largest = f64::from(slot.largest);
+            if largest_range
+                .is_some_and(|(lo, hi)| largest < lo * (1.0 - 1e-6) || largest > hi * (1.0 + 1e-6))
+                || seen.contains(&slot.stars)
+            {
+                return;
+            }
+            let pts = slot.stars.map(|i| self.stars[i as usize].vec);
+            let cat = edge_shape(&pts, angle);
+            let err = (0..5)
+                .map(|i| (cat.ratios[i] - shape.ratios[i]).abs())
+                .fold(0.0, f64::max);
+            if err <= tol && (!scan || window.contains(&cat.ratios)) {
+                seen.insert(slot.stars);
+                out.push(PatternMatch {
+                    stars: slot.stars,
+                    ratio_error: err,
+                    largest: cat.largest,
+                });
+            }
+        };
+        if scan {
+            for slot in self.table.slots() {
+                if stop() {
+                    return None;
+                }
+                if !slot.is_empty() {
+                    consider(slot);
+                }
+            }
+        } else {
+            for key in window.keys() {
+                if stop() {
+                    return None;
+                }
+                let check = key_check(key);
+                for slot in self.table.probe_chain(key) {
+                    if stop() {
+                        return None;
                     }
-                }
-                if !seen.insert(slot.stars) {
-                    continue;
-                }
-                let pts = slot.stars.map(|i| self.stars[i as usize].vec);
-                let (cat, _) = shape_of(&pts, angle);
-                let err = (0..5)
-                    .map(|i| (cat.ratios[i] - shape.ratios[i]).abs())
-                    .fold(0.0, f64::max);
-                if err <= tol {
-                    out.push(PatternMatch {
-                        stars: slot.stars,
-                        ratio_error: err,
-                        largest: cat.largest,
-                    });
+                    if slot.check == check {
+                        consider(slot);
+                    }
                 }
             }
         }
-        out.sort_by(|a, b| {
+        if cancelled() {
+            return None;
+        }
+        out.sort_unstable_by(|a, b| {
             a.ratio_error
                 .total_cmp(&b.ratio_error)
                 .then(a.stars.cmp(&b.stars))
         });
-        out
+        (!cancelled()).then_some(out)
     }
 }
 
-/// Shape and canonical order of an image pattern from tangent-plane (or pixel) coordinates.
-/// Distances in a ~1° tangent plane differ from angles by < 1e-4 relative, well inside pattern
-/// tolerances.
 pub fn image_shape(points: &[[f64; 2]; 4]) -> (Shape, [usize; 4]) {
     shape_of(points, planar)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fayde_core::SkyPos;
+
+    fn sample_index(bins: u32) -> (Index, Shape) {
+        let points = [(2.0, 3.0), (2.24, 3.08), (2.09, 3.29), (2.30, 3.25)]
+            .map(|(ra, dec)| SkyPos::from_degrees(ra, dec).unwrap().to_unit_vector().0);
+        let (shape, order) = shape_of(&points, angle);
+        let indexed_points = order.map(|i| points[i]);
+        let stars = indexed_points
+            .into_iter()
+            .chain(indexed_points)
+            .enumerate()
+            .map(|(i, vec)| IndexStar {
+                vec,
+                mag: 8.0,
+                id: i as u64,
+                pattern: true,
+            })
+            .collect::<Vec<_>>();
+        let mut table = PatternTable::for_patterns(512);
+        let key = pattern::key(&shape.ratios, bins);
+        table.insert(key, [4, 5, 6, 7], shape.largest);
+        table.insert(key, [0, 1, 2, 3], shape.largest);
+        let meta = IndexMeta {
+            format_version: FORMAT_VERSION,
+            catalog_name: "synthetic".into(),
+            catalog_release: String::new(),
+            params: BuildParams::default(),
+            healpix_nside: 1,
+            lattice_fields: 1,
+            bins,
+            star_count: stars.len(),
+            pattern_count: table.len(),
+            table_size: table.slots().len(),
+            builder: BUILDER.into(),
+        };
+        (Index::new(meta, stars, table), shape)
+    }
+
+    #[test]
+    fn probing_and_scanning_return_the_same_ranked_matches() {
+        let (coarse, shape) = sample_index(50);
+        let (fine, _) = sample_index(1_000);
+        let tol = 0.02;
+        assert!(KeyWindow::new(&shape.ratios, tol, 50).len() < coarse.meta().table_size as u64);
+        assert!(KeyWindow::new(&shape.ratios, tol, 1_000).len() > 100_000_000);
+        let matches = coarse.lookup(&shape, tol, None);
+        assert_eq!(matches.len(), 2);
+        assert_eq!(matches[0].stars, [0, 1, 2, 3]);
+        assert_eq!(fine.lookup(&shape, tol, None), matches);
+        assert!(fine
+            .lookup(&shape, tol, Some((0.0, shape.largest / 2.0)))
+            .is_empty());
+    }
+
+    #[test]
+    fn no_match_lookups_check_cancellation_in_both_paths() {
+        for bins in [50, 1_000] {
+            let (index, shape) = sample_index(bins);
+            let range = Some((0.0, shape.largest / 2.0));
+            let mut checks = 0;
+            let result = index.lookup_with_cancel(&shape, 0.02, range, || {
+                checks += 1;
+                checks == 2
+            });
+            assert!(result.is_none());
+            assert!(index.lookup(&shape, 0.02, range).is_empty());
+        }
+    }
 }

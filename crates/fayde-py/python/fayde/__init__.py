@@ -46,7 +46,6 @@ __all__ = [
 ]
 
 __version__: str = _native.__version__
-#: Source commit of the compiled extension.
 commit: str = _native.commit
 
 
@@ -61,11 +60,11 @@ class FaydeError(RuntimeError):
 
 def _column(name: str, values: Any, missing: Any) -> List[Any]:
     """A 1-D column as a list. Masked entries (numpy.ma) become ``missing``."""
-    if hasattr(values, "filled"):  # numpy masked array
+    if hasattr(values, "filled"):
         values = values.filled(missing) if hasattr(values, "mask") else values
     if getattr(values, "ndim", 1) != 1:
         raise ValueError(f"{name} must be one-dimensional, not shape {values.shape}")
-    if hasattr(values, "tolist"):  # NumPy arrays, astropy columns
+    if hasattr(values, "tolist"):
         values = values.tolist()
     out: List[Any] = list(values)
     if any(isinstance(v, (list, tuple)) for v in out):
@@ -108,7 +107,6 @@ def _bools(name: str, values: Any) -> Optional[List[bool]]:
     return out
 
 
-# Header keywords with no value to pass on.
 _COMMENTARY = {"", "COMMENT", "HISTORY", "CONTINUE", "END"}
 
 
@@ -120,7 +118,7 @@ def _header(h: Any) -> Any:
     """
     if h is None or isinstance(h, dict):
         return h
-    if hasattr(h, "cards") and hasattr(h, "items"):  # astropy.io.fits.Header
+    if hasattr(h, "cards") and hasattr(h, "items"):
         out = {}
         for k, v in h.items():
             if k.upper() in _COMMENTARY:
@@ -130,13 +128,13 @@ def _header(h: Any) -> Any:
             if v is None or isinstance(v, (bool, int, float, str)):
                 out[k] = v
         return out
-    if isinstance(h, str):  # a header block
+    if isinstance(h, str):
         return h.splitlines() if "\n" in h else [h[i : i + 80] for i in range(0, len(h), 80)]
     return [str(c) for c in h]
 
 
 def _json_scalar(v: Any) -> Any:
-    if hasattr(v, "item"):  # NumPy scalar
+    if hasattr(v, "item"):
         v = v.item()
     if isinstance(v, float) and not math.isfinite(v):
         raise ValueError(f"non-finite option value {v!r}")
@@ -158,15 +156,17 @@ def _image_args(image: Any) -> "tuple[Optional[str], Optional[bytes], int, int, 
     header = None
     if hasattr(image, "data") and hasattr(image, "header") and not hasattr(image, "ndim"):
         header, image = image.header, image.data
-    import numpy as np  # only needed for arrays
+    import numpy as np
 
-    a = np.ma.filled(np.ma.asarray(image, dtype=np.float64), np.nan) if np.ma.isMaskedArray(
-        image
-    ) else np.asarray(image, dtype=np.float64)
+    a: np.ndarray[Any, np.dtype[np.float32]]
+    if np.ma.isMaskedArray(image):
+        a = np.ma.asarray(image, dtype="<f4").filled(np.nan)
+    else:
+        a = np.asarray(image, dtype="<f4")
     if a.ndim != 2:
         raise ValueError(f"image must be 2-D, not shape {a.shape}")
     h, w = a.shape
-    data = np.ascontiguousarray(a, dtype="<f4").tobytes()
+    data = a.tobytes(order="C")
     return None, data, int(w), int(h), header
 
 
@@ -182,7 +182,7 @@ def detect(image: Any, **options: Any) -> DetectReport:
     and ``rejected`` (hot pixels, cosmic-ray hits, anything on a streak).
     """
     path, data, w, h, header = _image_args(image)
-    if header is not None and "header" not in options:
+    if header is not None and options.get("header") is None:
         options = dict(options, header=header)
     opts = _options(options)
     text = _native.detect(
@@ -228,7 +228,7 @@ class Solver:
         Astropy HDU. The image's header gives the priors unless ``header`` is passed. Takes
         :meth:`solve`'s options and :func:`detect`'s; the report adds ``detection``."""
         path, data, w, h, header = _image_args(image)
-        if header is not None and "header" not in options:
+        if header is not None and options.get("header") is None:
             options = dict(options, header=header)
         text, error = self._native.run_image(
             "solve",

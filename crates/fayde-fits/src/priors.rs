@@ -1,27 +1,13 @@
-//! Priors from an image header.
-//!
-//! The rules (design doc §1): scale from instrument metadata, then a unit-checked linear WCS,
-//! rejecting headers that carry both CD and PC matrices; pointing from the header WCS or pointing
-//! keywords, when the header does not declare a frame other than ICRS/J2000; time from JD/MJD
-//! keywords before ISO dates, when it falls in a plausible range. A header WCS is only ever a
-//! *prior*: it is never treated as a solution.
-
 use fayde_core::Portable;
 use fayde_core::{Epoch, SkyPos};
 use fayde_wcs::{Header, Value};
 
-/// What a header says about a frame. Each field records where it came from.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct HeaderPriors {
-    /// Pointing and its origin keyword(s).
     pub pointing: Option<(SkyPos, &'static str)>,
-    /// Pixel scale (arcsec/px) and its origin.
     pub scale_arcsec: Option<(f64, &'static str)>,
-    /// Mid-exposure epoch and its origin.
     pub epoch: Option<(Epoch, &'static str)>,
-    /// `NAXIS1`, `NAXIS2` (or `IMAGEW`, `IMAGEH`).
     pub size: Option<(u32, u32)>,
-    /// Problems found (ambiguous or invalid keywords that were ignored).
     pub warnings: Vec<String>,
 }
 
@@ -39,12 +25,14 @@ fn text(h: &Header, k: &str) -> Option<String> {
         .map(|s| s.trim().to_string())
 }
 
-/// Parse `"hh mm ss.s"`, `"hh:mm:ss.s"` or `"-dd mm ss"` into a decimal value of the leading unit.
 pub fn parse_sexagesimal(s: &str) -> Option<f64> {
     let s = s.trim();
     let neg = s.starts_with('-');
-    let parts: Vec<f64> = s
-        .trim_start_matches(['+', '-'])
+    let unsigned = s.strip_prefix(['+', '-']).unwrap_or(s);
+    if unsigned.starts_with(['+', '-']) {
+        return None;
+    }
+    let parts: Vec<f64> = unsigned
         .split([' ', ':'])
         .filter(|p| !p.is_empty())
         .map(str::parse)
@@ -53,15 +41,22 @@ pub fn parse_sexagesimal(s: &str) -> Option<f64> {
     if parts.is_empty() || parts.len() > 3 {
         return None;
     }
-    // Minutes and seconds are unsigned and below 60; the sign belongs to the whole value.
-    if parts[1..].iter().any(|v| !(0.0..60.0).contains(v)) || parts[0] < 0.0 {
+    let last = parts.len() - 1;
+    if parts.iter().enumerate().skip(1).any(|(i, v)| {
+        if i == last {
+            !(0.0..=60.0).contains(v)
+        } else {
+            !(0.0..60.0).contains(v)
+        }
+    }) || !parts[0].is_finite()
+        || parts[0] < 0.0
+    {
         return None;
     }
     let v = parts[0] + parts.get(1).unwrap_or(&0.0) / 60.0 + parts.get(2).unwrap_or(&0.0) / 3600.0;
     Some(if neg { -v } else { v })
 }
 
-/// Modified Julian Date from an ISO-8601 date or date-time (`YYYY-MM-DD[Thh:mm:ss[.sss]]`), UTC.
 pub fn mjd_from_iso(s: &str) -> Option<f64> {
     let s = s.trim();
     let (date, time) = match s.split_once('T') {
@@ -74,7 +69,6 @@ pub fn mjd_from_iso(s: &str) -> Option<f64> {
         .collect::<Result<_, _>>()
         .ok()?;
     let [y, m, day] = d[..] else { return None };
-    // Bounded before the day arithmetic below, which overflows for an absurd year.
     if !(1..=9999).contains(&y) {
         return None;
     }
@@ -96,7 +90,6 @@ pub fn mjd_from_iso(s: &str) -> Option<f64> {
     if !(1..=12).contains(&m) || day < 1 || day > days_in_month[(m - 1) as usize] {
         return None;
     }
-    // Days from 1970-01-01 (H. Hinnant, "chrono-compatible low-level date algorithms").
     let y2 = if m <= 2 { y - 1 } else { y };
     let era = y2.div_euclid(400);
     let yoe = y2 - era * 400;
@@ -117,7 +110,6 @@ pub fn mjd_from_iso(s: &str) -> Option<f64> {
             *p.get(1).unwrap_or(&0.0),
             *p.get(2).unwrap_or(&0.0),
         );
-        // 60 ≤ ss < 61 allows a leap second.
         if p.len() > 3
             || !(0.0..24.0).contains(&hh)
             || !(0.0..60.0).contains(&mm)
@@ -130,9 +122,6 @@ pub fn mjd_from_iso(s: &str) -> Option<f64> {
     Some(days as f64 + 40_587.0 + frac)
 }
 
-/// Why the header's coordinates are not ICRS/J2000, when it says so: a `RADESYS` other than ICRS
-/// or FK5, or an `EQUINOX` other than 2000. The older `EPOCH` keyword is not consulted: it is
-/// also written for the observation date, and a prior should not be lost to that ambiguity.
 fn foreign_frame(h: &Header) -> Option<String> {
     let sys = text(h, "RADESYS")
         .or_else(|| text(h, "RADECSYS"))
@@ -151,17 +140,23 @@ fn foreign_frame(h: &Header) -> Option<String> {
     }
 }
 
-/// Read priors from an image header.
 pub fn header_priors(h: &Header) -> HeaderPriors {
+    header_priors_for_size(h, (None, None))
+}
+
+pub fn header_priors_for_size(h: &Header, size: (Option<u32>, Option<u32>)) -> HeaderPriors {
     let mut out = HeaderPriors::default();
 
-    // Size.
-    let dim = |a: &str, b: &str| Some((num(h, a)? as u32, num(h, b)? as u32));
-    out.size = dim("NAXIS1", "NAXIS2")
-        .or_else(|| dim("IMAGEW", "IMAGEH"))
-        .filter(|(w, h)| *w > 0 && *h > 0);
+    let dim = |key| num(h, key).and_then(crate::pixel_dimension);
+    out.size = dim("NAXIS1")
+        .zip(dim("NAXIS2"))
+        .or_else(|| dim("IMAGEW").zip(dim("IMAGEH")));
 
-    // Scale: instrument metadata first, then the linear WCS, then explicit scale keywords.
+    let size = size
+        .0
+        .or(out.size.map(|s| s.0))
+        .zip(size.1.or(out.size.map(|s| s.1)));
+
     let has_cd = ["CD1_1", "CD1_2", "CD2_1", "CD2_2"]
         .iter()
         .any(|k| h.contains(k));
@@ -199,8 +194,7 @@ pub fn header_priors(h: &Header) -> HeaderPriors {
             _ => None,
         }
     };
-    // Placeholder values (e.g. CDELT = 1 on frames without a real WCS) imply absurd fields.
-    let plausible = |s: f64| match out.size {
+    let plausible = |s: f64| match size {
         Some((w, hgt)) => 0.5 * f64::from(w).phypot(f64::from(hgt)) * s / 3600.0 < 60.0,
         None => s < 600.0,
     };
@@ -221,11 +215,8 @@ pub fn header_priors(h: &Header) -> HeaderPriors {
         .or(linear.map(|s| (s, "header linear WCS")))
         .or(explicit.map(|s| (s, "PIXSCALE/SECPIX")));
 
-    // Pointing: header WCS reference point, else pointing keywords.
     let tan = text(h, "CTYPE1").is_some_and(|c| c.starts_with("RA---"))
         && text(h, "CTYPE2").is_some_and(|c| c.starts_with("DEC--"));
-    // CRVAL is in CUNIT (default degrees): radians are converted; any other unit leaves the
-    // WCS reference point unused, with a warning, rather than misread as degrees.
     let crval_factor = {
         let units: Vec<Option<String>> = ["CUNIT1", "CUNIT2"].iter().map(|k| text(h, k)).collect();
         let rad = |u: &Option<String>| {
@@ -250,30 +241,46 @@ pub fn header_priors(h: &Header) -> HeaderPriors {
     let wcs_ptg = (tan && crval_factor.is_some())
         .then(|| {
             let f = crval_factor?;
-            // A longitude beyond one turn either way is not a coordinate; it is not wrapped.
             let ra = Some(num(h, "CRVAL1")? * f).filter(|ra| ra.abs() <= 360.0)?;
             SkyPos::from_degrees(ra, num(h, "CRVAL2")? * f)
         })
         .flatten();
     let kw = |ra_k: &str, dec_k: &str| -> Option<SkyPos> {
         let ra: f64 = match h.get(ra_k)? {
-            Value::Str(s) if s.contains([' ', ':']) => parse_sexagesimal(s)? * 15.0,
+            Value::Str(s) if s.trim().contains([' ', ':']) => {
+                let ra = parse_sexagesimal(s)? * 15.0;
+                if ra == 360.0 {
+                    0.0
+                } else {
+                    ra
+                }
+            }
             Value::Str(s) => s.trim().parse().ok()?,
             v => v.as_f64()?,
         };
-        // Out of range (25 hours, 400°) is an error in the header, not a value to wrap.
         if !(0.0..360.0).contains(&ra) {
             return None;
         }
         let dec = match h.get(dec_k)? {
-            Value::Str(s) if s.contains([' ', ':']) => parse_sexagesimal(s)?,
+            Value::Str(s) if s.trim().contains([' ', ':']) => parse_sexagesimal(s)?,
             Value::Str(s) => s.trim().parse().ok()?,
             v => v.as_f64()?,
         };
         SkyPos::from_degrees(ra, dec)
     };
-    let found = wcs_ptg
-        .map(|p| (p, "CRVAL1/CRVAL2"))
+    let centre = size.and_then(|(w, hgt)| {
+        linear?;
+        wcs_ptg?;
+        let wcs = fayde_wcs::Wcs::from_header(h).ok()?;
+        let pixel =
+            fayde_core::PixelPos::new((f64::from(w) - 1.0) / 2.0, (f64::from(hgt) - 1.0) / 2.0);
+        if pixel == wcs.crpix() {
+            return wcs_ptg.map(|p| (p, "CRVAL1/CRVAL2"));
+        }
+        Some((wcs.pixel_to_sky(pixel), "WCS image centre"))
+    });
+    let found = centre
+        .or_else(|| wcs_ptg.map(|p| (p, "CRVAL1/CRVAL2")))
         .or_else(|| kw("RA", "DEC").map(|p| (p, "RA/DEC")))
         .or_else(|| kw("OBJCTRA", "OBJCTDEC").map(|p| (p, "OBJCTRA/OBJCTDEC")));
     for (a, b) in [("RA", "DEC"), ("OBJCTRA", "OBJCTDEC")] {
@@ -282,8 +289,6 @@ pub fn header_priors(h: &Header) -> HeaderPriors {
                 .push(format!("{a}/{b} is not a valid position: ignored"));
         }
     }
-    // The pointing is used as ICRS. Coordinates the header declares in another frame or equinox
-    // (FK4/B1950, the equinox of date) are up to about 0.7° away from that, so they are not used.
     out.pointing = match (found, foreign_frame(h)) {
         (Some((_, origin)), Some(why)) => {
             out.warnings.push(format!(
@@ -294,8 +299,6 @@ pub fn header_priors(h: &Header) -> HeaderPriors {
         (found, _) => found,
     };
 
-    // Time: numeric clocks before ISO strings; DATE-OBS is the exposure start, so add half the
-    // exposure time for mid-exposure.
     let half_exp_days = num(h, "EXPTIME")
         .or_else(|| num(h, "EXPOSURE"))
         .filter(|v| *v > 0.0)
@@ -331,8 +334,6 @@ pub fn header_priors(h: &Header) -> HeaderPriors {
             out.epoch = Some((epoch, origin));
             break;
         }
-        // A clock error (a Julian Date in MJD-OBS, an unset camera clock): say so and try the
-        // next keyword rather than move every star by centuries of proper motion.
         out.warnings.push(format!(
             "{keyword} gives year {:.1}, outside {:.0} to {:.0}: ignored",
             epoch.year(),
@@ -346,6 +347,17 @@ pub fn header_priors(h: &Header) -> HeaderPriors {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn invalid_axis_sizes_fall_back_to_image_dimensions() {
+        for bad in ["NAXIS1  = 0", "NAXIS1  = 99.5", "NAXIS1  = 1e12"] {
+            let h = Header::parse_cards([bad, "NAXIS2  = 20", "IMAGEW  = 100", "IMAGEH  = 50"]);
+            assert_eq!(header_priors(&h).size, Some((100, 50)));
+        }
+        for input in ["--12:00", "+-2:30", "NaN", "inf:00"] {
+            assert!(parse_sexagesimal(input).is_none(), "{input}");
+        }
+    }
 
     #[test]
     fn crval_follows_cunit() {
@@ -365,7 +377,6 @@ mod tests {
             "CRVAL1  =                  1.0",
             "CRVAL2  =                  0.5",
         ]));
-        // Not misread as degrees; no RA/DEC keywords either, so no pointing at all.
         assert!(header_priors(&arcmin).pointing.is_none());
     }
 
@@ -387,5 +398,35 @@ mod tests {
         assert!((parse_sexagesimal("- 00 11 24.3").unwrap() + 0.190_083_333).abs() < 1e-9);
         assert!(parse_sexagesimal("-00 -11 -24.3").is_none());
         assert!(parse_sexagesimal("05 61 00").is_none());
+    }
+
+    #[test]
+    fn sexagesimal_seconds_rounded_up_to_sixty() {
+        assert!((parse_sexagesimal("20:29:60.0").unwrap() - 20.5).abs() < 1e-12);
+        assert!((parse_sexagesimal("-09 43 60.0").unwrap() + (9.0 + 44.0 / 60.0)).abs() < 1e-12);
+        assert!(parse_sexagesimal("20:29:60.5").is_none());
+        assert!(parse_sexagesimal("20:60:00").is_none());
+        assert!((parse_sexagesimal("20 60.0").unwrap() - 21.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn header_pointing_with_seconds_rounded_up_to_sixty() {
+        let h = Header::parse_cards(["RA      = '23:59:60.0'", "DEC     = '-06:56:60.0'"]);
+        let (p, _) = header_priors(&h).pointing.expect("pointing kept");
+        let (ra, dec) = p.to_degrees();
+        assert!(ra.abs() < 1e-9 || (ra - 360.0).abs() < 1e-9, "{ra}");
+        assert!((dec + (6.0 + 57.0 / 60.0)).abs() < 1e-9, "{dec}");
+    }
+
+    #[test]
+    fn padded_decimal_coordinates_are_degrees_not_sexagesimal() {
+        let h = Header::parse_cards(["RA      = ' 24.0'", "DEC     = '  2.5 '"]);
+        let (p, _) = header_priors(&h).pointing.expect("pointing kept");
+        let (ra, dec) = p.to_degrees();
+        assert!((ra - 24.0).abs() < 1e-9, "{ra}");
+        assert!((dec - 2.5).abs() < 1e-9, "{dec}");
+        let h = Header::parse_cards(["RA      = ' 12.5'", "DEC     = '-1.0'"]);
+        let (p, _) = header_priors(&h).pointing.expect("pointing kept");
+        assert!((p.to_degrees().0 - 12.5).abs() < 1e-9);
     }
 }

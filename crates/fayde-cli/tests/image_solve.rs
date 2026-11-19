@@ -1,7 +1,3 @@
-//! `fayde solve --image` and `fayde detect` end to end, on an image rendered from UCAC4 through a
-//! known WCS. Needs the UCAC4 zones z458–z463 (`$FAYDE_UCAC4_DIR`, default
-//! `<workspace>/data/ucac4`); ignored by default (`cargo test -- --include-ignored`).
-
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -38,8 +34,6 @@ fn truth() -> TanWcs {
     .unwrap()
 }
 
-/// Render the catalogue through the true WCS: Gaussian stars (FWHM 3 px) on a background of 500
-/// with noise σ 5, plus 30 hot pixels. Written as a BITPIX −32 FITS image with `header` cards.
 fn render(path: &Path, header: &[String]) {
     let cat = Ucac4Catalog::open(ucac4_dir()).unwrap();
     let wcs = truth();
@@ -114,7 +108,6 @@ fn fayde(args: &[&str]) -> (Value, std::process::ExitStatus, String) {
     (report, o.status, String::from_utf8_lossy(&o.stderr).into())
 }
 
-/// The solution agrees with the truth: centre within 0.5″, scale within 0.1%, roll within 0.05°.
 fn check_solution(r: &Value) {
     assert_eq!(r["solved"], true, "{r}");
     let (ra, dec) = (
@@ -168,7 +161,6 @@ fn solves_a_raw_image_with_command_line_priors() {
     check_solution(&r);
     let det = &r["detection"];
     assert!(det["count"].as_u64().unwrap() >= 30, "{det}");
-    // The frame's hot pixels are set aside, not handed to the solver.
     assert!(det["classes"]["sharp"].as_u64().unwrap() >= 25, "{det}");
     assert_eq!(det["rejected_narrow"], det["classes"]["sharp"]);
     assert!(
@@ -183,9 +175,6 @@ fn solves_a_raw_image_with_command_line_priors() {
 fn solves_a_raw_image_from_its_own_header_and_detect_writes_a_usable_list() {
     let d = scratch("hdr");
     let img = d.join("frame.fits");
-    // A rough header WCS: 0.06° off, unrotated, scale 0.5% off (north of the truth, so the search
-    // stays inside the local zones z458–z463). The solve takes its pointing
-    // and scale from it.
     let s = SCALE * 1.005 / 3600.0;
     render(
         &img,
@@ -219,7 +208,6 @@ fn solves_a_raw_image_from_its_own_header_and_detect_writes_a_usable_list() {
         .unwrap()
         .contains("CRVAL"));
 
-    // fayde detect -o, then solve --sources on that list: the same solution.
     let xy = d.join("frame.sources.fits");
     let (det, status, err) = fayde(&[
         "detect",

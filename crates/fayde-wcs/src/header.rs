@@ -1,29 +1,16 @@
-//! Minimal FITS header cards: parse 80-character card images and write TAN WCS cards.
-//!
-//! Card syntax follows the FITS Standard 3.0 (Pence et al. 2010, A&A 524, A42).
-//!
-//! This is not a general FITS library. It reads the keyword/value cards a WCS needs and writes
-//! standard-conforming cards that Astropy, wcslib and astrometry.net all read.
-
 use fayde_core::{PixelPos, Portable, SkyPos};
 
 use crate::{TanWcs, WcsError};
 
-/// A parsed header value.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
-    /// Quoted string, trailing blanks removed.
     Str(String),
-    /// Logical `T` / `F`.
     Bool(bool),
-    /// Integer.
     Int(i64),
-    /// Real (`E` or `D` exponent).
     Float(f64),
 }
 
 impl Value {
-    /// Numeric value as `f64` (integers are widened).
     pub fn as_f64(&self) -> Option<f64> {
         match *self {
             Self::Int(i) => Some(i as f64),
@@ -32,7 +19,6 @@ impl Value {
         }
     }
 
-    /// String value.
     pub fn as_str(&self) -> Option<&str> {
         match self {
             Self::Str(s) => Some(s),
@@ -41,18 +27,13 @@ impl Value {
     }
 }
 
-/// Keyword → value pairs in card order. A keyword that appears more than once is looked up by
-/// its first card, as cfitsio and Astropy do.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Header {
-    cards: Vec<(String, Value)>,
+    cards: Vec<(String, Result<Value, String>)>,
 }
 
-/// Whether `key` (upper case) is a card of a world coordinate system. See
-/// [`Header::without_wcs`].
 fn is_wcs_keyword(key: &str) -> bool {
     let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
-    // `<stem><n>` with an optional alternate-WCS letter (`CRVAL1`, `CRVAL1A`).
     let numbered = |stem: &str| {
         key.strip_prefix(stem).is_some_and(|rest| {
             let rest = rest
@@ -61,7 +42,6 @@ fn is_wcs_keyword(key: &str) -> bool {
             digits(rest)
         })
     };
-    // `<stem><i>_<j>` (`CD1_2`, `PC2_1`, `PV1_0`, `A_2_0`, `AP_0_1`).
     let indexed = |stem: &str| {
         key.strip_prefix(stem).is_some_and(|rest| {
             let rest = rest
@@ -93,9 +73,6 @@ fn is_wcs_keyword(key: &str) -> bool {
 }
 
 impl Header {
-    /// Parse card images (one card per item; each up to 80 characters). Cards without a value
-    /// indicator (`COMMENT`, `HISTORY`, blank, `END`) and cards with unparseable values are
-    /// skipped; lookups of those keys then report them missing.
     pub fn parse_cards<'a>(cards: impl IntoIterator<Item = &'a str>) -> Self {
         let mut out = Vec::new();
         for card in cards {
@@ -106,8 +83,6 @@ impl Header {
         Self { cards: out }
     }
 
-    /// Parse a header block: concatenated 80-character cards with no separators, as stored in a
-    /// FITS file, or newline-separated cards.
     pub fn parse_block(text: &str) -> Self {
         if text.contains('\n') {
             Self::parse_cards(text.lines())
@@ -118,32 +93,40 @@ impl Header {
         }
     }
 
-    /// Insert or replace a value.
     pub fn set(&mut self, key: &str, value: Value) {
         let key = key.to_ascii_uppercase();
         match self.cards.iter_mut().find(|(k, _)| *k == key) {
-            Some(card) => card.1 = value,
-            None => self.cards.push((key, value)),
+            Some(card) => card.1 = Ok(value),
+            None => self.cards.push((key, Ok(value))),
         }
     }
 
-    /// Look up a keyword (case-insensitive).
     pub fn get(&self, key: &str) -> Option<&Value> {
         let key = key.to_ascii_uppercase();
-        self.cards.iter().find(|(k, _)| *k == key).map(|(_, v)| v)
+        self.cards
+            .iter()
+            .filter(|(k, _)| *k == key)
+            .find_map(|(_, v)| v.as_ref().ok())
     }
 
-    /// Whether a keyword is present.
+    pub fn get_checked(&self, key: &str) -> Result<Option<&Value>, WcsError> {
+        let key = key.to_ascii_uppercase();
+        self.cards
+            .iter()
+            .find(|(k, _)| *k == key)
+            .map(|(_, value)| {
+                value.as_ref().map_err(|raw| WcsError::InvalidValue {
+                    key,
+                    reason: format!("cannot parse '{raw}'"),
+                })
+            })
+            .transpose()
+    }
+
     pub fn contains(&self, key: &str) -> bool {
         self.get(key).is_some()
     }
 
-    /// A copy without the cards of a world coordinate system: `CRVALn`, `CRPIXn`, `CDELTn`,
-    /// `CROTAn`, `CTYPEn`, `CUNITn`, the `CDi_j`, `PCi_j` and `PVi_m` matrices, `LONPOLE`,
-    /// `LATPOLE`, `WCSAXES`, `WCSNAME` and the SIP polynomials. What is left says nothing about
-    /// where a pixel is on the sky except through pointing keywords such as `RA` and `DEC`: for
-    /// reading a frame as if no plate solver had written to its header. `RADESYS` and
-    /// `EQUINOX` stay: they also describe the pointing keywords.
     pub fn without_wcs(&self) -> Self {
         Self {
             cards: self
@@ -155,34 +138,44 @@ impl Header {
         }
     }
 
+    pub fn number(&self, key: &str) -> Result<Option<f64>, WcsError> {
+        self.get_checked(key)?
+            .map(|v| {
+                v.as_f64()
+                    .filter(|x| x.is_finite())
+                    .ok_or_else(|| WcsError::InvalidValue {
+                        key: key.to_string(),
+                        reason: format!("expected a finite number, got {v:?}"),
+                    })
+            })
+            .transpose()
+    }
+
     fn f64_or(&self, key: &str, default: f64) -> Result<f64, WcsError> {
-        match self.get(key) {
-            None => Ok(default),
-            Some(v) => v.as_f64().ok_or_else(|| WcsError::InvalidValue {
-                key: key.to_string(),
-                reason: format!("expected a number, got {v:?}"),
-            }),
-        }
+        Ok(self.number(key)?.unwrap_or(default))
     }
 
     fn f64_required(&self, key: &str) -> Result<f64, WcsError> {
-        match self.get(key) {
-            None => Err(WcsError::MissingKey(key.to_string())),
-            Some(_) => self.f64_or(key, f64::NAN),
-        }
+        self.number(key)?
+            .ok_or_else(|| WcsError::MissingKey(key.to_string()))
     }
 
-    fn str_trimmed(&self, key: &str) -> Option<String> {
-        self.get(key)
-            .and_then(Value::as_str)
-            .map(|s| s.trim().to_string())
+    pub(crate) fn str_trimmed(&self, key: &str) -> Result<Option<&str>, WcsError> {
+        self.get_checked(key)?
+            .map(|v| {
+                v.as_str()
+                    .map(str::trim)
+                    .ok_or_else(|| WcsError::InvalidValue {
+                        key: key.to_string(),
+                        reason: format!("expected a string, got {v:?}"),
+                    })
+            })
+            .transpose()
     }
 }
 
-fn parse_card(card: &str) -> Option<(String, Value)> {
+fn parse_card(card: &str) -> Option<(String, Result<Value, String>)> {
     let card: String = card.chars().take(80).collect();
-    // `get` returns None where a byte offset falls inside a multi-byte character: FITS cards
-    // are ASCII, so such a card is malformed, not a reason to panic.
     if card.get(8..10) != Some("= ") {
         return None;
     }
@@ -190,13 +183,16 @@ fn parse_card(card: &str) -> Option<(String, Value)> {
     if key.is_empty() {
         return None;
     }
-    parse_value(card.get(10..)?).map(|v| (key, v))
+    let field = card.get(10..)?.trim();
+    if field.is_empty() || field.starts_with('/') {
+        return None;
+    }
+    Some((key, parse_value(field).ok_or_else(|| field.to_string())))
 }
 
 fn parse_value(field: &str) -> Option<Value> {
     let s = field.trim_start();
     if let Some(rest) = s.strip_prefix('\'') {
-        // Quoted string; '' is an escaped quote.
         let mut out = String::new();
         let mut chars = rest.chars().peekable();
         while let Some(c) = chars.next() {
@@ -211,7 +207,7 @@ fn parse_value(field: &str) -> Option<Value> {
                 out.push(c);
             }
         }
-        return None; // unterminated
+        return None;
     }
     let token = s.split('/').next()?.trim();
     match token {
@@ -223,8 +219,6 @@ fn parse_value(field: &str) -> Option<Value> {
     if let Ok(i) = token.parse::<i64>() {
         return Some(Value::Int(i));
     }
-    // A non-finite number (`NaN`, `inf`, an exponent past the f64 range) is kept as text: a
-    // numeric read of that keyword then fails by name instead of reaching the arithmetic.
     match token.replace(['D', 'd'], "E").parse::<f64>() {
         Ok(v) if v.is_finite() => Some(Value::Float(v)),
         Ok(_) => Some(Value::Str(token.to_string())),
@@ -232,18 +226,17 @@ fn parse_value(field: &str) -> Option<Value> {
     }
 }
 
-/// The celestial reference frame must be ICRS or FK5 J2000 (FITS Standard 4.0 §8.1):
-/// `RADESYS` (or the older `RADECSYS`) `ICRS`, or `FK5` with `EQUINOX` (or the older `EPOCH`)
-/// absent or 2000. Without `RADESYS`, no equinox means ICRS, an equinox before 1984 means FK4
-/// (rejected) and any other must be 2000. Other frames and equinoxes would need a precession
-/// or frame transformation, which Fayde does not apply, so they are rejected rather than
-/// silently read as ICRS.
 pub fn check_reference_frame(h: &Header) -> Result<(), WcsError> {
-    let sys = h
-        .str_trimmed("RADESYS")
-        .or_else(|| h.str_trimmed("RADECSYS"))
-        .map(|s| s.to_ascii_uppercase());
-    let equinox = match h.get("EQUINOX").or_else(|| h.get("EPOCH")) {
+    let sys = match h.str_trimmed("RADESYS")? {
+        Some(sys) => Some(sys),
+        None => h.str_trimmed("RADECSYS")?,
+    }
+    .map(str::to_ascii_uppercase);
+    let equinox_card = match h.get_checked("EQUINOX")? {
+        Some(equinox) => Some(equinox),
+        None => h.get_checked("EPOCH")?,
+    };
+    let equinox = match equinox_card {
         None => None,
         Some(v) => Some(
             v.as_f64()
@@ -251,6 +244,7 @@ pub fn check_reference_frame(h: &Header) -> Result<(), WcsError> {
                     v.as_str()
                         .and_then(|s| s.trim().trim_start_matches(['J', 'j']).parse().ok())
                 })
+                .filter(|v| v.is_finite())
                 .ok_or_else(|| WcsError::Unsupported(format!("EQUINOX = {v:?}")))?,
         ),
     };
@@ -268,18 +262,14 @@ pub fn check_reference_frame(h: &Header) -> Result<(), WcsError> {
     }
 }
 
-/// Whether a `CUNITi` value means degrees. FITS requires `deg`; `degree(s)` is common in real
-/// headers and unambiguous, so it is accepted too.
 pub fn is_degree_unit(u: &str) -> bool {
     ["deg", "degree", "degrees"]
         .iter()
         .any(|d| u.trim().eq_ignore_ascii_case(d))
 }
 
-/// Format a real value losslessly in FITS form: shortest round-trip mantissa, upper-case `E`,
-/// signed two-digit (or longer) exponent, e.g. `-8.3E-04`.
 pub fn format_real(v: f64) -> String {
-    let s = format!("{v:e}"); // e.g. "-8.3e-4", "1.5e2", "0e0"
+    let s = format!("{v:e}");
     let (mantissa, exp) = s.split_once('e').expect("{:e} always has an exponent");
     let exp: i32 = exp.parse().expect("valid exponent");
     let mantissa = if mantissa.contains('.') {
@@ -304,58 +294,51 @@ fn card(key: &str, value: &str, comment: &str) -> String {
     s
 }
 
-/// A string-valued card (crate-internal helper for other modules).
-pub(crate) fn str_card_pub(key: &str, value: &str, comment: &str) -> String {
-    str_card(key, value, comment)
-}
-
-/// A numeric card with no comment.
 pub(crate) fn num_card(key: &str, value: &str) -> String {
     card(key, value, "")
 }
 
-fn str_card(key: &str, value: &str, comment: &str) -> String {
-    // FITS: string values start at column 11 and are at least 8 characters inside the quotes.
+pub(crate) fn str_card(key: &str, value: &str, comment: &str) -> String {
     let quoted = format!("'{:<8}'", value.replace('\'', "''"));
     card(key, &format!("{quoted:<20}"), comment)
 }
 
 impl TanWcs {
-    /// Read a TAN WCS from FITS header values.
-    ///
-    /// Accepts `CDi_j`, or `PCi_j` with optional `CDELTi` (both default to identity/1), or
-    /// `CDELTi` with the older `CROTA2` rotation (`CROTA1` if only that is given). `PCi_j` takes
-    /// precedence over `CROTAn`, as in wcslib. A header carrying both CD and PC keywords is
-    /// rejected as ambiguous. `CUNITi` must be
-    /// `deg` when present; `LONPOLE` must be 180 when present; `RADESYS` must be `ICRS` or
-    /// `FK5` with equinox J2000 (treated as ICRS; they differ by tens of mas), following the
-    /// FITS defaults when `RADESYS` is absent (see [`check_reference_frame`]). `-SIP` and other projections are rejected.
     pub fn from_header(h: &Header) -> Result<Self, WcsError> {
         for (key, want) in [("CTYPE1", "RA---TAN"), ("CTYPE2", "DEC--TAN")] {
             let got = h
-                .str_trimmed(key)
+                .str_trimmed(key)?
                 .ok_or_else(|| WcsError::MissingKey(key.to_string()))?;
             if got != want {
                 return Err(WcsError::Unsupported(format!("{key} = '{got}'")));
             }
         }
         for key in ["CUNIT1", "CUNIT2"] {
-            if let Some(u) = h.str_trimmed(key) {
-                if !is_degree_unit(&u) {
+            if let Some(u) = h.str_trimmed(key)? {
+                if !is_degree_unit(u) {
                     return Err(WcsError::Unsupported(format!("{key} = '{u}'")));
                 }
             }
         }
         check_reference_frame(h)?;
-        let lonpole = h.f64_or("LONPOLE", 180.0)?;
-        if (lonpole - 180.0).abs() > 1e-12 {
+        let dec = h.f64_required("CRVAL2")?;
+        let lonpole = h.f64_or("LONPOLE", if dec == 90.0 { 0.0 } else { 180.0 })?;
+        let polar_flip = dec.abs() == 90.0 && lonpole.abs() <= 1e-12;
+        if !polar_flip && (lonpole - 180.0).abs() > 1e-12 {
             return Err(WcsError::Unsupported(format!("LONPOLE = {lonpole}")));
         }
 
         const CD: [&str; 4] = ["CD1_1", "CD1_2", "CD2_1", "CD2_2"];
         const PC: [&str; 4] = ["PC1_1", "PC1_2", "PC2_1", "PC2_2"];
-        let has_cd = CD.iter().any(|k| h.contains(k));
-        let has_pc = PC.iter().any(|k| h.contains(k));
+        let matrix_present = |keys: [&str; 4]| -> Result<bool, WcsError> {
+            let mut present = false;
+            for key in keys {
+                present |= h.get_checked(key)?.is_some();
+            }
+            Ok(present)
+        };
+        let has_cd = matrix_present(CD)?;
+        let has_pc = matrix_present(PC)?;
         let cd = match (has_cd, has_pc) {
             (true, true) => {
                 return Err(WcsError::Unsupported(
@@ -377,16 +360,21 @@ impl TanWcs {
             (false, false) => {
                 let c1 = h.f64_or("CDELT1", 1.0)?;
                 let c2 = h.f64_or("CDELT2", 1.0)?;
-                // AIPS convention (Calabretta & Greisen 2002, §6.1): a rotation ρ = CROTA2 of
-                // the image axes, CD = [[c1·cos ρ, −c2·sin ρ], [c1·sin ρ, c2·cos ρ]].
-                let rho = h.f64_or("CROTA2", h.f64_or("CROTA1", 0.0)?)?;
+                let rho = match h.number("CROTA2")? {
+                    Some(rho) => rho,
+                    None => h.f64_or("CROTA1", 0.0)?,
+                };
                 let (s, c) = rho.to_radians().psin_cos();
                 [[c1 * c, -c2 * s], [c1 * s, c2 * c]]
             }
         };
 
         let ra = h.f64_required("CRVAL1")?;
-        let dec = h.f64_required("CRVAL2")?;
+        let cd = if polar_flip {
+            cd.map(|row| row.map(|v| -v))
+        } else {
+            cd
+        };
         let crval = SkyPos::from_degrees(ra, dec).ok_or_else(|| WcsError::InvalidValue {
             key: "CRVAL1/CRVAL2".into(),
             reason: format!("({ra}, {dec}) is not a valid sky position"),
@@ -398,8 +386,6 @@ impl TanWcs {
         TanWcs::new(crval, crpix, cd)
     }
 
-    /// FITS card images (80 characters each) for this WCS, in `CDi_j` form with a 1-based
-    /// `CRPIX`. Values are written losslessly.
     pub fn to_cards(&self) -> Vec<String> {
         let (ra, dec) = self.crval().to_degrees();
         let p = self.crpix();
@@ -436,7 +422,6 @@ impl TanWcs {
 mod tests {
     use super::*;
 
-    /// `without_wcs` drops the cards of a WCS, in any of their spellings, and nothing else.
     #[test]
     fn without_wcs_drops_only_wcs_cards() {
         let wcs = [
@@ -477,7 +462,6 @@ mod tests {
         assert!(ok(&[]));
         assert!(ok(&["RADESYS = 'ICRS'"]));
         assert!(ok(&["RADESYS = 'FK5'", "EQUINOX =               2000.0"]));
-        // Older headers: RADECSYS and EPOCH.
         assert!(ok(&["RADECSYS= 'FK5'", "EPOCH   =               2000.0"]));
         assert!(ok(&["EQUINOX =               2000.0"]));
         assert!(!ok(&["RADESYS = 'FK5'", "EQUINOX =               2050.0"]));
@@ -562,6 +546,28 @@ mod tests {
         assert_eq!(
             TanWcs::from_header(&Header::parse_cards(missing)),
             Err(WcsError::MissingKey("CRPIX2".into()))
+        );
+    }
+
+    #[test]
+    fn absent_matrix_terms_default_and_malformed_terms_fail() {
+        let base = [
+            "CTYPE1  = 'RA---TAN'",
+            "CTYPE2  = 'DEC--TAN'",
+            "CRVAL1  = 10.0",
+            "CRVAL2  = 20.0",
+            "CRPIX1  = 1.0",
+            "CRPIX2  = 1.0",
+            "CD1_1   = -1E-3",
+            "CD2_2   = 1E-3",
+        ];
+        let read = |extra| TanWcs::from_header(&Header::parse_cards(base.into_iter().chain(extra)));
+        assert_eq!(read(None).unwrap().cd(), [[-1e-3, 0.0], [0.0, 1e-3]]);
+        assert!(
+            matches!(read(Some("CD1_2   = broken")), Err(WcsError::InvalidValue { key, .. }) if key == "CD1_2")
+        );
+        assert!(
+            matches!(read(Some("CUNIT1  = 123")), Err(WcsError::InvalidValue { key, .. }) if key == "CUNIT1")
         );
     }
 }

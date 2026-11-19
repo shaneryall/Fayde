@@ -1,5 +1,3 @@
-//! Request values outside what the solver can honour are rejected before any search.
-
 mod common;
 
 use common::field;

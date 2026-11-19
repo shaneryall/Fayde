@@ -1,5 +1,3 @@
-# Keeps the pinned GitHub Actions in .github/workflows current: one pull request a week with
-# the new commit and its release in the comment.
 version: 2
 updates:
   - package-ecosystem: github-actions

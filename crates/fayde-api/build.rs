@@ -1,43 +1,69 @@
-//! Records the source commit for `fayde --version` and the identity block of JSON reports.
-//!
-//! In order: `FAYDE_COMMIT` from the build environment; git, when building in a checkout
-//! (`-dirty` when tracked files changed); `.git_archival.txt`, which `git archive` (and so a
-//! forge's source downloads) fills in through `export-subst` (`.gitattributes`); else
-//! "unknown".
+use std::{path::Path, process::Command};
 
-use std::process::Command;
+fn checkout_commit(root: &Path) -> Option<String> {
+    if !root.join(".git").exists() {
+        return None;
+    }
+    let git = |args: &[&str]| {
+        let output = Command::new("git")
+            .current_dir(root)
+            .arg("--no-optional-locks")
+            .args(args)
+            .output()
+            .ok()?;
+        output
+            .status
+            .success()
+            .then(|| String::from_utf8_lossy(&output.stdout).into_owned())
+    };
+    let head = git(&["rev-parse", "--short=12", "HEAD"])?;
+    let watch_git = |name: &str| {
+        if let Some(path) = git(&["rev-parse", "--git-path", name]) {
+            let path = root.join(path.trim_end());
+            if let Some(existing) = path.ancestors().find(|p| p.exists()) {
+                println!("cargo:rerun-if-changed={}", existing.display());
+            }
+        }
+    };
+    watch_git("HEAD");
+    watch_git("index");
+    if let Some(branch) = git(&["symbolic-ref", "-q", "HEAD"]) {
+        watch_git(branch.trim_end());
+        if git(&["rev-parse", "--git-path", "packed-refs"])
+            .is_some_and(|p| root.join(p.trim_end()).is_file())
+        {
+            watch_git("packed-refs");
+        }
+    }
+    for file in git(&["ls-files", "-z"])?.split_terminator('\0') {
+        if !file.contains(['\r', '\n']) {
+            println!("cargo:rerun-if-changed={}", root.join(file).display());
+        }
+    }
+    let dirty = !git(&["status", "--porcelain", "--untracked-files=no"])?.is_empty();
+    let head = head.trim_end();
+    Some(if dirty {
+        format!("{head}-dirty")
+    } else {
+        head.to_owned()
+    })
+}
 
 fn main() {
     println!("cargo:rerun-if-env-changed=FAYDE_COMMIT");
-    println!("cargo:rerun-if-changed=../../.git/HEAD");
-    println!("cargo:rerun-if-changed=../../.git/index");
-    println!("cargo:rerun-if-changed=../../.git_archival.txt");
-    let commit = std::env::var("FAYDE_COMMIT").ok().or_else(|| {
-        let git = |args: &[&str]| {
-            Command::new("git")
-                .args(args)
-                .output()
-                .ok()
-                .filter(|o| o.status.success())
-                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        };
-        let head = git(&["rev-parse", "--short=12", "HEAD"])?;
-        let dirty =
-            git(&["status", "--porcelain", "--untracked-files=no"]).is_some_and(|s| !s.is_empty());
-        Some(if dirty { format!("{head}-dirty") } else { head })
-    });
-    // A `git archive` export: the placeholder was replaced by the short hash.
-    let commit = commit.or_else(|| {
-        let manifest = std::env::var("CARGO_MANIFEST_DIR").ok()?;
-        let text = std::fs::read_to_string(
-            std::path::Path::new(&manifest).join("../../.git_archival.txt"),
-        )
-        .ok()?;
-        let c = text.lines().find_map(|l| l.strip_prefix("commit:"))?.trim();
-        (!c.is_empty() && !c.contains("$Format")).then(|| c.to_string())
-    });
+    let root = Path::new("../..");
+    let commit = std::env::var("FAYDE_COMMIT")
+        .ok()
+        .or_else(|| checkout_commit(root))
+        .or_else(|| {
+            let path = root.join(".git_archival.txt");
+            let text = std::fs::read_to_string(&path).ok()?;
+            println!("cargo:rerun-if-changed={}", path.display());
+            let c = text.lines().find_map(|l| l.strip_prefix("commit:"))?.trim();
+            (!c.is_empty() && !c.contains("$Format")).then(|| c.to_string())
+        });
     println!(
         "cargo:rustc-env=FAYDE_COMMIT={}",
-        commit.unwrap_or_else(|| "unknown".into())
+        commit.as_deref().unwrap_or("unknown")
     );
 }

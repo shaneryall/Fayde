@@ -1,11 +1,3 @@
-//! The request-and-report layer shared by the `fayde` command line and the Python bindings.
-//!
-//! [`RequestOptions`] holds what a caller can say about one frame (the command-line request
-//! options, typed). [`build_request`] combines it with the sources, the frame header and an
-//! instrument profile into a [`SolveRequest`], applying the precedence command line (caller) >
-//! instrument profile > header. [`Solver`] holds a catalogue and indexes opened once and turns
-//! a request into the JSON report the CLI prints, so every front end reports the same fields.
-
 #![forbid(unsafe_code)]
 
 use std::time::Duration;
@@ -28,95 +20,54 @@ pub use calibrate::{calibrate_profile, CalibrateOptions, SolvedFrame, CALIBRATE_
 pub use fayde_solve::AtPosition;
 pub use serde_json;
 
-/// What a caller says about one frame. `None` / `false` means "not given": the profile or the
-/// header may then supply it. Angles in degrees, scale in arcsec/px.
+/// CLI and Python request conventions. Angles are in degrees, pixel scale in arcseconds per pixel,
+/// and epoch in Julian years.
 #[derive(Debug, Clone, Default)]
 pub struct RequestOptions {
-    /// Image width, px. Else the source list's or header's.
     pub width: Option<u32>,
-    /// Image height, px.
     pub height: Option<u32>,
-    /// Pointing right ascension, degrees (with `dec`).
     pub ra: Option<f64>,
-    /// Pointing declination, degrees.
     pub dec: Option<f64>,
-    /// Hard pointing radius, degrees (default 2).
     pub radius: Option<f64>,
-    /// 1σ of the pointing, degrees (default radius/4).
     pub pointing_sigma: Option<f64>,
-    /// Pixel scale, arcsec/px.
     pub scale: Option<f64>,
-    /// 1σ of the scale as a fraction (default 0.02, or the profile's).
+    /// Fractional one-sigma uncertainty in pixel scale (0.02 means 2%).
     pub scale_sigma: Option<f64>,
-    /// Roll, degrees (1σ 0.5°, limit 3° unless overridden).
     pub roll: Option<f64>,
-    /// 1σ of the roll, degrees; overrides the profile's too.
     pub roll_sigma: Option<f64>,
-    /// Hard roll limit, degrees; overrides the profile's too.
     pub roll_max: Option<f64>,
-    /// `"negative"` or `"positive"`.
     pub parity: Option<String>,
-    /// Trail length, px (with `trail_angle`).
     pub trail_length: Option<f64>,
-    /// Trail angle, degrees.
     pub trail_angle: Option<f64>,
-    /// Solve epoch, Julian year. Else the header's.
     pub epoch: Option<f64>,
-    /// Wall-clock limit.
     pub deadline: Option<Duration>,
-    /// Highest SIP order tried (default 3).
     pub max_sip_order: Option<usize>,
-    /// Stop after this many hypotheses (default 5,000,000): bounds the work independently of
-    /// the machine, unlike the deadline.
     pub max_hypotheses: Option<u64>,
-    /// Default centroid 1σ, px, for sources without their own.
     pub pixel_error: Option<f64>,
-    /// Log-odds needed to accept a match.
     pub accept_log_odds: Option<f64>,
-    /// Drop every prior.
     pub no_priors: bool,
-    /// Drop only the pointing.
     pub no_pointing: bool,
-    /// Do not use a world coordinate system in the header for the pointing or the scale: read
-    /// the pointing from the header's pointing keywords (`RA`/`DEC`, `OBJCTRA`/`OBJCTDEC`)
-    /// only. For frames whose header WCS may be another solver's solution. The instrument
-    /// profile can ask for the same (`header_wcs: false`).
     pub no_header_wcs: bool,
-    /// Search the sky outside the pointing limit when the pointing finds nothing.
     pub search_outside_pointing: bool,
-    /// Retry once with relaxed hard limits when the strict pass fails.
     pub relax_priors_on_failure: bool,
-    /// The frame's primary header.
     pub header: Option<Header>,
-    /// The instrument profile.
     pub instrument: Option<InstrumentProfile>,
 }
 
-/// Options of [`Solver::check_at`] beyond the request options. `None`: the default.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct AtCheck {
-    /// 1σ of the WCS at the positions, arcsec (e.g. a solve's `worst_sigma_arcsec`; default 0).
     pub wcs_sigma_arcsec: Option<f64>,
-    /// Stars farther than this are not reported, arcsec (default 30).
     pub search_radius_arcsec: Option<f64>,
-    /// Stars reported per position (default 3).
     pub max_stars: Option<usize>,
 }
 
-/// A request ready to solve, with the priors actually used (report field `priors`).
 #[derive(Debug, Clone)]
 pub struct Built {
-    /// The request.
     pub request: SolveRequest,
-    /// The priors used and where each came from.
     pub priors: Value,
-    /// Warnings: header values that were not used (e.g. an unsupported reference frame, a
-    /// clock error) and options dropped by `no_priors` or `no_pointing`.
     pub warnings: Vec<String>,
 }
 
-/// Build the request from the sources, the source list's image size (if it has one) and the
-/// options.
 pub fn build_request(
     sources: Vec<Source>,
     list_size: (Option<u32>, Option<u32>),
@@ -125,11 +76,12 @@ pub fn build_request(
     let header = o.header.as_ref();
     let no_header_wcs =
         o.no_header_wcs || o.instrument.as_ref().and_then(|p| p.header_wcs) == Some(false);
+    let size = (o.width.or(list_size.0), o.height.or(list_size.1));
     let hp = header.map(|h| {
         if no_header_wcs {
-            header_priors(&h.without_wcs())
+            fayde_fits::header_priors_for_size(&h.without_wcs(), size)
         } else {
-            header_priors(h)
+            fayde_fits::header_priors_for_size(h, size)
         }
     });
     let mut warnings: Vec<String> = hp.iter().flat_map(|h| h.warnings.iter().cloned()).collect();
@@ -150,8 +102,6 @@ pub fn build_request(
     };
 
     let no_priors = o.no_priors;
-    // A prior given together with the switch that drops it: the switch wins, as it always has
-    // (a caller can keep its arguments and add the switch), but the report says so.
     let given = [
         ("scale", o.scale.is_some()),
         ("ra/dec", o.ra.is_some() || o.dec.is_some()),
@@ -164,8 +114,6 @@ pub fn build_request(
     if o.no_pointing && !no_priors && (o.ra.is_some() || o.dec.is_some()) {
         warnings.push("ra/dec was given but dropped by no-pointing".into());
     }
-    // no_pointing drops the pointing only (header or caller); the instrument and caller scale,
-    // roll and parity stay.
     let no_pointing = no_priors || o.no_pointing;
     let pointing = match (o.ra, o.dec) {
         (Some(ra), Some(dec)) => Some((
@@ -176,9 +124,6 @@ pub fn build_request(
         _ => return Err("ra and dec go together".into()),
     }
     .filter(|_| !no_pointing);
-    // Hard limit and 1σ of the pointing: caller, else instrument profile, else 2° and a quarter
-    // of the limit. The two are independent (a good hint with a long tail wants a small σ and a
-    // wide limit).
     let profile = o.instrument.as_ref();
     let radius = o
         .radius
@@ -188,7 +133,6 @@ pub fn build_request(
         .pointing_sigma
         .or(profile.and_then(|p| p.pointing_sigma_deg))
         .unwrap_or(radius / 4.0);
-    // Scale: caller, else instrument profile (with its σ), else header.
     let cli_sigma = o.scale_sigma;
     let scale: Option<(f64, f64, &str)> = match o.scale {
         Some(s) => Some((s, s * cli_sigma.unwrap_or(0.02), "command line")),
@@ -201,7 +145,6 @@ pub fn build_request(
         },
     }
     .filter(|_| !no_priors);
-    // Roll: caller, else instrument rule. roll_sigma and roll_max override either source.
     let roll_sigma = o.roll_sigma.map(f64::to_radians);
     let roll_max = o.roll_max.map(f64::to_radians);
     let roll: Option<(f64, f64, f64, &str)> = match o.roll {
@@ -232,6 +175,13 @@ pub fn build_request(
         )),
         None => hp.as_ref().and_then(|h| h.epoch),
     };
+    if epoch.is_none() {
+        warnings.push(
+            "no observation time (JD-OBS, MJD-OBS, DATE-OBS): catalogue positions at J2000.0; \
+             give --epoch for stars with large proper motions"
+                .into(),
+        );
+    }
     let trail = match (o.trail_length, o.trail_angle) {
         (Some(l), Some(a)) => Some(Trail {
             length_px: l,
@@ -295,29 +245,19 @@ pub fn build_request(
     })
 }
 
-/// A catalogue and indexes, opened once and reused across frames. `Sync`: one `Solver` may serve
-/// several threads.
 pub struct Solver {
     catalog: Ucac4Catalog,
     indexes: Vec<Index>,
     index_paths: Vec<String>,
 }
 
-/// A report and, when solved or refitted, the solution behind it.
 pub struct Report {
-    /// The JSON report, as `fayde solve|verify|refit` prints it.
     pub json: Value,
-    /// The solution, for writing a WCS file.
     pub solution: Option<Box<Solution>>,
-    /// `true` when the solver failed (invalid request, catalogue error); `json` then has
-    /// `"error": true` and `reason`.
     pub error: bool,
 }
 
 impl Solver {
-    /// Open UCAC4 at `ucac4_dir` and read the index files.
-    /// Relative paths are made absolute here, so a long-lived `Solver` does not depend on the
-    /// process's working directory later.
     pub fn open(ucac4_dir: &str, index_paths: &[String]) -> Result<Self, String> {
         let absolute = |p: &str| {
             std::path::absolute(p)
@@ -340,7 +280,6 @@ impl Solver {
         })
     }
 
-    /// The catalogue.
     pub fn catalog(&self) -> &Ucac4Catalog {
         &self.catalog
     }
@@ -351,13 +290,11 @@ impl Solver {
         self.outcome(out, b, true)
     }
 
-    /// Re-fit a given WCS against the catalogue.
     pub fn refit(&self, b: &Built, wcs: &Wcs) -> Report {
         let out = refine_wcs(&b.request, &self.catalog, wcs);
         self.outcome(out, b, false)
     }
 
-    /// Check a given WCS against the catalogue without changing it.
     pub fn verify(&self, b: &Built, wcs: &Wcs) -> Report {
         let req = &b.request;
         let mut json = match verify_wcs(req, &self.catalog, wcs) {
@@ -383,9 +320,6 @@ impl Solver {
         }
     }
 
-    /// "Is there a catalogue star here?" for each position under `wcs` (`fayde verify --at`).
-    /// The epoch comes from `o` (caller, else header), the default pixel σ from
-    /// `o.pixel_error` (default 1 px). Pixel fields in the report are FITS 1-based.
     pub fn check_at(
         &self,
         wcs: &Wcs,
@@ -543,7 +477,6 @@ impl Solver {
                     "seconds": sol.elapsed.as_secs_f64(),
                     "prior_violated": sol.prior_violated,
                     "violated_priors": sol.violated_priors,
-                    // The stage that produced the solution, and whether it was the relaxed pass.
                     "solved_by_stage": sol.search.last().map(|s| s.stage.as_str()),
                     "relaxed_priors": sol.search.last().is_some_and(|s| s.stage.starts_with("relaxed priors: ")),
                     "search": trace_json(&sol.search),
@@ -607,8 +540,6 @@ impl Solver {
     }
 }
 
-/// Warnings (header values not used, options dropped by a switch) go in the report as
-/// `warnings`.
 fn with_warnings(mut json: Value, b: &Built) -> Value {
     if !b.warnings.is_empty() {
         json["warnings"] = b.warnings.clone().into();
@@ -616,45 +547,25 @@ fn with_warnings(mut json: Value, b: &Built) -> Value {
     json
 }
 
-/// Detection settings a caller can give; `None`: the default, or the image header's.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct DetectOptions {
-    /// Stellar FWHM, px; default: measured from the image.
     pub fwhm: Option<f64>,
-    /// Peak threshold of the filtered image, σ; default: the level above which one noise peak
-    /// per frame is expected (about 5 for a 4-megapixel frame).
     pub threshold: Option<f64>,
-    /// Saturation level, image units; default: the header's `SATURATE`, else the level of
-    /// flat-topped stars, if any.
     pub saturation: Option<f64>,
-    /// Gain, e⁻ per image unit; default: the header's `GAIN` or `EGAIN`, else none (the stars'
-    /// own photon noise is then not in their position errors).
     pub gain: Option<f64>,
-    /// Most sources kept, brightest first (default 2000).
     pub max_sources: Option<usize>,
 }
 
-/// Sources kept from an image when the caller sets no limit.
 pub const DEFAULT_MAX_SOURCES: usize = 2000;
 
-/// Full width at half maximum of a Gaussian over its σ: 2√(2 ln 2).
 pub const FWHM_PER_SIGMA: f64 = 2.354_820_045_030_949;
 
-/// Sources detected in `image`, ready for [`build_request`], and the detection report (JSON):
-/// settings used, background and noise, counts by class, streaks, the sources (`sources`, in
-/// the order handed to the solver) and what was set aside (`rejected`), with FITS 1-based
-/// pixels.
-///
-/// The sources handed to the solver are the stars (classes `star`, `saturated`, `extended`),
-/// each with its flux, 1σ position error and star probability. Hot pixels, cosmic-ray hits and
-/// everything on a traced streak are listed in the report with their class and left out of the
-/// sources (`docs/design/detection.md`).
+/// Return zero-based solver sources and a detection report with one-based FITS positions.
 pub fn detect_sources(
     image: &fayde_fits::Image,
     o: &DetectOptions,
 ) -> Result<(Vec<Source>, Value), String> {
     use fayde_detect::Class;
-    // Numbers, or numbers written as strings (some cameras write GAIN = '1.10').
     let hdr = |keys: &[&str]| {
         keys.iter().find_map(|k| {
             image
@@ -664,7 +575,6 @@ pub fn detect_sources(
                 .filter(|v: &f64| v.is_finite() && *v > 0.0)
         })
     };
-    // The caller's settings are checked here, under the names the caller knows.
     let positive = |v: Option<f64>| v.is_none_or(|x| x.is_finite() && x > 0.0);
     if o.fwhm.is_some_and(|f| !(0.5..=50.0).contains(&f)) {
         return Err("fwhm must be in [0.5, 50] px".into());
@@ -701,11 +611,9 @@ pub fn detect_sources(
         })
         .collect();
     let fits = |x: f64, y: f64| PixelConvention::Fits.from_internal(PixelPos::new(x, y));
-    // An infinite major axis (a ridge) has no JSON number.
     let finite = |v: f64| v.is_finite().then_some(v);
     let row = |d: &fayde_detect::Detected| -> Value {
         let (x, y) = fits(d.x, d.y);
-        // Mean of the two axes; a ridge's endless major axis is capped.
         let major = d.sigma_major.min(10.0 * d.sigma_minor.max(0.1));
         let mean2 = 0.5 * (d.sigma_minor * d.sigma_minor + major * major);
         json!({
@@ -774,6 +682,7 @@ pub fn detect_sources(
                 "coverage": t.coverage,
                 "touches_edge": t.touches_edge,
                 "cosmic_ray": t.cosmic_ray,
+                "photometry_masked": t.photometry_masked,
             })
         }).collect::<Vec<_>>(),
         "warnings": warnings,
@@ -783,9 +692,6 @@ pub fn detect_sources(
     Ok((sources, report))
 }
 
-/// A FITS header from a JSON object of keyword → value (numbers, strings, booleans; `null`
-/// skipped). Keys are upper-cased. Numbers given as strings (e.g. `"JD-OBS": "2459175.3"`) stay
-/// strings; [`fayde_fits::header_priors`] parses those it needs.
 pub fn header_from_json(m: &serde_json::Map<String, Value>) -> Result<Header, String> {
     use fayde_wcs::header::Value as H;
     let mut h = Header::default();
@@ -809,21 +715,23 @@ pub fn header_from_json(m: &serde_json::Map<String, Value>) -> Result<Header, St
     Ok(h)
 }
 
-/// The source commit this library was built from (`git describe`-style short hash).
 pub fn commit() -> &'static str {
     env!("FAYDE_COMMIT")
 }
 
-/// WCS cards of a solution plus `IMAGEW`/`IMAGEH`.
 pub fn solution_cards(sol: &Solution, req: &SolveRequest) -> Vec<String> {
     let mut cards = sol.wcs.to_cards();
-    cards.push(format!("IMAGEW  = {:>20}", req.frame.width));
-    cards.push(format!("IMAGEH  = {:>20}", req.frame.height));
+    cards.push(format!(
+        "{:<80}",
+        format!("IMAGEW  = {:>20}", req.frame.width)
+    ));
+    cards.push(format!(
+        "{:<80}",
+        format!("IMAGEH  = {:>20}", req.frame.height)
+    ));
     cards
 }
 
-/// The fit's parameter covariance: per tangent-plane axis (ξ and η share it), rad², over the
-/// monomials `(u/norm)^p (v/norm)^q` with `(u, v)` the pixel offset from `crpix`.
 fn covariance_json(c: &WcsCovariance) -> Value {
     let k = c.scale2 * c.rad_per_px * c.rad_per_px;
     let (cx, cy) = PixelConvention::Fits.from_internal(c.crpix);
@@ -835,7 +743,6 @@ fn covariance_json(c: &WcsCovariance) -> Value {
     })
 }
 
-/// Matched pairs, in input-table order, with source positions in the FITS convention (1-based).
 fn pairs_json(matches: &[Match], req: &SolveRequest) -> Value {
     matches
         .iter()
@@ -843,7 +750,6 @@ fn pairs_json(matches: &[Match], req: &SolveRequest) -> Value {
             let s = &req.sources[m.source];
             let (x, y) = PixelConvention::Fits.from_internal(PixelPos::new(s.x, s.y));
             let (ra, dec) = m.star_pos.to_degrees();
-            // Where the WCS puts the star: the source position minus the residual.
             let (px, py) = PixelConvention::Fits.from_internal(PixelPos::new(
                 s.x - m.residual_px[0],
                 s.y - m.residual_px[1],
@@ -899,9 +805,15 @@ mod tests {
         )
         .unwrap();
         assert!(b.request.priors.scale.is_none() && b.request.priors.pointing.is_none());
-        assert_eq!(b.warnings.len(), 2, "{:?}", b.warnings);
-        assert!(b
-            .warnings
+        let dropped = |b: &Built| -> Vec<String> {
+            b.warnings
+                .iter()
+                .filter(|w| !w.starts_with("no observation time"))
+                .cloned()
+                .collect()
+        };
+        assert_eq!(dropped(&b).len(), 2, "{:?}", b.warnings);
+        assert!(dropped(&b)
             .iter()
             .all(|w| w.contains("dropped by no-priors")));
         let b = build_request(
@@ -917,16 +829,12 @@ mod tests {
         )
         .unwrap();
         assert!(b.request.priors.scale.is_some() && b.request.priors.pointing.is_none());
-        assert_eq!(b.warnings, ["ra/dec was given but dropped by no-pointing"]);
-        // The switches alone say nothing.
+        assert_eq!(dropped(&b), ["ra/dec was given but dropped by no-pointing"]);
         let quiet = RequestOptions {
             no_priors: true,
             ..opts()
         };
-        assert!(build_request(vec![], (None, None), &quiet)
-            .unwrap()
-            .warnings
-            .is_empty());
+        assert!(dropped(&build_request(vec![], (None, None), &quiet).unwrap()).is_empty());
     }
 
     #[test]
@@ -978,8 +886,6 @@ mod tests {
         assert_eq!(b.priors["instrument"], "cam");
     }
 
-    /// The pointing's limit and 1σ come from the caller, else the profile, else the defaults;
-    /// and a header WCS is left unread when the caller or the profile says so.
     #[test]
     fn profile_pointing_uncertainty_and_header_wcs_switch() {
         let header = Header::parse_cards([
@@ -1007,7 +913,6 @@ mod tests {
             )
             .unwrap()
         };
-        // The header WCS is the pointing and the scale by default.
         let b = with(RequestOptions::default());
         let pt = b.request.priors.pointing.unwrap();
         assert!((pt.centre.to_degrees().0 - 10.0).abs() < 1e-9);
@@ -1015,7 +920,6 @@ mod tests {
         assert!((pt.sigma.to_degrees() - 0.5).abs() < 1e-12);
         assert_eq!(b.priors["pointing"]["origin"], "CRVAL1/CRVAL2");
         assert!((b.request.priors.scale.unwrap().arcsec_per_px - 3.6).abs() < 1e-9);
-        // Without it: the pointing keywords, and no scale from the header.
         let b = with(RequestOptions {
             no_header_wcs: true,
             ..RequestOptions::default()
@@ -1025,7 +929,6 @@ mod tests {
         assert!((pt.centre.to_degrees().1 - 21.5).abs() < 1e-9);
         assert_eq!(b.priors["pointing"]["origin"], "RA/DEC");
         assert!(b.request.priors.scale.is_none());
-        // A profile can ask for the same, and gives the pointing's 1σ and limit.
         let profile = InstrumentProfile::from_json(
             r#"{"scale_arcsec": 3.0, "pointing_sigma_deg": 0.02, "pointing_radius_deg": 1.5,
                 "header_wcs": false}"#,
@@ -1040,7 +943,6 @@ mod tests {
         assert!((pt.sigma.to_degrees() - 0.02).abs() < 1e-12);
         assert!((pt.max_radius.to_degrees() - 1.5).abs() < 1e-12);
         assert_eq!(b.priors["pointing"]["sigma_deg"], 0.02);
-        // The caller's values come before the profile's.
         let b = with(RequestOptions {
             instrument: Some(profile),
             radius: Some(3.0),

@@ -1,8 +1,3 @@
-//! Build a regional index from local UCAC4 zones and look up patterns from a synthetic image.
-//!
-//! Needs `$FAYDE_UCAC4_DIR` (default `<workspace>/data/ucac4`) holding zones z458–z463;
-//! ignored by default (`cargo test -- --include-ignored`).
-
 use fayde_core::Portable;
 use std::path::PathBuf;
 
@@ -44,7 +39,6 @@ fn regional_index(cat: &Ucac4Catalog) -> Index {
     build(&stars, cat.id(), &params).unwrap()
 }
 
-/// Deterministic noise in [-a, a].
 fn noise(seed: &mut u64, a: f64) -> f64 {
     *seed = seed
         .wrapping_mul(6364136223846793005)
@@ -64,7 +58,6 @@ fn image_patterns_find_their_catalogue_stars() {
     );
     assert!(m.star_count > 50 && m.pattern_count > 100);
 
-    // Synthetic 300×300 px frame at 3″/px (0.25°), rotated 37°, parity as seen on the sky.
     let scale = 3.0 / 3600.0;
     let (s, c) = 37f64.to_radians().psin_cos();
     let wcs = TanWcs::new(
@@ -82,7 +75,6 @@ fn image_patterns_find_their_catalogue_stars() {
             let sky = fayde_core::UnitVector(st.vec).to_sky();
             let p = wcs.sky_to_pixel(sky)?;
             ((0.0..300.0).contains(&p.x) && (0.0..300.0).contains(&p.y)).then(|| {
-                // 0.3 px centroid noise.
                 (
                     PixelPos::new(p.x + noise(&mut seed, 0.3), p.y + noise(&mut seed, 0.3)),
                     i as u32,
@@ -101,8 +93,6 @@ fn image_patterns_find_their_catalogue_stars() {
         "too few index stars in the synthetic frame"
     );
 
-    // Image patterns in tangent-plane radians (pixel × nominal scale; the ratios do not depend
-    // on scale, only the largest-edge prune does).
     let px_rad = arcsec(3.0);
     let (mut tried, mut found, mut wrong_best) = (0, 0, 0);
     let n = image.len();
@@ -128,8 +118,6 @@ fn image_patterns_find_their_catalogue_stars() {
         }
     }
     eprintln!("{found}/{tried} image patterns found in the index ({wrong_best} not ranked first)");
-    // Only patterns of pattern-tier stars are stored, so most combinations are absent by design.
-    // What a solve needs is at least one true pattern among the top-ranked sources, ranked first.
     assert!(found >= 3, "found {found}/{tried}");
     assert_eq!(wrong_best, 0);
 }

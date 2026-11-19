@@ -1,6 +1,3 @@
-//! `--sources` (and its older name `--xyls`), source lists written by `fayde detect`, and the
-//! messages for a file of the wrong kind. No catalogue needed.
-
 use std::path::{Path, PathBuf};
 
 use fayde_core::Portable;
@@ -25,7 +22,6 @@ fn scratch(tag: &str) -> PathBuf {
     d
 }
 
-/// A 128 × 128 BITPIX −32 image: a flat sky with one bright star.
 fn image(path: &Path) {
     let n = 128usize;
     let mut v = vec![100f32; n * n];
@@ -33,7 +29,7 @@ fn image(path: &Path) {
         for x in 0..n {
             let (dx, dy) = (x as f32 - 60.3, y as f32 - 70.6);
             v[y * n + x] += 5000.0 * (-(dx * dx + dy * dy) / 3.2).pexp();
-            v[y * n + x] += ((x * 7 + y * 13) % 11) as f32; // a little structure for the noise
+            v[y * n + x] += ((x * 7 + y * 13) % 11) as f32;
         }
     }
     let cards = [
@@ -73,7 +69,6 @@ fn source_lists_and_images_are_told_apart() {
     assert!(out.contains("\"count\""));
     let ucac4 = d.to_str().unwrap();
 
-    // An image given as a source list, and the reverse: said plainly.
     let (ok, _, err) = fayde(&[
         "solve",
         "--sources",
@@ -96,7 +91,6 @@ fn source_lists_and_images_are_told_apart() {
         "{err}"
     );
 
-    // The older name still works, and the two names together are refused.
     let (_, _, err) = fayde(&["solve", "--xyls", img.to_str().unwrap(), "--ucac4", ucac4]);
     assert!(err.contains("is an image, not a source list"), "{err}");
     let l = list.to_str().unwrap();

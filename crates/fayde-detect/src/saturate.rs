@@ -1,50 +1,23 @@
-//! Saturated stars: the centre of a clipped top.
-//!
-//! A saturated star has a flat top with no maximum to fit, and often a bleed trail along one
-//! detector axis. Its centre is taken from the saturated region itself: the mean position of
-//! the region's *core*, the pixels whose runs of saturated pixels, along the row and along the
-//! column, are each at least half the longest such run in the region. For a disc that is a
-//! symmetric part of the disc; a bleed trail, a few pixels wide, has short runs across it and
-//! contributes only where it crosses the disc. The method is Fayde's own.
-//!
-//! The work is bounded by the frame, whatever the image and the saturation level: every
-//! saturated pixel is flooded at most once ([`Regions`] remembers which region owns it), and a
-//! region's measurements cost its pixel count, not its bounding box.
-
-/// A connected region of saturated pixels.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct Plateau {
-    /// Centre of the region's core.
     pub x: f64,
-    /// Centre of the region's core.
     pub y: f64,
-    /// Saturated pixels in the region.
     pub area: usize,
-    /// Radius of a disc with the area of the core, pixels.
     pub radius: f64,
-    /// The region is a line of even width (a saturated streak), not a star: over three times
-    /// as long as wide, with no part wider than the rest.
     pub linear: bool,
-    /// The flood stopped at [`MAX_AREA`] pixels: part of a larger region (a frame saturated
-    /// over a wide area), not a star.
     pub truncated: bool,
 }
 
-/// A region is followed for at most this many pixels.
 pub(crate) const MAX_AREA: usize = 200_000;
 
-/// The saturated regions found so far in a frame, and the region each pixel belongs to.
 pub(crate) struct Regions {
     w: usize,
     h: usize,
-    /// 0: not in a region; `k + 1`: in `info[k]`.
     label: Vec<u32>,
-    /// One entry per region, in the order found.
     pub info: Vec<Plateau>,
 }
 
 impl Regions {
-    /// No region yet, for a frame of `w × h` pixels.
     pub fn new(w: usize, h: usize) -> Self {
         Self {
             w,
@@ -54,8 +27,6 @@ impl Regions {
         }
     }
 
-    /// The saturated region (pixels ≥ `level`, 8-connected) touching the 5 × 5 pixels around
-    /// `(ix, iy)`: its index in `info`. A region not seen before is flooded now.
     pub fn at(&mut self, raw: &[f32], ix: usize, iy: usize, level: f32) -> Option<usize> {
         let (w, h) = (self.w, self.h);
         let mut seed = None;
@@ -72,8 +43,6 @@ impl Regions {
         }
         let seed = seed?;
         let id = u32::try_from(self.info.len() + 1).ok()?;
-        // Flood fill. A pixel is labelled when it is pushed, so it is never pushed twice, in
-        // this region or a later one.
         let mut pixels: Vec<(u32, u32)> = Vec::new();
         let mut stack = vec![seed];
         self.label[seed.1 * w + seed.0] = id;
@@ -98,8 +67,6 @@ impl Regions {
         Some(id as usize - 1)
     }
 
-    /// A region with a pixel within `pad` pixels of `(x, y)` (in either axis), preferring one
-    /// that `keep` accepts.
     pub fn near(&self, x: f64, y: f64, pad: usize, keep: impl Fn(usize) -> bool) -> Option<usize> {
         let (cx, cy) = (x.round().max(0.0) as usize, y.round().max(0.0) as usize);
         let mut other = None;
@@ -119,10 +86,8 @@ impl Regions {
     }
 }
 
-/// Centre, size and shape of a region from its pixels `(y, x)`. Reorders `pixels`.
 fn measure(pixels: &mut [(u32, u32)], truncated: bool) -> Plateau {
     let n = pixels.len();
-    // Runs along rows: with the pixels in (y, x) order a run is a stretch of consecutive x.
     pixels.sort_unstable();
     let mut hrun = vec![0u32; n];
     let mut start = 0;
@@ -135,7 +100,6 @@ fn measure(pixels: &mut [(u32, u32)], truncated: bool) -> Plateau {
             start = i;
         }
     }
-    // Runs along columns: the same in (x, y) order, through an index.
     let mut by_col: Vec<u32> = (0..n as u32).collect();
     by_col.sort_unstable_by_key(|&i| (pixels[i as usize].1, pixels[i as usize].0));
     let mut vrun = vec![0u32; n];
@@ -153,14 +117,11 @@ fn measure(pixels: &mut [(u32, u32)], truncated: bool) -> Plateau {
         }
     }
     let longest_h = hrun.iter().copied().max().unwrap_or(0);
-    // The longest column run among pixels of long rows: a bleed trail's own length (rows of
-    // which are short) does not set the scale.
     let longest_v = (0..n)
         .filter(|&i| 2 * hrun[i] >= longest_h)
         .map(|i| vrun[i])
         .max()
         .unwrap_or(0);
-    // A bleed trail is long in one axis: the disc's diameter is the shorter of the two.
     let scale = longest_h.min(longest_v);
     let (mut sx, mut sy, mut core) = (0.0f64, 0.0f64, 0usize);
     for i in 0..n {
@@ -170,8 +131,6 @@ fn measure(pixels: &mut [(u32, u32)], truncated: bool) -> Plateau {
             core += 1;
         }
     }
-    // Axis ratio from the second moments of the whole region. A star with a bleed trail is
-    // long too, but most of its pixels are not core.
     let area = n as f64;
     let (mx, my) = (
         pixels.iter().map(|p| f64::from(p.1)).sum::<f64>() / area,
@@ -186,10 +145,7 @@ fn measure(pixels: &mut [(u32, u32)], truncated: bool) -> Plateau {
     }
     let mean = 0.5 * (sxx + syy);
     let root = (0.25 * (sxx - syy) * (sxx - syy) + sxy * sxy).sqrt();
-    // Variances of a pixel region include 1/12 px² per axis from the pixels themselves.
     let (major, minor) = (mean + root, (mean - root).max(0.0) + area / 12.0);
-    // The core is never empty (the pixel of the longest runs is in it); the mean of the whole
-    // region stands in if it were.
     let (cx, cy) = if core > 0 {
         (sx / core as f64, sy / core as f64)
     } else {
@@ -244,7 +200,6 @@ mod tests {
     #[test]
     fn a_saturated_streak_is_not_a_star() {
         let (w, h) = (80, 80);
-        // A diagonal band 4 pixels wide.
         let img: Vec<f32> = (0..w * h)
             .map(|i| {
                 let (x, y) = ((i % w) as f64, (i / w) as f64);
@@ -264,7 +219,6 @@ mod tests {
     fn a_bleed_trail_does_not_move_the_centre() {
         let (w, h) = (60, 120);
         let mut img = disc(w, h, 30.0, 80.0, 6.0);
-        // A trail 3 pixels wide, running 70 pixels up from the star and 10 down.
         for y in 10..=90 {
             for x in 29..=31 {
                 img[y * w + x] = 100.0;
@@ -280,17 +234,13 @@ mod tests {
 
     #[test]
     fn every_pixel_is_flooded_once_and_a_huge_region_is_cut_short() {
-        // A frame saturated all over: larger than one region may be.
         let (w, h) = (600, 500);
         let img = vec![100f32; w * h];
         let mut r = Regions::new(w, h);
         let first = r.at(&img, 10, 10, 50.0).unwrap();
         assert!(r.info[first].truncated && r.info[first].area <= MAX_AREA);
-        // The same place again is the same region, with no new flood.
         assert_eq!(r.at(&img, 11, 9, 50.0), Some(first));
         assert_eq!(r.info.len(), 1);
-        // Asking everywhere labels each pixel at most once: the regions' areas add up to no
-        // more than the frame.
         for y in (0..h).step_by(7) {
             for x in (0..w).step_by(7) {
                 r.at(&img, x, y, 50.0);

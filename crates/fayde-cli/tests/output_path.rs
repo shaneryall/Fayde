@@ -1,5 +1,3 @@
-//! `-o`: a failed run leaves no file at the output path, and the output can never be an input.
-
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -63,9 +61,37 @@ fn the_output_cannot_be_an_input() {
 }
 
 #[test]
+fn calibrate_cannot_overwrite_its_list_or_the_files_it_names() {
+    let d = scratch("calibrate-inputs");
+    let frame = d.join("frame.fits");
+    let wcs = d.join("frame.wcs");
+    let list = d.join("solved.tsv");
+    let list_text = format!("{}\t{}\n", frame.display(), wcs.display());
+    std::fs::write(&frame, "frame").unwrap();
+    std::fs::write(&wcs, "wcs").unwrap();
+    std::fs::write(&list, &list_text).unwrap();
+    for (path, input, contents) in [
+        (&list, "the --solved input", list_text.as_str()),
+        (&frame, "a frame in the --solved list", "frame"),
+        (&wcs, "a WCS in the --solved list", "wcs"),
+    ] {
+        let r = fayde(&[
+            "calibrate",
+            "--solved",
+            list.to_str().unwrap(),
+            "-o",
+            path.to_str().unwrap(),
+        ]);
+        assert!(!r.status.success());
+        let stderr = String::from_utf8_lossy(&r.stderr);
+        assert!(stderr.contains(input), "{stderr}");
+        assert_eq!(std::fs::read_to_string(path).unwrap(), contents);
+    }
+    let _ = std::fs::remove_dir_all(&d);
+}
+
+#[test]
 fn verify_never_touches_the_path_given_as_output() {
-    // `fayde verify` writes no file and says that `-o` is not used: a file at that path is not
-    // this command's to check, overwrite or remove, whatever the outcome.
     let d = scratch("verify");
     let keep = d.join("notes.txt");
     std::fs::write(&keep, b"not a WCS of this run").unwrap();
@@ -95,7 +121,6 @@ fn a_command_line_mistake_keeps_the_output() {
     let d = scratch("cmdline");
     let out = d.join("frame.wcs");
     std::fs::write(&out, b"an earlier run's WCS").unwrap();
-    // Neither --sources nor --image: an error on the command line, before any work.
     let r = fayde(&[
         "solve",
         "--ucac4",

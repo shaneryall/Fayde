@@ -1,15 +1,8 @@
-//! Temporary files for atomic writes.
-
 use std::fs::File;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
-/// Create a new, empty temporary file next to `path` (same directory, so a rename onto `path`
-/// is atomic), named `.<name>.tmp-<pid>-<nanos>-<n>`.
-///
-/// The file is opened with `create_new` (`O_CREAT|O_EXCL`): an existing file or symlink at the
-/// chosen name is never opened, followed or truncated; another name is tried instead. The caller
-/// owns the returned path and should remove it if the write fails, and only then.
-pub fn create_temp_beside(path: &Path) -> std::io::Result<(File, PathBuf)> {
+pub fn create_temp_beside(path: &Path) -> io::Result<(File, PathBuf)> {
     let name = path
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
@@ -34,6 +27,21 @@ pub fn create_temp_beside(path: &Path) -> std::io::Result<(File, PathBuf)> {
         }
     }
     Err(last.unwrap_or_else(|| std::io::Error::other("no free temporary name")))
+}
+
+pub fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
+    let (mut file, tmp) = create_temp_beside(path)?;
+    let write = || -> io::Result<()> {
+        file.write_all(bytes)?;
+        file.sync_all()?;
+        drop(file);
+        std::fs::rename(&tmp, path)
+    };
+    let result = write();
+    if result.is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+    result
 }
 
 #[cfg(test)]

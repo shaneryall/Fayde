@@ -31,10 +31,8 @@ import urllib.error
 import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-# Overridable so that the script can be tested against a local stand-in for crates.io.
 API = os.environ.get("FAYDE_CRATES_IO_API", "https://crates.io/api/v1")
 USER_AGENT = "fayde-release-script (https://github.com/shaneryall/Fayde)"
-# crates.io earns back one new crate every 10 minutes; used when its answer names no time.
 DEFAULT_WAIT_S = 600
 MAX_ATTEMPTS = 12
 
@@ -47,12 +45,10 @@ def publishable_in_order():
     ).stdout
     meta = json.loads(out)
     members = set(meta["workspace_members"])
-    # `publish = false` in a manifest shows up as an empty list of registries.
     crates = {
         p["name"]: p for p in meta["packages"]
         if p["id"] in members and (p["publish"] is None or "crates-io" in p["publish"])
     }
-    # Every kind of dependency counts, dev-dependencies too: crates.io must already hold them.
     needs = {
         name: sorted({d["name"] for d in p["dependencies"] if d["name"] in crates and d["name"] != name})
         for name, p in crates.items()
@@ -122,7 +118,6 @@ def main():
             if status == 0:
                 done.append(name)
                 break
-            # Someone, or an earlier run, got there first: nothing left to do for this crate.
             if "already exists" in output or "already uploaded" in output:
                 print(f"{name} {version}: already on crates.io, skipped")
                 break

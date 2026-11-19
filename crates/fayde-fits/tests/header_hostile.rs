@@ -1,6 +1,3 @@
-//! Header values that must not become priors: clock errors, coordinates in another frame, and
-//! out-of-range positions. Each is reported in `warnings` instead of used.
-
 use fayde_fits::header_priors;
 use fayde_wcs::Header;
 
@@ -14,7 +11,6 @@ fn header(cards: &[(&str, &str)]) -> Header {
 
 #[test]
 fn implausible_epochs_are_reported_and_skipped() {
-    // A Julian Date in the MJD keyword: year 8591.
     let p = header_priors(&header(&[("MJD-OBS", "2459175.2")]));
     assert!(p.epoch.is_none());
     assert!(
@@ -22,14 +18,12 @@ fn implausible_epochs_are_reported_and_skipped() {
         "{:?}",
         p.warnings
     );
-    // The next clock keyword is used when it is sound.
     let p = header_priors(&header(&[
         ("MJD-OBS", "2459175.2"),
         ("DATE-OBS", "'2020-11-21T16:46:40'"),
     ]));
     let (e, origin) = p.epoch.unwrap();
     assert!((e.year() - 2020.89).abs() < 0.01 && origin.starts_with("DATE-OBS"));
-    // An unset camera clock, and a year whose day count would overflow.
     for date in ["'0001-01-01T00:00:00'", "'99999999999999999-01-01'"] {
         assert!(
             header_priors(&header(&[("DATE-OBS", date)]))
@@ -38,7 +32,6 @@ fn implausible_epochs_are_reported_and_skipped() {
             "{date}"
         );
     }
-    // Each is reported, as is a date that cannot be read at all.
     for date in [
         "'0001-01-01T00:00:00'",
         "'99999999999999999-01-01'",
@@ -70,7 +63,6 @@ fn coordinates_in_another_frame_are_not_used_as_icrs() {
             p.warnings
         );
     }
-    // ICRS, FK5 J2000 and a bare EPOCH (also written for the observation date) keep it.
     for frame in [
         &[("RADESYS", "'ICRS'")][..],
         &[("RADESYS", "'FK5'"), ("EQUINOX", "2000.0")][..],
@@ -98,7 +90,6 @@ fn out_of_range_positions_are_rejected_not_wrapped() {
             p.warnings
         );
     }
-    // The next source is still used.
     let p = header_priors(&header(&[
         ("RA", "'25 00 00'"),
         ("DEC", "'+02 00 00'"),

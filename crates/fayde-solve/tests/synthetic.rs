@@ -1,9 +1,3 @@
-//! End-to-end hinted solves on synthetic skies (no external data needed).
-//!
-//! Each field: stars drawn in a cap with a realistic magnitude distribution, projected through a
-//! known TAN WCS; 20% of real stars dropped, 30% extra false sources added, 0.3 px centroid
-//! noise, pointing prior offset from the truth.
-
 use fayde_core::Portable;
 mod common;
 
@@ -17,8 +11,6 @@ fn check_solves(name: &str, cat: &MemoryCatalog, f: &Field) {
     check_solves_within(name, cat, f, 1.0);
 }
 
-/// Errors at the frame corners and centre must lie within `max_err` arcsec and within 5× the
-/// solver's own predicted radial 1σ (from the fit covariance).
 fn check_solves_within(name: &str, cat: &MemoryCatalog, f: &Field, max_err: f64) {
     let out = solve(&f.request, cat).unwrap();
     let Outcome::Solved(sol) = out else {
@@ -111,7 +103,6 @@ fn roll_prior_restricts_and_still_solves() {
     f.request.priors.parity = Some(Parity::Negative);
     check_solves("roll + parity priors", &cat, &f);
 
-    // A wrong roll prior must not produce a (wrong) solution.
     f.request.priors.roll = Some(RollPrior {
         angle: 137f64.to_radians(),
         sigma: 0.5f64.to_radians(),
@@ -157,13 +148,10 @@ fn rejects_blind_request() {
 
 #[test]
 fn noiseless_field_is_recovered_exactly() {
-    // Without centroid noise the fit must reproduce the true WCS to numerical precision: any
-    // bias in seeding, matching or fitting would show here.
     let (cat, f) = field_with_noise((210.0, 45.0), 200.0, Parity::Positive, 4, 0.0);
     check_solves_within("noiseless", &cat, &f, 1e-4);
 }
 
-/// RMS sky error over a 9×9 grid covering the frame, arcsec.
 fn grid_rms(wcs: &fayde_wcs::Wcs, truth: &fayde_wcs::Wcs) -> f64 {
     let mut s = 0.0;
     for i in 0..9 {
@@ -177,10 +165,6 @@ fn grid_rms(wcs: &fayde_wcs::Wcs, truth: &fayde_wcs::Wcs) -> f64 {
 
 #[test]
 fn distorted_field_gets_sip() {
-    // ~1.4 px barrel distortion at the corners. TAN alone leaves a systematic error that shows in
-    // the error scale; SIP (chosen by BIC) removes it. A per-frame cubic is weakly constrained at
-    // the extreme corners, which the reported covariance says honestly (design doc §5.5: fit
-    // distortion per instrument across frames, then only small per-frame corrections).
     let (cat, mut f) = field_full((150.0, 2.0), 37.0, Parity::Negative, 8, 0.3, 2e-8);
     check_solves_within("barrel, SIP", &cat, &f, 5.0);
     let Outcome::Solved(sol) = solve(&f.request, &cat).unwrap() else {
@@ -211,8 +195,6 @@ fn distorted_field_gets_sip() {
 
 #[test]
 fn one_missing_flux_keeps_flux_ranking() {
-    // Previously a single source without flux switched the whole list to input order (which is
-    // shuffled here); the solve must still start from the brightest sources.
     let (cat, mut f) = field((150.0, 2.0), 37.0, Parity::Negative, 9);
     f.request.sources[0].flux = None;
     let Outcome::Solved(sol) = solve(&f.request, &cat).unwrap() else {
@@ -227,7 +209,6 @@ fn one_missing_flux_keeps_flux_ranking() {
 
 #[test]
 fn duplicate_fragments_are_demoted() {
-    // Every one of the 15 brightest sources gets a fragment 1 px away with 80% of its flux.
     let (cat, mut f) = field((150.0, 2.0), 37.0, Parity::Negative, 10);
     let mut by_flux: Vec<usize> = (0..f.request.sources.len()).collect();
     by_flux.sort_by(|&a, &b| {

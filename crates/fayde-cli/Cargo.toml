@@ -27,6 +27,7 @@ fayde-index.workspace = true
 fayde-solve.workspace = true
 fayde-wcs.workspace = true
 fayde-fits.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 
 [lints]

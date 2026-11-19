@@ -1,25 +1,16 @@
 use std::{fmt, path::PathBuf};
 
-/// Errors reading a catalogue.
 #[derive(Debug)]
 pub enum CatalogError {
-    /// A file could not be read.
     Io {
-        /// File.
         path: PathBuf,
-        /// Underlying error.
         source: std::io::Error,
     },
-    /// A file exists but its content is not what the catalogue format requires.
     Malformed {
-        /// File.
         path: PathBuf,
-        /// What was wrong.
         reason: String,
     },
-    /// The directory does not look like the expected catalogue layout.
     NotFound(String),
-    /// A query argument was invalid (non-finite, negative radius, ...).
     InvalidQuery(String),
 }
 

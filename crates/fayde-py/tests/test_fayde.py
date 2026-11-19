@@ -71,7 +71,6 @@ def solver():
 PRIORS = dict(
     width=SIZE,
     height=SIZE,
-    # Local data holds zones z458-z463 only (dec +1.4 to +2.6): keep the search inside them.
     ra=CRVAL[0] + 0.03,
     dec=CRVAL[1] - 0.02,
     radius=0.1,
@@ -87,16 +86,13 @@ def test_solves_and_reports_like_the_cli(solver, frame):
     assert r["solved"], r.get("reason")
     ra, dec = r["crval_deg"]
     assert abs(r["pixel_scale_arcsec"] - SCALE) / SCALE < 1e-3
-    # The CLI report's fields are all there.
     for k in ("log_odds", "nfa", "search", "violated_priors", "solved_by_stage", "identity",
               "pairs", "wcs_cards", "covariance", "priors"):
         assert k in r, k
     assert r["identity"]["catalog"]["name"].startswith("UCAC4")
     assert r["matches"] >= 30
     p = r["pairs"][0]
-    # Pairs are FITS 1-based: the input was 0-based.
     assert abs(p["x"] - 1 - x[p["source"]]) < 1e-9
-    # CRPIX is the frame centre, so CRVAL is close to the true centre.
     assert math.hypot((ra - CRVAL[0]) * math.cos(math.radians(dec)), dec - CRVAL[1]) < 0.3
 
 
@@ -193,7 +189,6 @@ def test_header_and_instrument_profile(solver, frame):
 
 def test_header_wcs_can_be_left_unread_and_a_profile_gives_the_pointing_error(solver, frame):
     x, y, flux = frame
-    # A header WCS that points 40 degrees away, and pointing keywords that are right.
     header = {"CTYPE1": "RA---TAN", "CTYPE2": "DEC--TAN", "CRVAL1": CRVAL[0] + 40.0,
               "CRVAL2": CRVAL[1], "RA": CRVAL[0] + 0.01, "DEC": CRVAL[1] - 0.01,
               "IMAGEW": SIZE, "IMAGEH": SIZE}
@@ -205,13 +200,10 @@ def test_header_wcs_can_be_left_unread_and_a_profile_gives_the_pointing_error(so
     assert r["priors"]["pointing"]["origin"] == "RA/DEC"
     assert r["priors"]["pointing"]["sigma_deg"] == 0.02
     assert r["priors"]["pointing"]["radius_deg"] == 0.15
-    # 3 sigma is at most half the limit: the search starts close to the pointing.
     assert r["search"][0]["stage"] == "pair seeds r<0.06°"
-    # The profile can ask for the same.
     r = solver.solve(x, y, flux=flux, header=header, instrument={**profile, "header_wcs": False},
                      epoch=2000.0, deadline=20.0)
     assert r["solved"] and r["priors"]["pointing"]["origin"] == "RA/DEC"
-    # Read as it stands, the header's WCS is the pointing, and it is wrong.
     r = solver.solve(x, y, flux=flux, header=header, instrument=profile, epoch=2000.0,
                      deadline=20.0)
     assert not r["solved"] and r["priors"]["pointing"]["origin"].startswith("CRVAL")
@@ -222,12 +214,10 @@ def test_optional_columns_follow_the_source_list_rules(solver, frame):
     x, y, flux = frame
     base = solver.solve(x, y, flux=flux, **PRIORS)
     n = len(x)
-    # Out-of-range values are absent, as in a source list: same result as not giving them.
     for kw in (dict(sigma_px=[0.0] * n), dict(sigma_px=[math.inf] * n),
                dict(p_star=[-1.0] * n), dict(p_star=[math.nan] * n)):
         r = solver.solve(x, y, flux=flux, **kw, **PRIORS)
         assert r["log_odds"] == base["log_odds"], kw
-    # Masked entries are missing values.
     masked = np.ma.masked_array(np.full(n, 0.5), mask=np.ones(n, bool))
     r = solver.solve(x, y, flux=flux, sigma_px=masked, **PRIORS)
     assert r["log_odds"] == base["log_odds"]
@@ -269,7 +259,6 @@ def test_stars_at(solver, frame):
     x, y, flux = frame
     r = solver.solve(x, y, flux=flux, **PRIORS)
     cards = r["wcs_cards"]
-    # Every frame source was made from a catalogue star: all consistent.
     at = solver.stars_at(cards, x[:10], y[:10], epoch=2000.0, pixel_error=0.5,
                          wcs_sigma_arcsec=r["worst_sigma_arcsec"])
     assert len(at["positions"]) == 10
@@ -277,8 +266,6 @@ def test_stars_at(solver, frame):
     p0 = at["positions"][0]
     assert abs(p0["pixel"][0] - 1 - x[0]) < 1e-6  # FITS 1-based out, 0-based in
     assert p0["stars"][0]["p_consistent"] > 0.0027
-    # Sky positions: 40" north of the first source. A star may lie nearby, but not within
-    # the position's error.
     ra, dec = p0["ra_deg"], p0["dec_deg"] + 40 / 3600
     off = solver.stars_at(cards, ra=[ra], dec=[dec], epoch=2000.0, search_radius_arcsec=120)
     q = off["positions"][0]
@@ -296,7 +283,6 @@ def test_solve_image(solver, frame):
     yy, xx = np.mgrid[0:SIZE, 0:SIZE]
     sig = 2.5 / 2.3548
     for sx, sy, f in zip(x, y, flux):
-        # Oracle magnitudes as relative fluxes, scaled to S/N of tens to thousands.
         amp = 4e5 * f / max(flux)
         img += amp / (2 * math.pi * sig**2) * np.exp(-((xx - sx) ** 2 + (yy - sy) ** 2) / (2 * sig**2))
     r = solver.solve_image(img, **PRIORS)

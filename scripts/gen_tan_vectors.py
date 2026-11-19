@@ -6,7 +6,6 @@ import numpy as np
 from astropy.wcs import WCS
 
 CASES = [
-    # name, crval (deg), crpix (FITS 1-based), cd (deg/px), size
     ("equator_north_up", (150.0, 2.0), (512.5, 512.5),
      [[-8.3e-4, 0.0], [0.0, 8.3e-4]], (1024, 1024)),
     ("rotated_30deg", (83.82, -5.39), (1024.5, 768.5),

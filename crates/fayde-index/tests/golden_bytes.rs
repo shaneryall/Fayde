@@ -1,17 +1,3 @@
-//! The index a build produces, byte for byte.
-//!
-//! The expected values were re-captured when all maths moved to `fayde_core::Portable`
-//! (pure-Rust libm), and are the same on macOS aarch64, Linux x86_64 and in debug and release
-//! builds. Before that, platform maths libraries gave different bytes. They pin the content
-//! hash, the file length and
-//! an FNV-1a 64 of the whole file (trailing hash included), so any change to selection, pattern
-//! order, table layout or serialization shows up here.
-//!
-//! The metadata block holds the build parameters and `fayde_index::BUILDER`, so an intended
-//! change to either (a new `BuildParams` field, a new builder) changes these values: re-capture
-//! them then, from a build known to be good. A release that does not touch the builder keeps
-//! `BUILDER`, and so these values (crate version bumps do not change index bytes).
-
 use fayde_core::Portable;
 use std::path::PathBuf;
 
@@ -19,7 +5,6 @@ use fayde_catalog::{ucac4::Ucac4Catalog, Catalog, CatalogId, Star, StarQuery};
 use fayde_core::{Epoch, SkyPos};
 use fayde_index::{build, BuildParams, Index};
 
-/// What is pinned: content hash, file length, FNV-1a 64 of every byte of the file.
 #[derive(Debug, PartialEq, Eq)]
 struct Fingerprint {
     content_hash: u64,
@@ -37,7 +22,6 @@ fn fingerprint(index: &Index, tag: &str) -> Fingerprint {
     let path = std::env::temp_dir().join(format!("fayde-golden-{tag}-{}.fidx", std::process::id()));
     index.write(&path).unwrap();
     let bytes = std::fs::read(&path).unwrap();
-    // The file must read back as the same index, from the file and from its bytes.
     assert_eq!(&Index::read(&path).unwrap(), index);
     assert_eq!(&Index::from_bytes(&bytes).unwrap(), index);
     std::fs::remove_file(&path).unwrap();
@@ -56,7 +40,6 @@ fn synthetic_id() -> CatalogId {
     }
 }
 
-/// Deterministic stars in a cap (linear congruential generator; no external data).
 fn synthetic_stars(n: u64, centre: (f64, f64), radius_deg: f64) -> Vec<Star> {
     let mut s = 0x5DEE_CE66_D1CE_4E5Bu64;
     let mut rnd = || {
@@ -84,8 +67,6 @@ fn synthetic_stars(n: u64, centre: (f64, f64), radius_deg: f64) -> Vec<Star> {
 
 #[test]
 fn synthetic_regional_index_bytes_are_pinned() {
-    // About 1,700 lattice fields and 60,000 patterns: every stage of the builder is exercised,
-    // including duplicate patterns across overlapping fields.
     let stars = synthetic_stars(6000, (45.0, 10.0), 2.2);
     let params = BuildParams {
         fov_deg: 1.0,
@@ -108,7 +89,6 @@ fn synthetic_regional_index_bytes_are_pinned() {
 
 #[test]
 fn synthetic_all_sky_index_bytes_are_pinned() {
-    // No region: the whole lattice is walked (thinly, to keep the test fast).
     let stars = synthetic_stars(3000, (200.0, -35.0), 6.0);
     let params = BuildParams {
         fov_deg: 2.0,
@@ -131,7 +111,6 @@ fn synthetic_all_sky_index_bytes_are_pinned() {
 #[test]
 #[ignore = "needs UCAC4 data: set FAYDE_UCAC4_DIR, run with --include-ignored"]
 fn regional_ucac4_index_bytes_are_pinned() {
-    // Same index as `regional_ucac4.rs`. Needs UCAC4 zones z458–z463; ignored by default (`cargo test -- --include-ignored`).
     let dir = std::env::var_os("FAYDE_UCAC4_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data/ucac4"));

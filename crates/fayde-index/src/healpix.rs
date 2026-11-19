@@ -1,8 +1,3 @@
-//! HEALPix (Górski et al. 2005), NESTED scheme: pixel of a direction and pixel centres.
-//!
-//! Ported from the published algorithm (HEALPix C library `ang2pix_nest_z_phi` /
-//! `pix2ang_nest_z_phi`), restricted to what the index builder needs.
-
 use fayde_core::Portable;
 use std::f64::consts::{FRAC_PI_2, TAU};
 
@@ -11,20 +6,16 @@ use fayde_core::UnitVector;
 const JRLL: [i64; 12] = [2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4];
 const JPLL: [i64; 12] = [1, 3, 5, 7, 0, 2, 4, 6, 1, 3, 5, 7];
 
-/// HEALPix resolution: `nside` is a power of two, `npix = 12·nside²`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Healpix {
     nside: u32,
 }
 
 impl Healpix {
-    /// `nside` must be a power of two between 1 and 2²⁰.
     pub fn new(nside: u32) -> Option<Self> {
         (nside.is_power_of_two() && nside <= 1 << 20).then_some(Self { nside })
     }
 
-    /// Smallest power-of-two `nside` whose pixels are no larger than `max_side` radians
-    /// (pixel side taken as `sqrt(pixel area)`).
     pub fn for_pixel_side(max_side: f64) -> Self {
         let mut nside = 1u32;
         while nside < 1 << 20 && pixel_side(nside) > max_side {
@@ -33,22 +24,18 @@ impl Healpix {
         Self { nside }
     }
 
-    /// `nside`.
     pub fn nside(self) -> u32 {
         self.nside
     }
 
-    /// Number of pixels.
     pub fn npix(self) -> u64 {
         12 * u64::from(self.nside) * u64::from(self.nside)
     }
 
-    /// Approximate pixel side, radians: `sqrt(4π / npix)`.
     pub fn pixel_side(self) -> f64 {
         pixel_side(self.nside)
     }
 
-    /// NESTED pixel containing a direction.
     pub fn pixel(self, v: UnitVector) -> u64 {
         let [x, y, z] = v.0;
         let phi = y.patan2(x);
@@ -59,7 +46,7 @@ impl Healpix {
         let ns = i64::from(self.nside);
         let nsf = f64::from(self.nside);
         let za = z.abs();
-        let tt = phi.rem_euclid(TAU) / FRAC_PI_2; // [0, 4)
+        let tt = phi.rem_euclid(TAU) / FRAC_PI_2;
         let (face, ix, iy) = if za <= 2.0 / 3.0 {
             let t1 = nsf * (0.5 + tt);
             let t2 = nsf * z * 0.75;
@@ -90,7 +77,6 @@ impl Healpix {
         (face as u64) * (ns as u64) * (ns as u64) + spread(ix as u64) + (spread(iy as u64) << 1)
     }
 
-    /// Centre of a NESTED pixel.
     pub fn centre(self, pix: u64) -> UnitVector {
         let ns = i64::from(self.nside);
         let nsf = f64::from(self.nside);
@@ -126,7 +112,6 @@ fn pixel_side(nside: u32) -> f64 {
     (4.0 * std::f64::consts::PI / (12.0 * f64::from(nside) * f64::from(nside))).sqrt()
 }
 
-/// Interleave: bit i of `v` → bit 2i.
 fn spread(mut v: u64) -> u64 {
     v &= 0xFFFF_FFFF;
     v = (v | (v << 16)) & 0x0000_FFFF_0000_FFFF;
@@ -136,7 +121,6 @@ fn spread(mut v: u64) -> u64 {
     (v | (v << 1)) & 0x5555_5555_5555_5555
 }
 
-/// Inverse of [`spread`] on the even bits.
 fn compress(mut v: u64) -> u64 {
     v &= 0x5555_5555_5555_5555;
     v = (v | (v >> 1)) & 0x3333_3333_3333_3333;
@@ -155,7 +139,6 @@ mod tests {
         SkyPos::from_degrees(ra, dec).unwrap().to_unit_vector()
     }
 
-    /// Deterministic quasi-random directions (golden-ratio spiral), uniform in area.
     fn points(n: usize) -> impl Iterator<Item = UnitVector> {
         let golden = std::f64::consts::PI * (3.0 - 5f64.sqrt());
         (0..n).map(move |i| {
@@ -175,7 +158,6 @@ mod tests {
         assert_eq!(h.pixel(v(90.0, 0.0)), 5);
         assert_eq!(h.pixel(v(10.0, -80.0)), 8);
         assert_eq!(h.pixel(v(280.0, -80.0)), 11);
-        // Base pixel 4 is centred on (0°, 0°).
         assert!(
             h.centre(4)
                 .to_sky()
@@ -211,13 +193,12 @@ mod tests {
 
     #[test]
     fn equal_area() {
-        let h = Healpix::new(8).unwrap(); // 768 pixels
+        let h = Healpix::new(8).unwrap();
         let n = 768 * 400;
         let mut counts = vec![0u32; h.npix() as usize];
         for p in points(n) {
             counts[h.pixel(p) as usize] += 1;
         }
-        // Spiral points are far more even than random ones: every pixel within 5% of 400.
         assert!(
             counts.iter().all(|&c| (380..=420).contains(&c)),
             "{:?}",

@@ -1,15 +1,5 @@
-//! A fast hash for keys that are already well-spread numbers.
-//!
-//! The standard `HashMap` hashes with SipHash-1-3, which is built to resist keys chosen to
-//! collide. The maps here are keyed by numbers the solver made itself (grid cells, star
-//! identifiers and coordinates) and are looked up thousands of times per solve, where SipHash
-//! was a measurable part of the time. This is the multiply-rotate hash of Firefox and the Rust
-//! compiler ("Fx hash"; the `rustc-hash` crate). It has no random seed: the same keys always
-//! hash the same, and nothing here depends on a map's iteration order.
-
 use std::hash::{BuildHasherDefault, Hasher};
 
-/// The hasher. See the module documentation.
 #[derive(Default, Clone, Copy)]
 pub(crate) struct Mix(u64);
 
@@ -44,5 +34,4 @@ impl Hasher for Mix {
     }
 }
 
-/// A `HashMap` hashed with [`Mix`].
 pub(crate) type Map<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<Mix>>;

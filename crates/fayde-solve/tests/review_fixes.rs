@@ -1,6 +1,3 @@
-//! Regression tests for the code-review findings fixed together: input validation, hard limits
-//! on returned WCSs, references for off-centre CRPIX, sparse catalogues and truncated sources.
-
 use fayde_core::Portable;
 mod common;
 
@@ -54,7 +51,6 @@ fn refit_respects_hard_limits() {
 
 #[test]
 fn references_follow_the_frame_not_crval() {
-    // The same linear WCS re-expressed with its reference pixel far outside the frame.
     let (cat, f) = field((150.0, 2.0), 37.0, Parity::Negative, 43);
     let t = f.truth.tan;
     let crpix = PixelPos::new(-500.0, -500.0);
@@ -81,14 +77,11 @@ fn a_catalogue_sparser_than_the_seed_count_does_not_panic() {
     stars.truncate(6);
     let sparse = MemoryCatalog::new(stars);
     assert!(f.request.policy.seed_sources > 6);
-    // Any outcome is fine; a panic is not.
     let _ = solve(&f.request, &sparse).unwrap();
 }
 
 #[test]
 fn truncated_matches_do_not_buy_distortion_terms() {
-    // All but six real sources truncated: they are evidence, not fit points, so the fit has
-    // six points and must stay linear.
     let (cat, mut f) = field((150.0, 2.0), 37.0, Parity::Negative, 45);
     let mut kept = 0;
     for (k, s) in f.request.sources.iter_mut().enumerate() {
@@ -111,8 +104,6 @@ fn truncated_matches_do_not_buy_distortion_terms() {
 
 #[test]
 fn nothing_to_search_is_an_abstention_not_an_error() {
-    // No pointing and no index (e.g. the scale prior was dropped for unknown binning): a valid
-    // request with nothing to search answers with a reason.
     let (cat, mut f) = field((150.0, 2.0), 37.0, Parity::Negative, 46);
     f.request.priors.pointing = None;
     match solve_auto(&f.request, &cat, &[]).unwrap() {
@@ -146,17 +137,13 @@ fn a_huge_deadline_is_no_deadline() {
     };
     req.policy.deadline = Some(std::time::Duration::MAX);
     let cat = MemoryCatalog::new(vec![]);
-    // Must not panic adding the deadline to the start time.
     let _ = fayde_solve::solve_auto(&req, &cat, &[]);
 }
 
-/// The abstention says which budget stopped the search and in which
-/// stage; each stage records how it ended; a refit honours the deadline.
 #[test]
 fn budget_stops_name_the_stage_and_refit_honours_the_deadline() {
     let (cat, f) = field((150.0, 2.0), 37.0, Parity::Negative, 44);
     let mut req = f.request.clone();
-    // Noise sources only: nothing can verify, so the search runs until a budget stops it.
     let mut seed = 7u64;
     for s in &mut req.sources {
         seed = seed

@@ -1,24 +1,3 @@
-//! Solving: hypothesis generation, verification and fitting (design doc §5.3–§5.5).
-//!
-//! Two hypothesis generators share one pipeline:
-//!
-//! - **Pair seeds** (tight scale prior and a pointing prior): the brightest catalogue stars in
-//!   the prior cone, every pair closer than the frame diagonal, sorted by separation; a range
-//!   lookup in this list plays the role of Mortari's k-vector (Mortari 1997; Mortari & Neta
-//!   2000). An image pair plus a catalogue pair, an assignment and a parity fix a similarity
-//!   transform.
-//! - **Pattern hash** (loose or missing priors; needs an [`Index`]): 4-star image patterns, shape
-//!   lookup in the index (Brown & Stubis 2017; tetra3; cedar-solve), edge-compatible permutations
-//!   fitted by four-parameter complex least squares (planar Umeyama 1991), both parities.
-//!
-//! Shared pipeline: sources ranked by `p_star × flux` (PROSAC; Chum & Matas 2005) → hypothesis →
-//! hard prior limits → count hypothesis → cheap pre-filter → local refit (LO-RANSAC; Chum,
-//! Matas & Kittler 2003; Cauchy IRLS, Holland & Welsch 1977), with a distortion tune-up when a
-//! linear model is not conclusive → log-odds verification (Lang et al. 2010) that leaves out
-//! the seed stars, accepted when `log-odds − ln(hypotheses tested)` clears the threshold (NFA)
-//! → IRLS final fit to convergence with an error-scale factor; the fitted WCS must pass the
-//! same threshold.
-
 use fayde_core::Portable;
 use std::{f64::consts::PI, time::Instant};
 
@@ -34,7 +13,8 @@ use fayde_wcs::{gnomonic, gnomonic_inverse, Parity, TanWcs, Wcs};
 
 use crate::{
     fit::{
-        fit_best_order, LinearPrior, Pair, WcsCovariance, FINAL_OBS_PER_PARAM, GROWTH_OBS_PER_PARAM,
+        fit_best_order, held_out_order, LinearPrior, Pair, WcsCovariance, FINAL_OBS_PER_PARAM,
+        GROWTH_OBS_PER_PARAM,
     },
     grid::Grid,
     refset::RefSet,
@@ -45,89 +25,49 @@ use crate::{
     verify::{assess, Assessment, RefStar, TestSource},
 };
 
-/// Catalogue stars per frame area kept for seeding, per seed source.
 const SEED_STARS_PER_SOURCE: f64 = 3.0;
-/// Shortest image pair used as a seed, pixels (short pairs give poor rotation).
 const MIN_SEED_PAIR_PX: f64 = 20.0;
-/// Sources projected by the pre-filter.
 const PREFILTER_SOURCES: usize = 12;
-/// A scale prior is "tight" (pair seeds first) when σ/scale is at most this.
 const TIGHT_SCALE: f64 = 0.03;
-/// Sources closer than this to a better-ranked source are treated as duplicates, pixels.
 const DUPLICATE_PX: f64 = 3.0;
-/// Shortest edge of an image pattern, pixels.
 const MIN_PATTERN_EDGE_PX: f64 = 10.0;
-/// Local refits with fewer matches than this fit a similarity (4 parameters) instead of an
-/// affine transform (6): a handful of stars cannot constrain shear and anisotropy.
 const AFFINE_MIN_MATCHES: usize = 8;
-/// Match radius of the distortion tune-up's wide stage, pixels.
 const TUNE_RADIUS_PX: f64 = 12.0;
-/// Fewest wide-radius matches for which a distortion tune-up is attempted (order 2 has 12
-/// parameters; chance hypotheses collect about half this many matches at that radius).
 const TUNE_MIN_MATCHES: usize = 12;
-/// A linear hypothesis is suspected of unmodelled distortion when the wide radius matches more
-/// than this factor (plus 3) times the sources its own match gates do: stars sit just outside
-/// the gates. Undistorted frames gain about one chance match at the wide radius.
 const TUNE_SUSPECT_FACTOR: f64 = 1.25;
-/// Most re-matching passes of the tune-up's wide stage.
 const TUNE_WIDE_PASSES: usize = 8;
-/// A distortion polynomial is kept only when its confident matches cover the sources: the frame
-/// is cut into `SIP_CELLS` × `SIP_CELLS` cells, and every cell holding at least
-/// `SIP_CELL_MIN_SOURCES` ranked sources must have a matched fraction of at least
-/// `SIP_CELL_MIN_FRACTION` × the frame's overall matched fraction. A polynomial constrained by
-/// one part of the frame is wrong by tens of pixels in the rest. Measured on 240 synthetic
-/// solves: good fits had a lowest cell ratio of 0.47, fits locked onto part of the frame 0.13 or
-/// less.
 const SIP_CELLS: usize = 3;
-/// See [`SIP_CELLS`].
 const SIP_CELL_MIN_SOURCES: usize = 6;
-/// See [`SIP_CELLS`].
 const SIP_CELL_MIN_FRACTION: f64 = 0.25;
-/// Most IRLS iterations of the final fit (it stops earlier once the match set repeats).
+const HELD_OUT_MARGIN: f64 = 1.05;
 const FINAL_FIT_MAX_ITERATIONS: usize = 20;
-/// Gate widening for a truncated source when the frame's trail is unknown.
 const TRUNCATED_SIGMA_FACTOR: f64 = 4.0;
-/// Most passes of a similarity fit while its tangent point moves to the fitted `CRVAL`.
 const SIMILARITY_TANGENT_PASSES: usize = 8;
-/// Pair seeds look first among fields centred within this many σ of the pointing: 98.9% of a
-/// two-dimensional Gaussian.
 const PAIR_INNER_SIGMAS: f64 = 3.0;
-/// That first look is made only when its radius is at most this fraction of the hard limit.
-/// The work of a pair-seed stage grows with the area of its cone, so a first look in a cone
-/// nearly as wide as the limit costs almost as much as the search it is meant to spare, and a
-/// frame it cannot solve would pay for both. With the default σ of a quarter of the limit
-/// there is no first look.
 const PAIR_INNER_MAX_FRACTION: f64 = 0.5;
 
 struct Ranked {
-    /// Index into the request's sources.
     input: usize,
     px: [f64; 2],
     sigma: f64,
     distractor: f64,
-    /// Cut by the frame edge: evidence for a match, never fitted, never a seed.
     truncated: bool,
 }
 
-/// A final fit iterated to convergence.
 struct Converged {
     wcs: Wcs,
     error_scale: f64,
     covariance: WcsCovariance,
-    /// References and their assessment under `wcs` at `error_scale`.
     refs: Vec<RefStar>,
     assessment: Assessment,
-    /// Posterior log-odds of `wcs`: data log-odds plus the prior terms.
     log_odds: f64,
 }
 
-/// Why the hypothesis loop stopped.
 enum Stop {
     Solved(Box<Solution>),
     Budget,
 }
 
-/// State shared by every hypothesis of one solve.
 struct Ctx<'a> {
     req: &'a SolveRequest,
     catalog: &'a dyn Catalog,
@@ -138,7 +78,6 @@ struct Ctx<'a> {
     h: f64,
     crpix: PixelPos,
     n_ref: usize,
-    /// Hard scale limits, arcsec/px.
     s_lo: f64,
     s_hi: f64,
     started: Instant,
@@ -147,14 +86,9 @@ struct Ctx<'a> {
     deadline: Option<Instant>,
     tested: u64,
     best: Option<f64>,
-    /// Ignore the pointing prior's hard limit (out-of-prior fallback stage).
     outside_pointing: bool,
-    /// The catalogue stars of the whole pointing prior, read as hypotheses need them.
     prior_cone: Option<std::rc::Rc<RefSet<'a>>>,
-    /// Stages executed so far.
     trace: Vec<StageTrace>,
-    /// Seeds skipped, and refined fits rejected, for lying outside the hard limits: reported
-    /// when the search abstains, so a limit that blocks a solution is visible.
     limit_seeds: std::cell::Cell<u64>,
     limit_fits: std::cell::Cell<u64>,
 }
@@ -172,7 +106,6 @@ impl<'a> Ctx<'a> {
         self.deadline.is_some_and(|d| Instant::now() > d)
     }
 
-    /// A refit stopped by its deadline (a refit has no hypothesis limit): traced and reported.
     fn refit_deadline(&mut self) -> Outcome {
         let stage = "refit around the given WCS";
         self.trace.push(StageTrace {
@@ -187,7 +120,6 @@ impl<'a> Ctx<'a> {
         ))
     }
 
-    /// Which budget stopped the search: the trace outcome and the abstention reason.
     fn budget_stop(&self, stage: &str) -> (&'static str, String) {
         if self.tested >= self.req.policy.max_hypotheses {
             (
@@ -209,9 +141,6 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    /// The cone holding the frame under `wcs`: the sky position of the frame centre and its
-    /// largest separation from the corners and edge midpoints. Exact for any CRPIX and for
-    /// anisotropic or distorted WCSs, unlike a radius from the mean scale around CRVAL.
     fn footprint(&self, wcs: &Wcs) -> (SkyPos, f64) {
         let (x0, y0, x1, y1) = (-0.5, -0.5, self.w - 0.5, self.h - 0.5);
         let (xm, ym) = (0.5 * (x0 + x1), 0.5 * (y0 + y1));
@@ -232,7 +161,6 @@ impl<'a> Ctx<'a> {
         (centre, r)
     }
 
-    /// The brightest `n_ref` catalogue stars inside the frame under `wcs`.
     fn refs(&self, set: &RefSet, wcs: &Wcs) -> Vec<RefStar> {
         let scale = wcs.pixel_scale_arcsec();
         let (centre, r) = self.footprint(wcs);
@@ -241,7 +169,6 @@ impl<'a> Ctx<'a> {
             if let Some(px) = wcs.vector_to_pixel(UnitVector(*v)) {
                 if px.x > -0.5 && px.y > -0.5 && px.x < self.w - 0.5 && px.y < self.h - 0.5 {
                     let e = star.pos_err_mas;
-                    // Per-axis 1σ: RMS of the two axis errors, mas → px.
                     let sigma_mas =
                         (0.5 * (f64::from(e[0]).ppowi(2) + f64::from(e[1]).ppowi(2))).sqrt();
                     out.push(RefStar {
@@ -256,8 +183,6 @@ impl<'a> Ctx<'a> {
         out
     }
 
-    /// Whether the ranked sources `matched` cover the source list well enough to constrain a
-    /// distortion polynomial across the frame ([`SIP_CELLS`]).
     fn covers_sources(&self, matched: impl Iterator<Item = usize>) -> bool {
         let cell = |px: [f64; 2]| {
             let at = |v: f64, size: f64| {
@@ -282,8 +207,6 @@ impl<'a> Ctx<'a> {
         })
     }
 
-    /// The scale and roll priors as terms of the final fit ([`LinearPrior`]), with the weight
-    /// convention of [`Ctx::converge`]'s pairs at `error_scale`.
     fn linear_prior(&self, error_scale: f64) -> LinearPrior {
         let pr = &self.req.priors;
         LinearPrior {
@@ -302,7 +225,6 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    /// Hard limits from the priors.
     fn within_priors(&self, wcs: &TanWcs) -> bool {
         let s = wcs.pixel_scale_arcsec();
         if s < self.s_lo || s > self.s_hi {
@@ -330,8 +252,6 @@ impl<'a> Ctx<'a> {
         true
     }
 
-    /// At least `need` of the next-ranked sources (excluding `used`) land on stars of `tree`,
-    /// within a tolerance that grows with distance from `anchor` (seed transform error).
     fn prefilter(
         &self,
         wcs: &TanWcs,
@@ -364,7 +284,6 @@ impl<'a> Ctx<'a> {
         false
     }
 
-    /// Greedy unique matching of ranked sources to references within `radius(source)` pixels.
     fn match_sources(
         &self,
         refs: &[RefStar],
@@ -387,10 +306,6 @@ impl<'a> Ctx<'a> {
         out
     }
 
-    /// Match ranked sources to the references within `radius_px` under `wcs` and refit: a
-    /// similarity for a handful of matches, otherwise a polynomial of order ≤ `max_order` chosen
-    /// by BIC among the orders with `obs_per_param` observations per parameter (order 1 is an
-    /// affine TAN). Returns the match count and the fit.
     fn rematch_fit(
         &self,
         set: &RefSet,
@@ -400,7 +315,6 @@ impl<'a> Ctx<'a> {
         obs_per_param: f64,
     ) -> Option<(usize, Wcs)> {
         let refs = self.refs(set, wcs);
-        // Truncated sources gate matches but never enter a fit.
         let m: Vec<(usize, usize)> = self
             .match_sources(&refs, |r| radius_px.max(3.0 * r.sigma))
             .into_iter()
@@ -423,7 +337,6 @@ impl<'a> Ctx<'a> {
                 let px = self.ranked[i].px;
                 let variance = self.ranked[i].sigma.ppowi(2) + refs[k].sigma_px.ppowi(2);
                 let r2 = (px[0] - refs[k].px[0]).ppowi(2) + (px[1] - refs[k].px[1]).ppowi(2);
-                // Cauchy IRLS (Holland & Welsch 1977), with Fayde's r0 = 3σ_tot.
                 Pair {
                     px,
                     vec: set.vec(refs[k].star),
@@ -443,7 +356,6 @@ impl<'a> Ctx<'a> {
         Some((m.len(), fit.wcs))
     }
 
-    /// Re-match with shrinking radii and refit a linear WCS (LO-RANSAC).
     fn local_refit(&self, set: &RefSet, seed: TanWcs) -> Option<TanWcs> {
         let mut wcs = Wcs::from(seed);
         for radius_px in [12.0f64, 6.0, 3.0] {
@@ -454,15 +366,6 @@ impl<'a> Ctx<'a> {
         Some(wcs.tan)
     }
 
-    /// Distortion tune-up of a converged linear hypothesis, for frames whose lens distortion
-    /// leaves the outer stars outside the match gate of any linear model. Fayde's own;
-    /// astrometry.net also refits a promising match before deciding (its "tune-up"), without
-    /// distortion at that point.
-    ///
-    /// At the wide radius the order is chosen by BIC and the stars are re-matched until no more
-    /// join (a distortion fit brings outer stars into range); then the radius shrinks as in the
-    /// linear refit. `None` when there are too few matches to fit distortion or BIC keeps the
-    /// linear model.
     fn tune(&self, set: &RefSet, linear: &TanWcs) -> Option<Wcs> {
         let max = self.req.policy.max_sip_order;
         let mut wcs = Wcs::from(*linear);
@@ -488,10 +391,6 @@ impl<'a> Ctx<'a> {
         Some(wcs)
     }
 
-    /// Log of the prior density of `wcs` relative to a uniform density over the hard limits,
-    /// for each prior given (design doc §6.1: σ ranks hypotheses, the limit bounds the search).
-    /// Small-angle forms: pointing is a 2-D Gaussian against a uniform cap of the hard radius,
-    /// scale and roll are 1-D Gaussians against uniform ranges.
     fn prior_log_ratio(&self, wcs: &Wcs) -> f64 {
         let pr = &self.req.priors;
         let mut lr = 0.0;
@@ -521,8 +420,6 @@ impl<'a> Ctx<'a> {
         lr
     }
 
-    /// Refit and verify an already-counted hypothesis; `Some` once accepted. `seed_sources`
-    /// are the ranked sources the hypothesis was built from: they are not scored.
     fn try_hypothesis(
         &mut self,
         set: &RefSet,
@@ -530,13 +427,10 @@ impl<'a> Ctx<'a> {
         seed_sources: &[usize],
     ) -> Result<Option<Box<Solution>>, SolveError> {
         let found = self.refit_and_verify(set, seed, seed_sources);
-        // A catalogue read that failed part-way left the hypothesis judged on missing stars:
-        // the failure is the outcome, whatever the verdict.
         set.check()?;
         Ok(found)
     }
 
-    /// [`Ctx::try_hypothesis`] without its check that the catalogue could be read.
     fn refit_and_verify(
         &mut self,
         set: &RefSet,
@@ -553,20 +447,15 @@ impl<'a> Ctx<'a> {
         let refined = Wcs::from(linear);
         let refs = self.refs(set, &refined);
         let gated = assess(&self.tests, &refs, area, 1.0, seed_sources);
-        // Posterior odds: data log-odds plus the prior terms.
         let mut score = gated.log_odds + self.prior_log_ratio(&refined);
         let mut distorted = None;
-        // Distortion is suspected when the linear model is not conclusive, or when it leaves
-        // many stars just outside its match gates.
         let suspect = self.req.policy.max_sip_order >= 2
             && (!passes(score, self.tested, accept) || {
                 let wide = self.match_sources(&refs, |_| TUNE_RADIUS_PX).len();
                 wide >= TUNE_MIN_MATCHES
                     && wide as f64 > TUNE_SUSPECT_FACTOR * gated.hits.len() as f64 + 3.0
             });
-        if suspect {
-            // Try the distortion tune-up, as one more hypothesis, and keep whichever model
-            // explains the whole source list better.
+        if suspect && !self.out_of_budget() {
             if let Some(tuned) = self
                 .tune(set, &linear)
                 .filter(|t| self.within_priors(&t.tan))
@@ -594,18 +483,50 @@ impl<'a> Ctx<'a> {
             .map(Box::new)
     }
 
-    /// IRLS from `start` until the match set and the error scale repeat. A start that carries
-    /// distortion (from the tune-up) keeps it from the first iteration; a linear start settles
-    /// its match set with TAN first and then lets BIC choose the order.
     fn converge(&self, set: &RefSet, start: Wcs, seed_sources: &[usize]) -> Option<Converged> {
+        let fit = self.converge_with(set, start, seed_sources, false)?;
+        let priors = &self.req.priors;
+        if fit.wcs.sip.is_none() || (priors.scale.is_none() && priors.roll.is_none()) {
+            return Some(fit);
+        }
+        let Some(tan) = self.converge_with(set, Wcs::from(fit.wcs.tan), seed_sources, true) else {
+            return Some(fit);
+        };
+        let area = self.w * self.h;
+        let scale = fit.error_scale;
+        let data = |c: &Converged| assess(&self.tests, &c.refs, area, scale, seed_sources).log_odds;
+        let (d_fit, d_tan) = (data(&fit), data(&tan));
+        if !self.within_priors(&tan.wcs.tan) {
+            return Some(if d_tan >= d_fit { tan } else { fit });
+        }
+        let post = |d: f64, c: &Converged| d + self.prior_log_ratio(&c.wcs);
+        Some(if post(d_tan, &tan) > post(d_fit, &fit) {
+            tan
+        } else {
+            fit
+        })
+    }
+
+    fn converge_with(
+        &self,
+        set: &RefSet,
+        start: Wcs,
+        seed_sources: &[usize],
+        free_linear: bool,
+    ) -> Option<Converged> {
         let area = self.w * self.h;
         let tuned = start.sip.is_some();
-        let mut cap = self.req.policy.max_sip_order;
+        let mut cap = if free_linear {
+            1
+        } else {
+            self.req.policy.max_sip_order
+        };
         loop {
             let mut wcs = start.clone();
             let mut error_scale = 1.0f64;
             let mut covariance = None;
             let mut last: Option<(Vec<(usize, usize)>, f64)> = None;
+            let mut last_pairs = Vec::new();
             for iteration in 0..FINAL_FIT_MAX_ITERATIONS {
                 let refs = self.refs(set, &wcs);
                 let a = assess(&self.tests, &refs, area, error_scale, seed_sources);
@@ -628,9 +549,6 @@ impl<'a> Ctx<'a> {
                     .map(|h| Pair {
                         px: self.ranked[h.source].px,
                         vec: set.vec(refs[h.reference].star),
-                        // Preserve the effective relative weights, including each source's
-                        // sigma floor and the unscaled catalogue error. Factor out the common
-                        // scale for BIC/Birge estimation; covariance restores it below.
                         w: if self.ranked[h.source].truncated {
                             0.0
                         } else {
@@ -638,8 +556,6 @@ impl<'a> Ctx<'a> {
                         },
                     })
                     .collect();
-                // Observations that constrain the fit: truncated sources carry zero weight, so
-                // they count for neither the BIC sample size nor the error-scale dof.
                 let inlier_sum: f64 = a
                     .hits
                     .iter()
@@ -655,10 +571,8 @@ impl<'a> Ctx<'a> {
                     inlier_sum,
                     max_order,
                     FINAL_OBS_PER_PARAM,
-                    Some(&prior),
+                    (!free_linear).then_some(&prior),
                 )?;
-                // Birge ratio: default centroid errors may shrink. Producer-supplied
-                // errors retain their floor in assess, including mixed input lists.
                 let floor = if a.hits.iter().all(|h| !self.tests[h.source].sigma_defaulted) {
                     1.0
                 } else {
@@ -672,11 +586,17 @@ impl<'a> Ctx<'a> {
                 let mut cov = fit.cov;
                 cov.scale2 = error_scale * error_scale;
                 covariance = Some(cov);
+                last_pairs = pairs;
+            }
+            if wcs.sip.is_some() {
+                let keep = self.supported_order(&wcs, &last_pairs, error_scale);
+                if keep < wcs.sip_order() {
+                    cap = keep;
+                    continue;
+                }
             }
             let refs = self.refs(set, &wcs);
             let assessment = assess(&self.tests, &refs, area, error_scale, seed_sources);
-            // Distortion needs support across the sources. Without it a tuned start has no
-            // solution, and a linear start is refitted as TAN.
             let confident = assessment
                 .hits
                 .iter()
@@ -701,7 +621,21 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    /// Final fit of an accepted hypothesis, from its refined model (linear, or the tune-up's).
+    fn supported_order(&self, wcs: &Wcs, pairs: &[Pair], error_scale: f64) -> usize {
+        let prior = self.linear_prior(error_scale);
+        held_out_order(
+            wcs.crval(),
+            self.crpix,
+            pairs,
+            wcs.sip_order(),
+            Some(&prior),
+            SIP_CELLS,
+            [self.w, self.h],
+            GROWTH_OBS_PER_PARAM,
+            HELD_OUT_MARGIN,
+        )
+    }
+
     fn final_fit(&self, set: &RefSet, start: Wcs, seed_sources: &[usize]) -> Option<Solution> {
         let accept = self.req.policy.accept_log_odds;
         let best = self.converge(set, start, seed_sources);
@@ -713,8 +647,6 @@ impl<'a> Ctx<'a> {
             assessment: a,
             log_odds,
         } = best?;
-        // The WCS that is returned must itself pass, not only the hypothesis it grew from, and
-        // must lie within the hard limits: the final fit can move it.
         if !passes(log_odds, self.tested, accept) {
             return None;
         }
@@ -745,8 +677,6 @@ impl<'a> Ctx<'a> {
             });
         }
         matches.sort_by_key(|m| m.source);
-        // Leave-one-out residuals of the confident, fitted matches: r / (1 − h), with leverage
-        // h = w · fᵀ(AᵀWA)⁻¹f from the final fit (standard least-squares identity).
         let mut loo = Vec::new();
         for h in a.hits.iter().filter(|h| h.inlier_prob > 0.5) {
             let r = &self.ranked[h.source];
@@ -807,9 +737,6 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    /// The catalogue stars of the whole pointing prior: every star a frame centred within the
-    /// prior can hold (pointing and scale priors needed). Nothing is read until a hypothesis
-    /// asks for stars, and then only around it ([`RefSet::on_demand`]).
     fn prior_cone(&mut self) -> Option<std::rc::Rc<RefSet<'a>>> {
         let (Some(pt), true) = (self.req.priors.pointing, self.s_hi.is_finite()) else {
             return None;
@@ -827,8 +754,11 @@ impl<'a> Ctx<'a> {
     }
 }
 
-fn new_ctx<'a>(req: &'a SolveRequest, catalog: &'a dyn Catalog) -> Result<Ctx<'a>, SolveError> {
-    // The deadline counts from here: source ranking and duplicate detection are part of it.
+fn new_ctx<'a>(
+    req: &'a SolveRequest,
+    catalog: &'a dyn Catalog,
+    priors: &Priors,
+) -> Result<Ctx<'a>, SolveError> {
     let started = Instant::now();
     let p = &req.policy;
     if req.frame.width == 0 || req.frame.height == 0 {
@@ -840,15 +770,13 @@ fn new_ctx<'a>(req: &'a SolveRequest, catalog: &'a dyn Catalog) -> Result<Ctx<'a
         ));
     }
     let (w, h) = (f64::from(req.frame.width), f64::from(req.frame.height));
-    let (s_lo, s_hi) = match req.priors.scale {
+    let (s_lo, s_hi) = match priors.scale {
         Some(sc) => {
             if !(sc.arcsec_per_px > 0.0 && sc.sigma >= 0.0) {
                 return Err(SolveError::InvalidInput(
                     "scale prior must be positive".into(),
                 ));
             }
-            // A frame wider than a hemisphere cannot be imaged through a gnomonic projection:
-            // such a "prior" is a placeholder value (e.g. CDELT = 1), not information.
             let half_diag = 0.5 * w.phypot(h) * (sc.arcsec_per_px / 3600.0).to_radians();
             if half_diag >= std::f64::consts::FRAC_PI_2 {
                 return Err(SolveError::InvalidInput(format!(
@@ -860,10 +788,8 @@ fn new_ctx<'a>(req: &'a SolveRequest, catalog: &'a dyn Catalog) -> Result<Ctx<'a
         }
         None => (0.0, f64::INFINITY),
     };
-    validate(req)?;
+    validate(req, priors)?;
 
-    // Ranking key: (group, score). Sources with a measured flux (group 1) rank by p_star × flux;
-    // sources without one (group 0) follow, in input order weighted by p_star.
     let n = req.sources.len();
     let mut ranked: Vec<((u8, f64), f64, Ranked)> = req
         .sources
@@ -907,12 +833,6 @@ fn new_ctx<'a>(req: &'a SolveRequest, catalog: &'a dyn Catalog) -> Result<Ctx<'a
             .then(a.2.input.cmp(&b.2.input))
     };
     ranked.sort_by(order);
-    // Duplicates (design doc §5.0): a source within DUPLICATE_PX of a better-ranked one is most
-    // likely a fragment of it. Its p_star drops by 10× (neutral in verification) and it moves
-    // behind the others so it cannot seed pairs or patterns.
-    // A grid of DUPLICATE_PX cells holds the better-ranked sources seen so far: a duplicate can
-    // only be in the 3×3 cells around a source, so this is linear in the number of sources
-    // (the all-pairs check took seconds for tens of thousands).
     let mut demoted = Vec::new();
     let mut grid: crate::hash::Map<(i64, i64), Vec<[f64; 2]>> = Default::default();
     let cell = |v: f64| (v / DUPLICATE_PX).floor() as i64;
@@ -931,11 +851,8 @@ fn new_ctx<'a>(req: &'a SolveRequest, catalog: &'a dyn Catalog) -> Result<Ctx<'a
         }
     }
     for &i in &demoted {
-        // Below every non-duplicate (scores are ≥ 0); duplicates keep input order.
         ranked[i].0 = (0, -1.0);
     }
-    // Truncated sources are real stars with biased centroids: after every whole source (so they
-    // never seed a hypothesis), before duplicates.
     for r in ranked
         .iter_mut()
         .filter(|r| r.2.truncated && r.0 != (0, -1.0))
@@ -946,14 +863,11 @@ fn new_ctx<'a>(req: &'a SolveRequest, catalog: &'a dyn Catalog) -> Result<Ctx<'a
     for r in &mut ranked {
         r.2.distractor = (1.0 - (1.0 - p.distractor) * r.1).clamp(1e-6, 1.0 - 1e-6);
     }
-    // Effective real-source count, including duplicate demotion (Fayde choice).
     let effective_sources: f64 = ranked.iter().map(|r| r.1).sum();
     let ranked: Vec<Ranked> = ranked.into_iter().map(|(_, _, r)| r).collect();
     let tests = ranked
         .iter()
         .map(|r| {
-            // A truncated trail's midpoint is off by up to half the trail length along the
-            // trail; without a known trail, widen its gate in every direction instead.
             let (sigma, along, angle) = match (r.truncated, req.frame.trail) {
                 (false, _) => (r.sigma, 0.0, 0.0),
                 (true, Some(t)) => (r.sigma, 0.5 * t.length_px, t.angle),
@@ -987,7 +901,6 @@ fn new_ctx<'a>(req: &'a SolveRequest, catalog: &'a dyn Catalog) -> Result<Ctx<'a
         started,
         method: SolveMethod::PairSeeds,
         index_hash: None,
-        // A deadline past what `Instant` can represent is no deadline (no overflow panic).
         deadline: p.deadline.and_then(|d| started.checked_add(d)),
         tested: 0,
         best: None,
@@ -999,13 +912,11 @@ fn new_ctx<'a>(req: &'a SolveRequest, catalog: &'a dyn Catalog) -> Result<Ctx<'a
     })
 }
 
-/// One stage of an adaptive search plan.
 #[derive(Debug, Clone)]
 enum Stage {
-    /// Star-pair seeds for fields centred within `radius` (radians) of the pointing.
-    PairSeeds { radius: f64 },
-    /// Pattern hash in one index, optionally restricted to a sky region (centre, radius of the
-    /// field centre), optionally ignoring the pointing limit.
+    PairSeeds {
+        radius: f64,
+    },
     Hash {
         index: usize,
         region: Option<(SkyPos, f64)>,
@@ -1013,26 +924,11 @@ enum Stage {
     },
 }
 
-/// Plan the search from the metadata the request carries (design doc §5.3):
-///
-/// | Known                     | Stages                                                        |
-/// |---------------------------|---------------------------------------------------------------|
-/// | pointing + tight scale    | pair seeds within 3σ (if ≤ half the limit) → pair seeds to the hard radius → hash inner ring (2σ) → hash to the hard radius |
-/// | pointing (loose/no scale) | hash inner ring → hash to the hard radius                       |
-/// | scale only                | hash, whole index, scale-pruned                                 |
-/// | nothing                   | hash, whole index, every band (blind)                           |
-/// | + `search_outside_pointing` | then hash outside the pointing limit (flagged)               |
-///
-/// Within a stage, indexes are ordered by how well their field size matches the frame (scale
-/// prior) or largest first; indexes whose region cannot contain the field are skipped.
 fn plan(ctx: &Ctx<'_>, indexes: &[Index]) -> Vec<Stage> {
     let pr = &ctx.req.priors;
     let mut stages = Vec::new();
     let tight = matches!((pr.pointing, pr.scale), (Some(_), Some(sc)) if sc.sigma <= TIGHT_SCALE * sc.arcsec_per_px);
     if let (true, Some(pt)) = (tight, pr.pointing) {
-        // A pointing known far better than its hard limit: look close to it first. The seeds
-        // of that look come from a cone a fraction of the size, and so does its cost; the
-        // full cone follows for the frame whose pointing was in the tail.
         let inner = PAIR_INNER_SIGMAS * pt.sigma;
         if pt.sigma > 0.0 && inner <= PAIR_INNER_MAX_FRACTION * pt.max_radius {
             stages.push(Stage::PairSeeds { radius: inner });
@@ -1057,7 +953,6 @@ fn plan(ctx: &Ctx<'_>, indexes: &[Index]) -> Vec<Stage> {
                 .then(a.cmp(b))
         }),
     }
-    // Can index `i` hold a field centred within `radius` of `centre`?
     let covers = |i: usize, centre: SkyPos, radius: f64| match indexes[i].meta().params.region {
         None => true,
         Some([ra, dec, r]) => SkyPos::from_degrees(ra, dec)
@@ -1103,18 +998,14 @@ fn plan(ctx: &Ctx<'_>, indexes: &[Index]) -> Vec<Stage> {
     stages
 }
 
-/// Whether `log_odds` clears `accept` after `tested` hypotheses. NaN never passes.
 fn passes(log_odds: f64, tested: u64, accept: f64) -> bool {
     log_odds - (tested.max(1) as f64).pln() >= accept
 }
 
-/// Reject non-finite or out-of-range numbers in the priors and policy: one NaN would otherwise
-/// propagate into a score and through comparisons that are false for NaN.
-fn validate(req: &SolveRequest) -> Result<(), SolveError> {
+fn validate(req: &SolveRequest, priors: &Priors) -> Result<(), SolveError> {
     let bad = |what: &str| Err(SolveError::InvalidInput(what.into()));
     let fin = |v: f64| v.is_finite();
-    let pr = &req.priors;
-    if let Some(pt) = pr.pointing {
+    if let Some(pt) = priors.pointing {
         let (ra, dec) = pt.centre.to_degrees();
         let ok = fin(ra)
             && fin(dec)
@@ -1126,12 +1017,12 @@ fn validate(req: &SolveRequest) -> Result<(), SolveError> {
             return bad("pointing prior needs a finite centre, sigma >= 0 and max_radius >= 0");
         }
     }
-    if let Some(sc) = pr.scale {
+    if let Some(sc) = priors.scale {
         if !(fin(sc.arcsec_per_px) && fin(sc.sigma)) {
             return bad("scale prior must be finite");
         }
     }
-    if let Some(r) = pr.roll {
+    if let Some(r) = priors.roll {
         if !(fin(r.angle) && fin(r.sigma) && r.sigma >= 0.0 && fin(r.max_dev) && r.max_dev >= 0.0) {
             return bad("roll prior needs a finite angle, sigma >= 0 and max_dev >= 0");
         }
@@ -1157,7 +1048,6 @@ fn validate(req: &SolveRequest) -> Result<(), SolveError> {
     Ok(())
 }
 
-/// Hard scale limits of a scale prior: ±3σ, never below a tenth of the scale.
 fn scale_limits(sc: ScalePrior) -> (f64, f64) {
     (
         (sc.arcsec_per_px - 3.0 * sc.sigma).max(sc.arcsec_per_px * 0.1),
@@ -1165,7 +1055,6 @@ fn scale_limits(sc: ScalePrior) -> (f64, f64) {
     )
 }
 
-/// The hard limits of `priors` that `wcs` breaks.
 fn violated_priors(priors: &Priors, wcs: &TanWcs) -> Vec<&'static str> {
     let mut out = Vec::new();
     if priors
@@ -1194,11 +1083,8 @@ fn violated_priors(priors: &Priors, wcs: &TanWcs) -> Vec<&'static str> {
     out
 }
 
-/// Least relative 1σ of the scale prior in the relaxed pass of
-/// [`crate::Policy::relax_priors_on_failure`].
 const RELAXED_SCALE_SIGMA: f64 = 0.01;
 
-/// The request for the relaxed second pass, or `None` when relaxing changes nothing.
 fn relaxed_request(req: &SolveRequest) -> Option<SolveRequest> {
     let mut r = req.clone();
     r.priors.roll = None;
@@ -1213,19 +1099,24 @@ fn relaxed_request(req: &SolveRequest) -> Option<SolveRequest> {
         .then_some(r)
 }
 
-/// Solve adaptively: plan stages from the request's metadata and run them in order until one
-/// produces a verified solution. Hypotheses are counted across all stages, so the false-alarm
-/// accounting covers the whole search; the executed plan is returned in the outcome.
-///
-/// With [`crate::Policy::relax_priors_on_failure`], a failed search is retried once with the
-/// hard limits relaxed.
+/// Search using the available priors and indexes. [`Outcome::Abstained`] means the search returned no
+/// accepted WCS.
 pub fn solve_auto(
     req: &SolveRequest,
     catalog: &dyn Catalog,
     indexes: &[Index],
 ) -> Result<Outcome, SolveError> {
+    solve_auto_after(req, catalog, indexes, 0)
+}
+
+pub fn solve_auto_after(
+    req: &SolveRequest,
+    catalog: &dyn Catalog,
+    indexes: &[Index],
+    already_tested: u64,
+) -> Result<Outcome, SolveError> {
     let started = Instant::now();
-    let first = solve_auto_once(req, catalog, indexes, 0)?;
+    let first = solve_auto_once(req, catalog, indexes, already_tested)?;
     let Outcome::Abstained {
         reason: reason0,
         best_log_odds: best0,
@@ -1253,8 +1144,6 @@ pub fn solve_auto(
     if *tested0 >= req.policy.max_hypotheses {
         return Ok(first);
     }
-    // The second pass continues the first pass's hypothesis count, so every candidate it tests
-    // is judged against the false-alarm budget of both passes.
     let second = solve_auto_once(&relaxed, catalog, indexes, *tested0)?;
     let tag = |t: Vec<StageTrace>| {
         t.into_iter().map(|mut s| {
@@ -1267,6 +1156,7 @@ pub fn solve_auto(
         Outcome::Solved(mut s) => {
             search.extend(tag(std::mem::take(&mut s.search)));
             s.search = search;
+            s.elapsed = started.elapsed();
             s.violated_priors = violated_priors(&req.priors, &s.wcs.tan);
             s.prior_violated = !s.violated_priors.is_empty();
             Outcome::Solved(s)
@@ -1297,7 +1187,7 @@ fn solve_auto_once(
     indexes: &[Index],
     already_tested: u64,
 ) -> Result<Outcome, SolveError> {
-    let mut ctx = new_ctx(req, catalog)?;
+    let mut ctx = new_ctx(req, catalog, &req.priors)?;
     ctx.tested = already_tested;
     let stages = plan(&ctx, indexes);
     if stages.is_empty() && !indexes.is_empty() {
@@ -1365,21 +1255,18 @@ fn solve_auto_once(
     Ok(ctx.abstain("no hypothesis passed verification"))
 }
 
-/// Catalogue stars around the field of an existing WCS.
 fn cone_around<'a>(ctx: &Ctx<'a>, wcs: &Wcs) -> Result<RefSet<'a>, SolveError> {
     let (centre, r) = ctx.footprint(wcs);
     RefSet::from_cone(ctx.catalog, centre, r * 1.2, &ctx.query)
 }
 
-/// Score an existing WCS (from any solver) against a source list with Fayde's verifier: the data
-/// log-odds of the WCS as a single tested hypothesis, its matches and their residuals. Priors in
-/// the request are ignored; `policy.epoch` sets the catalogue epoch.
+/// Score a supplied WCS against catalogue stars at the request epoch, without refitting it.
 pub fn verify_wcs(
     req: &SolveRequest,
     catalog: &dyn Catalog,
     wcs: &Wcs,
 ) -> Result<Verification, SolveError> {
-    let ctx = new_ctx(req, catalog)?;
+    let ctx = new_ctx(req, catalog, &Priors::default())?;
     let set = cone_around(&ctx, wcs)?;
     let refs = ctx.refs(&set, wcs);
     let a = assess(&ctx.tests, &refs, ctx.w * ctx.h, 1.0, &[]);
@@ -1413,17 +1300,12 @@ pub fn verify_wcs(
     })
 }
 
-/// Refit an existing WCS: re-match the source list around it with shrinking radii (12 → 6 →
-/// 3 px, linear), then the same converged IRLS fit as a solve, with SIP order chosen by BIC up to
-/// `policy.max_sip_order`, covariance and accuracy figures. Counts as one tested hypothesis; the
-/// result must clear `policy.accept_log_odds` like any solution. For repairing stored solutions
-/// (e.g. a per-frame SIP fitted to too few stars) without searching again.
 pub fn refine_wcs(
     req: &SolveRequest,
     catalog: &dyn Catalog,
     wcs: &Wcs,
 ) -> Result<Outcome, SolveError> {
-    let mut ctx = new_ctx(req, catalog)?;
+    let mut ctx = new_ctx(req, catalog, &req.priors)?;
     ctx.method = SolveMethod::Refit;
     ctx.tested = 1;
     if ctx.ranked.len() < 4 {
@@ -1464,7 +1346,8 @@ pub fn refine_wcs(
     })
 }
 
-/// Pair seeds only (needs pointing and a tight scale prior); see [`solve_auto`].
+/// Solve from a pointing prior and a scale prior with at most 3% relative uncertainty. For indexed
+/// searches use [`solve_auto`].
 pub fn solve(req: &SolveRequest, catalog: &dyn Catalog) -> Result<Outcome, SolveError> {
     let tight = matches!((req.priors.pointing, req.priors.scale), (Some(_), Some(sc)) if sc.sigma <= TIGHT_SCALE * sc.arcsec_per_px);
     if req.priors.pointing.is_none() || req.priors.scale.is_none() || !tight {
@@ -1475,7 +1358,6 @@ pub fn solve(req: &SolveRequest, catalog: &dyn Catalog) -> Result<Outcome, Solve
     solve_auto(req, catalog, &[])
 }
 
-/// [`solve_auto`] with one index.
 pub fn solve_with_index(
     req: &SolveRequest,
     catalog: &dyn Catalog,
@@ -1484,7 +1366,6 @@ pub fn solve_with_index(
     solve_auto(req, catalog, std::slice::from_ref(index))
 }
 
-/// [`solve_auto`] with a set of indexes (scale bands).
 pub fn solve_with_indexes(
     req: &SolveRequest,
     catalog: &dyn Catalog,
@@ -1493,11 +1374,11 @@ pub fn solve_with_indexes(
     solve_auto(req, catalog, indexes)
 }
 
-/// Pair-seed hypotheses from the catalogue stars a field centred within `radius` (radians) of
-/// the pointing can hold. A hypothesis is held to the priors' hard limits, not to `radius`: a
-/// field just outside it, found from the stars it shares with the cone, is a solution.
-/// `Ok(None)` when all seeds are exhausted without a solution.
 fn pair_seeds(ctx: &mut Ctx<'_>, radius: f64) -> Result<Option<Stop>, SolveError> {
+    if ctx.out_of_budget() {
+        return Ok(Some(Stop::Budget));
+    }
+    ctx.method = SolveMethod::PairSeeds;
     let pointing = ctx.req.priors.pointing.expect("checked by caller");
     let scale = ctx.req.priors.scale.expect("checked by caller");
     let as2rad = |a: f64| (a / 3600.0).to_radians();
@@ -1507,26 +1388,35 @@ fn pair_seeds(ctx: &mut Ctx<'_>, radius: f64) -> Result<Option<Stop>, SolveError
     let field_area = ctx.w * ctx.h * as2rad(scale.arcsec_per_px).ppowi(2);
     let cone_area = 2.0 * PI * (1.0 - cone_r.pcos());
     let n_seed_src = ctx.req.policy.seed_sources.clamp(3, ctx.ranked.len());
-    // Seeds come from the brightest catalogue stars of the cone: so many per frame area and
-    // seed source, and no fewer than the seed sources. Only these are read here; the fainter
-    // stars a hypothesis is verified against are read around the hypotheses that need them.
     let wanted = ((SEED_STARS_PER_SOURCE * n_seed_src as f64 * cone_area / field_area).ceil()
         as usize)
         .max(n_seed_src);
     let seeds = SeedStars::brightest(ctx, pointing.centre, cone_r, wanted.max(4))?;
+    if ctx.out_of_budget() {
+        return Ok(Some(Stop::Budget));
+    }
     if seeds.stars.len() < 4 {
         return Ok(None);
     }
     let n_seed_cat = wanted.min(seeds.stars.len());
     let set = ctx.prior_cone().expect("pointing and scale priors given");
     let seed_tree = KdTree::build(seeds.vecs[..n_seed_cat].to_vec());
-    let mut cat_pairs = PairTable::new(&seeds.vecs[..n_seed_cat], chord(2.0 * field_r_max));
+    let Some(mut cat_pairs) =
+        PairTable::new(&seeds.vecs[..n_seed_cat], chord(2.0 * field_r_max), || {
+            ctx.out_of_budget()
+        })
+    else {
+        return Ok(Some(Stop::Budget));
+    };
     let parities: Vec<Parity> = match ctx.req.priors.parity {
         Some(par) => vec![par],
         None => vec![Parity::Negative, Parity::Positive],
     };
 
     for b in 1..n_seed_src {
+        if ctx.out_of_budget() {
+            return Ok(Some(Stop::Budget));
+        }
         for a in 0..b {
             if ctx.ranked[a].truncated || ctx.ranked[b].truncated {
                 continue;
@@ -1578,17 +1468,13 @@ fn pair_seeds(ctx: &mut Ctx<'_>, radius: f64) -> Result<Option<Stop>, SolveError
     Ok(None)
 }
 
-/// The brightest catalogue stars of the pointing prior's cone, brightest first: the stars
-/// pair seeds are made from.
 struct SeedStars {
     stars: Vec<Star>,
-    /// `stars[k].pos.to_unit_vector()`.
     vecs: Vec<[f64; 3]>,
 }
 
 impl SeedStars {
     fn brightest(ctx: &Ctx<'_>, centre: SkyPos, radius: f64, n: usize) -> Result<Self, SolveError> {
-        // A cone wider than the sky is the whole sky.
         let radius = radius.min(std::f64::consts::PI - 1e-9);
         let stars = ctx.catalog.cone_brightest(centre, radius, &ctx.query, n)?;
         let vecs = stars.iter().map(|s| s.pos.to_unit_vector().0).collect();
@@ -1596,33 +1482,21 @@ impl SeedStars {
     }
 }
 
-/// Number of separation bins of a [`PairTable`].
 const PAIR_BINS: usize = 1024;
 
-/// Every pair of seed stars closer than a frame's diagonal, for looking up the pairs whose
-/// separation fits an image pair: the role of Mortari's k-vector (Mortari 1997; Mortari & Neta
-/// 2000), which answers a range query from a list sorted by separation.
-///
-/// The whole list is some 10⁵ pairs for a 2° prior, and a search that ends at its first image
-/// pairs looks at a few percent of it. So the pairs are only put in bins by squared chord
-/// length here, a subtraction and a multiplication each; the separation itself (an arctangent)
-/// and the sort are left to the bins a lookup touches. A lookup returns exactly what the sorted
-/// list of all pairs would.
 struct PairTable<'s> {
     vecs: &'s [[f64; 3]],
-    /// Largest squared chord length held.
     reach2: f64,
-    /// Pairs `(separation, i, j)`, `i < j`, grouped by bin of squared chord length: bin `b` is
-    /// `pairs[start[b]..start[b + 1]]`. The separations of a bin are filled in, and the bin
-    /// sorted, when a lookup first reaches it (`ready`).
     pairs: Vec<(f64, u32, u32)>,
     start: Vec<u32>,
     ready: Vec<bool>,
 }
 
 impl<'s> PairTable<'s> {
-    /// The pairs of `vecs` no farther apart than the chord length `reach`.
-    fn new(vecs: &'s [[f64; 3]], reach: f64) -> Self {
+    fn new(vecs: &'s [[f64; 3]], reach: f64, expired: impl Fn() -> bool) -> Option<Self> {
+        if expired() {
+            return None;
+        }
         let reach2 = reach * reach;
         let mut table = Self {
             vecs,
@@ -1632,8 +1506,6 @@ impl<'s> PairTable<'s> {
             ready: vec![false; PAIR_BINS],
         };
         let mut found: Vec<(u16, u32, u32)> = Vec::new();
-        // Walk the stars in order along the axis they are most spread over: a star's partners
-        // are then the next few in line, and the walk stops at the first one out of reach.
         let spread = |axis: usize| {
             let (lo, hi) = vecs
                 .iter()
@@ -1652,23 +1524,26 @@ impl<'s> PairTable<'s> {
                 .then(a.cmp(&b))
         });
         for (at, &i) in order.iter().enumerate() {
+            if expired() {
+                return None;
+            }
             let p = &vecs[i as usize];
             for &j in &order[at + 1..] {
                 let q = &vecs[j as usize];
                 let along = q[axis] - p[axis];
-                // One term of the sum below: once it is too large alone, so is every later one.
                 if along * along > reach2 {
                     break;
                 }
-                // The form a k-d tree search uses, so the pairs are those it would find.
                 let d2: f64 = (0..3).map(|k| (q[k] - p[k]) * (q[k] - p[k])).sum();
                 if d2 <= reach2 {
                     found.push((table.bin(d2) as u16, i.min(j), i.max(j)));
                 }
             }
         }
-        // Group by bin (a counting sort).
-        for &(bin, ..) in &found {
+        for (at, &(bin, ..)) in found.iter().enumerate() {
+            if at % 16384 == 0 && expired() {
+                return None;
+            }
             table.start[bin as usize + 1] += 1;
         }
         for b in 0..PAIR_BINS {
@@ -1676,28 +1551,25 @@ impl<'s> PairTable<'s> {
         }
         let mut next = table.start.clone();
         table.pairs = vec![(f64::NAN, 0, 0); found.len()];
-        for (bin, i, j) in found {
+        for (n, (bin, i, j)) in found.into_iter().enumerate() {
+            if n % 16384 == 0 && expired() {
+                return None;
+            }
             let at = &mut next[bin as usize];
             table.pairs[*at as usize] = (f64::NAN, i, j);
             *at += 1;
         }
-        table
+        Some(table)
     }
 
     fn bin(&self, chord2: f64) -> usize {
-        // A ratio that is not a number (no reach at all) lands in bin 0 with everything else.
         ((chord2 / self.reach2 * PAIR_BINS as f64) as usize).min(PAIR_BINS - 1)
     }
 
-    /// The pairs separated by `lo` to `hi` radians (inclusive), by separation and then by star
-    /// numbers.
     fn between(&mut self, lo: f64, hi: f64) -> Vec<(f64, u32, u32)> {
         let order = |a: &(f64, u32, u32), b: &(f64, u32, u32)| {
             a.0.total_cmp(&b.0).then((a.1, a.2).cmp(&(b.1, b.2)))
         };
-        // The bins the range reaches, and one more on each side: a pair's bin comes from its
-        // chord length and its place in the range from its separation, two computations that
-        // agree to rounding, which is far less than a bin.
         let bin_of = |angle: f64| {
             let c = chord(angle.clamp(0.0, PI));
             self.bin(c * c)
@@ -1716,7 +1588,6 @@ impl<'s> PairTable<'s> {
             }
             out.extend_from_slice(bin);
         }
-        // Already in order but for pairs within rounding of a bin's edge.
         out.sort_by(order);
         let start = out.partition_point(|c| c.0 < lo);
         let end = out.partition_point(|c| c.0 <= hi);
@@ -1726,8 +1597,6 @@ impl<'s> PairTable<'s> {
     }
 }
 
-/// Start at the prior mean and alternate outward through the sorted separation list.
-/// Prior-guided ordering is Fayde's extension of PROSAC (Chum & Matas 2005).
 fn pairs_from_mean(pairs: &[(f64, u32, u32)], mean: f64) -> impl Iterator<Item = &(f64, u32, u32)> {
     let mut right = pairs.partition_point(|p| p.0 < mean);
     let mut left = right;
@@ -1750,7 +1619,6 @@ fn pairs_from_mean(pairs: &[(f64, u32, u32)], mean: f64) -> impl Iterator<Item =
     })
 }
 
-/// Pattern-hash hypotheses. `Ok(None)` when all patterns are exhausted without a solution.
 fn pattern_hash(
     ctx: &mut Ctx<'_>,
     index: &Index,
@@ -1759,10 +1627,8 @@ fn pattern_hash(
     ctx.method = SolveMethod::PatternHash;
     ctx.index_hash = Some(index.content_hash());
     let istars = index.stars();
-    let index_tree = index.star_tree();
     let index_fov = index.meta().params.fov_deg.to_radians();
     let as2rad = |a: f64| (a / 3600.0).to_radians();
-    // Within the pointing prior one set of catalogue stars serves every hypothesis.
     let shared = if ctx.outside_pointing {
         None
     } else {
@@ -1770,9 +1636,6 @@ fn pattern_hash(
     };
     let region = region.map(|(c, r)| (c.to_unit_vector().0, r));
     let m = ctx.req.policy.pattern_sources.max(4).min(ctx.ranked.len());
-    // Without a pointing prior each hypothesis needs its own catalogue cone. Cache cones by
-    // (HEALPix cell of the field centre, field-radius bucket): a cone around the cell centre,
-    // padded by the cell size, serves every hypothesis whose centre falls in that cell.
     let mut cones: std::collections::HashMap<(u64, i32), std::rc::Rc<RefSet<'_>>> =
         std::collections::HashMap::new();
     for n in 4..=m {
@@ -1780,6 +1643,9 @@ fn pattern_hash(
         for i in 0..last {
             for j in i + 1..last {
                 for k in j + 1..last {
+                    if ctx.out_of_budget() {
+                        return Ok(Some(Stop::Budget));
+                    }
                     let ids = [i, j, k, last];
                     if ids.iter().any(|&q| ctx.ranked[q].truncated) {
                         continue;
@@ -1789,7 +1655,6 @@ fn pattern_hash(
                     if shape.ratios[0] * shape.largest < MIN_PATTERN_EDGE_PX {
                         continue;
                     }
-                    // Ratio tolerance from centroid noise: δr ≈ 2√2·σ / L, ×3.
                     let sig = ids.iter().map(|&q| ctx.ranked[q].sigma).fold(0.0, f64::max);
                     let tol = (8.5 * sig / shape.largest).clamp(0.002, 0.02);
                     let range = ctx.s_hi.is_finite().then(|| {
@@ -1801,14 +1666,15 @@ fn pattern_hash(
                     if range.is_some_and(|(lo, _)| lo > index_fov) {
                         continue;
                     }
-                    // Lookup ratios are scale-free; feed the index plane coordinates in pixels.
-                    for found in index.lookup(&shape, tol, range) {
+                    let Some(matches) =
+                        index.lookup_with_cancel(&shape, tol, range, || ctx.past_deadline())
+                    else {
+                        return Ok(Some(Stop::Budget));
+                    };
+                    for found in matches {
                         if ctx.out_of_budget() {
                             return Ok(Some(Stop::Budget));
                         }
-                        // Implied scale (rad/px). Index patterns come from fields no larger than
-                        // the index field size, so a hypothesis implying a frame more than twice
-                        // that size cannot be this index's sky: skip it before any catalogue work.
                         let implied = found.largest / shape.largest;
                         if implied.is_nan()
                             || implied <= 0.0
@@ -1816,8 +1682,6 @@ fn pattern_hash(
                         {
                             continue;
                         }
-                        // Region: every pattern star must lie within the field of a frame
-                        // centred inside the region.
                         if let Some((c, r)) = region {
                             let reach = r + ctx.half_diag_px() * implied;
                             if found
@@ -1831,8 +1695,6 @@ fn pattern_hash(
                         let skies = found
                             .stars
                             .map(|s| UnitVector(istars[s as usize].vec).to_sky());
-                        // Canonical centroid ranks can swap under noise. Test all edge-compatible
-                        // assignments and both parities, best four-point residual first.
                         for (_, seed) in pattern_seeds(&pts, &skies, tol, sig, ctx.crpix) {
                             if ctx.out_of_budget() {
                                 return Ok(Some(Stop::Budget));
@@ -1840,6 +1702,10 @@ fn pattern_hash(
                             if !ctx.within_priors(&seed) {
                                 ctx.limit_seeds.set(ctx.limit_seeds.get() + 1);
                                 continue;
+                            }
+                            let index_tree = index.star_tree();
+                            if ctx.past_deadline() {
+                                return Ok(Some(Stop::Budget));
                             }
                             ctx.tested += 1;
                             let used: Vec<usize> = ids.to_vec();
@@ -1856,7 +1722,6 @@ fn pattern_hash(
                                 None => {
                                     let field_r =
                                         ctx.half_diag_px() * as2rad(seed.pixel_scale_arcsec());
-                                    // Radius bucket: next power of √2 above the field radius.
                                     let bucket = (field_r.pln() / std::f64::consts::SQRT_2.pln())
                                         .ceil()
                                         as i32;
@@ -1869,10 +1734,7 @@ fn pattern_hash(
                                         Some(c) => c.clone(),
                                         None => {
                                             let centre = hp.centre(cell).to_sky();
-                                            // Any centre in the cell is within ~0.75 side of the cell centre.
                                             let r = r_bucket * 1.05 + hp.pixel_side() * 0.75;
-                                            // A cone the catalogue rejects (e.g. larger than the
-                                            // sky) means an implausible hypothesis, not a failure.
                                             let c = match RefSet::from_cone(
                                                 ctx.catalog,
                                                 centre,
@@ -1904,7 +1766,6 @@ fn pattern_hash(
     Ok(None)
 }
 
-/// Similarity transform mapping image pixels `pa`, `pb` onto catalogue stars `c1`, `c2`.
 fn seed_wcs(
     stars: &[Star],
     c1: usize,
@@ -1918,15 +1779,6 @@ fn seed_wcs(
         .map(|(seed, _)| seed)
 }
 
-/// Four-parameter similarity by closed-form complex least squares, the planar equivalent
-/// of Umeyama (1991). Centre both sets, then α = Σ(z_c conj(z_p)) / Σ|z_p|².
-/// Negative parity conjugates the pixels first.
-///
-/// The fit starts in the tangent plane of the catalogue centroid and is repeated with the
-/// tangent point moved to the fitted `CRVAL` until it stops moving: a transform found in another
-/// point's tangent plane is rotated by (east offset × tan δ) when reused at `CRVAL` (convergence
-/// of the meridians), which is degrees near the poles.
-/// Returns the seed and radial RMS in pixels in the final tangent plane.
 fn similarity_seed(
     pairs: &[([f64; 2], SkyPos)],
     parity: Parity,
@@ -1979,7 +1831,6 @@ fn similarity_seed(
         if scale2 <= 0.0 {
             return None;
         }
-        // Tangent-plane position of CRPIX (z_p = 0).
         let bx = mc[0] - (ar * mp[0] - ai * mp[1]);
         let by = mc[1] - (ai * mp[0] + ar * mp[1]);
         let crval = gnomonic_inverse(tangent, bx, by);
@@ -2001,8 +1852,6 @@ fn similarity_seed(
     None
 }
 
-/// Enumerate at most 24 assignments. Compare all six labelled edges, not just their
-/// sorted multiset, to avoid relying on unstable canonical ranks (Fayde choice).
 fn pattern_seeds(
     pts: &[[f64; 2]; 4],
     skies: &[SkyPos; 4],

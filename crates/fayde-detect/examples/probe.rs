@@ -1,9 +1,3 @@
-//! Developer probe: render synthetic frames and measure the detector against the truth.
-//!
-//! ```text
-//! cargo run --release -p fayde-detect --example probe -- [size] [psf_sigma] [stars] [seed]
-//! ```
-
 use std::time::Instant;
 
 use fayde_core::Portable;
@@ -32,7 +26,6 @@ fn main() {
     sc.gradient = (0.02, -0.01);
     let noise = sc.sky_noise();
     for _ in 0..n_stars {
-        // Peak signal-to-noise of the matched filter from 3 to 3000, log-uniform.
         let snr = 3.0 * 1000f64.ppowf(rng.uniform());
         let flux = snr * noise * 2.0 * std::f64::consts::PI.sqrt() * psf;
         sc.stars.push(Star {
@@ -76,7 +69,6 @@ fn main() {
         sc.stars.clear();
     }
     if let Ok(v) = std::env::var("STRAY") {
-        // STRAY=peak,half: a glow from just outside the top-left corner.
         let p: Vec<f64> = v.split(',').filter_map(|x| x.parse().ok()).collect();
         sc.stray = Some(Stray {
             x: -40.0,
@@ -86,7 +78,6 @@ fn main() {
         });
     }
     if let Ok(v) = std::env::var("COSMICS") {
-        // COSMICS=n: n hits; a third single pixels, a third short clumps, a third tracks.
         let n: usize = v.parse().unwrap_or(0);
         for i in 0..n {
             let length = match i % 3 {
@@ -123,7 +114,6 @@ fn main() {
     let t0 = Instant::now();
     let det = detect(&img, size, size, &opt).unwrap();
     let dt = t0.elapsed().as_secs_f64();
-    // Best of five for the timing.
     let mut best = dt;
     for _ in 0..4 {
         let t = Instant::now();
@@ -147,10 +137,9 @@ fn main() {
         count(Class::Streak)
     );
 
-    // Match stellar detections to true stars.
     let stellar: Vec<_> = det.stars().collect();
     let mut used = vec![false; stellar.len()];
-    let mut bins = [(0usize, 0usize); 6]; // true SNR bins: <5, 5-8, 8-15, 15-50, 50-500, >500
+    let mut bins = [(0usize, 0usize); 6];
     let bin_of = |snr: f64| match snr {
         s if s < 5.0 => 0,
         s if s < 8.0 => 1,
@@ -187,8 +176,6 @@ fn main() {
                 sat_chi.push((d.y - st.y) / d.sigma_px);
                 continue;
             }
-            // Error of the fitted minor-axis variance, relative to the total (kernel included),
-            // times the signal-to-noise ratio.
             let k2 = det.stats.kernel_sigma * det.stats.kernel_sigma;
             let truth = psf * psf + 1.0 / 12.0;
             size_z[b].push((d.sigma_minor * d.sigma_minor - truth) / (truth + k2) * d.snr);
@@ -200,7 +187,6 @@ fn main() {
         }
     }
     let rms = |v: &[f64]| (v.iter().map(|x| x * x).sum::<f64>() / v.len().max(1) as f64).sqrt();
-    // 1σ from the median absolute value (robust to a few blended pairs).
     let robust = |v: &[f64]| {
         let mut a: Vec<f64> = v.iter().map(|x| x.abs()).collect();
         a.sort_by(f64::total_cmp);
@@ -300,7 +286,6 @@ fn main() {
             "  true streak ({:.1}, {:.1}) → ({:.1}, {:.1})",
             t.x0, t.y0, t.x1, t.y1
         );
-        // Stars close to the line through the streak, near either end.
         let (dx, dy) = (t.x1 - t.x0, t.y1 - t.y0);
         let len = dx.phypot(dy);
         for st in &sc.stars {

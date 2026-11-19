@@ -1,11 +1,4 @@
-//! Static k-d tree (Bentley 1975, Commun. ACM 18, 509) over fixed-dimension points with radius
-//! search.
-//!
-//! Used for unit vectors on the sky (`D = 3`, Euclidean chord distance) and pixel positions
-//! (`D = 2`). Built once; queries are deterministic and return indices in ascending order.
-
 use fayde_core::Portable;
-/// A static k-d tree. Stores a permutation of point indices; the points stay owned by the caller.
 #[derive(Debug, Clone)]
 pub struct KdTree<const D: usize> {
     points: Vec<[f64; D]>,
@@ -13,7 +6,6 @@ pub struct KdTree<const D: usize> {
 }
 
 impl<const D: usize> KdTree<D> {
-    /// Build from points. Indices returned by queries refer to this slice's order.
     pub fn build(points: Vec<[f64; D]>) -> Self {
         assert!(points.len() < u32::MAX as usize, "too many points");
         let mut order: Vec<u32> = (0..points.len() as u32).collect();
@@ -21,22 +13,18 @@ impl<const D: usize> KdTree<D> {
         Self { points, order }
     }
 
-    /// Number of points.
     pub fn len(&self) -> usize {
         self.points.len()
     }
 
-    /// Whether the tree is empty.
     pub fn is_empty(&self) -> bool {
         self.points.is_empty()
     }
 
-    /// Point by index.
     pub fn point(&self, i: usize) -> [f64; D] {
         self.points[i]
     }
 
-    /// Indices of all points within Euclidean distance `r` of `q`, ascending.
     pub fn within(&self, q: [f64; D], r: f64) -> Vec<usize> {
         let mut out = Vec::new();
         self.within_rec(0, self.order.len(), 0, q, r * r, r, &mut out);
@@ -44,8 +32,6 @@ impl<const D: usize> KdTree<D> {
         out
     }
 
-    /// Whether any point is within Euclidean distance `r` of `q`: `!within(q, r).is_empty()`,
-    /// stopping at the first point found.
     pub fn any_within(&self, q: [f64; D], r: f64) -> bool {
         self.any_rec(0, self.order.len(), 0, q, r * r, r)
     }
@@ -113,7 +99,6 @@ fn build_rec<const D: usize>(points: &[[f64; D]], order: &mut [u32], depth: usiz
     build_rec(points, &mut right[1..], depth + 1);
 }
 
-/// Chord length for an angular radius (radians), for searching unit vectors.
 pub fn chord(angle: f64) -> f64 {
     2.0 * (angle / 2.0).psin()
 }
@@ -124,7 +109,6 @@ mod tests {
 
     #[test]
     fn matches_brute_force() {
-        // Deterministic pseudo-random points (LCG).
         let mut s = 12345u64;
         let mut rnd = || {
             s = s
@@ -143,7 +127,6 @@ mod tests {
             assert_eq!(tree.within(q, r), brute);
             assert_eq!(tree.any_within(q, r), !brute.is_empty());
         }
-        // Radii that find nothing, and one that is not a number.
         for r in [0.0, 1e-9, f64::NAN] {
             let q = [rnd(), rnd(), rnd()];
             assert_eq!(tree.any_within(q, r), !tree.within(q, r).is_empty());

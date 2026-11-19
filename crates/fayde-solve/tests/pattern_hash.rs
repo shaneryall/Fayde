@@ -1,6 +1,3 @@
-//! Pattern-hash solving: loose or missing priors, using a regional pattern index built from the
-//! same synthetic sky.
-
 use fayde_core::Portable;
 mod common;
 
@@ -11,7 +8,6 @@ use fayde_index::{build, BuildParams, Index};
 use fayde_solve::{solve_with_index, solve_with_indexes, Outcome, Priors, ScalePrior, SolveMethod};
 use fayde_wcs::Parity;
 
-/// Index over the synthetic sky around `centre`, for frames up to 1.3° across.
 fn index_for(cat: &MemoryCatalog, centre: (f64, f64)) -> Index {
     let params = BuildParams {
         fov_deg: 1.3,
@@ -55,7 +51,6 @@ fn check(name: &str, cat: &MemoryCatalog, index: &Index, f: &Field) {
         sol.elapsed
     );
     assert_eq!(sol.method, SolveMethod::PatternHash, "{name}");
-    // 5σ noise bound (see ucac4_solve.rs): σ = 0.3 px, 3″/px.
     let bound = 5.0 * 0.3 * (14.0 / conf.len() as f64).sqrt() * 3.0;
     assert!(worst < bound, "{name}: {worst}″ > {bound}″");
     assert!(correct == conf.len() && conf.len() >= 20, "{name}");
@@ -69,7 +64,7 @@ fn loose_scale_prior_uses_pattern_hash() {
     f.request.priors.scale = Some(ScalePrior {
         arcsec_per_px: 3.3,
         sigma: 0.5,
-    }); // ±17%, off by 10%
+    });
     check("loose scale", &cat, &index, &f);
 }
 
@@ -79,6 +74,35 @@ fn solves_with_no_priors_at_all() {
     let index = index_for(&cat, (210.0, 45.0));
     f.request.priors = Priors::default();
     check("no priors", &cat, &index, &f);
+
+    let fine = BuildParams {
+        pattern_max_error: 0.00025,
+        ..index.meta().params.clone()
+    };
+    let fine_index = build(cat.stars(), cat.id(), &fine).unwrap();
+    assert_eq!(fine_index.meta().bins, 1_000);
+    check("no priors, fine bins", &cat, &fine_index, &f);
+}
+
+#[test]
+fn blind_search_reports_an_expired_deadline_without_scoring_a_hypothesis() {
+    let (cat, mut f) = field((210.0, 45.0), 200.0, Parity::Positive, 4);
+    let index = index_for(&cat, (210.0, 45.0));
+    f.request.priors = Priors::default();
+    f.request.policy.deadline = Some(std::time::Duration::ZERO);
+    let result = solve_with_index(&f.request, &cat, &index).unwrap();
+    let Outcome::Abstained {
+        hypotheses_tested,
+        search,
+        ..
+    } = result
+    else {
+        panic!("expected a deadline: {result:?}");
+    };
+    assert_eq!(hypotheses_tested, 0);
+    assert_eq!(search.len(), 1);
+    assert!(search[0].stage.starts_with("pattern hash"));
+    assert_eq!(search[0].outcome, "deadline");
 }
 
 #[test]
@@ -115,7 +139,6 @@ fn random_sources_without_priors_abstain() {
     }
 }
 
-/// Indexes in √2 field-size steps over the field's synthetic sky.
 fn bands(cat: &MemoryCatalog, centre: (f64, f64)) -> Vec<Index> {
     [0.65, 0.92, 1.3]
         .iter()
@@ -144,7 +167,6 @@ fn blind_multi_band_solves_different_scales() {
         };
         let real = f.source_star.iter().filter(|s| s.is_some()).count();
 
-        // Blind: no priors at all.
         f.request.priors = Priors::default();
         let out = solve_with_indexes(&f.request, &cat, &idx).unwrap();
         let Outcome::Solved(sol) = out else {
@@ -162,7 +184,6 @@ fn blind_multi_band_solves_different_scales() {
         assert!(z < 5.0);
         assert!((sol.wcs.pixel_scale_arcsec() / scale - 1.0).abs() < 0.01);
 
-        // Loose scale prior: the best-matched band is searched first and solves.
         f.request.priors.scale = Some(ScalePrior {
             arcsec_per_px: scale * 1.1,
             sigma: scale * 0.2,
@@ -315,8 +336,6 @@ fn near_rectangular_pattern_survives_canonical_order_swap() {
         assert_eq!(sol.matches.len(), 9);
         assert!(sol.matches.iter().all(|m| m.star_id == m.source as u64 + 1));
 
-        // With only the seed stars, every surviving assignment fails the extra-hit
-        // pre-filter, but each must still consume the hypothesis budget.
         let mut seed_only = req.clone();
         seed_only.sources.truncate(4);
         seed_only.policy.max_hypotheses = 2;

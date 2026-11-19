@@ -1,43 +1,19 @@
-//! Weighted WCS fits with `CRPIX` fixed (design doc §5.5).
-//!
-//! The model is a polynomial from pixel offsets `(u, v) = pixel − CRPIX` to tangent-plane
-//! coordinates at `CRVAL`: `ξ = Σ c_pq u^p v^q`, `η = Σ d_pq u^p v^q`, `0 ≤ p+q ≤ order`.
-//! Order 1 is TAN (affine); order ≥ 2 is decomposed into a CD matrix (linear terms) and SIP
-//! polynomials `A = CD⁻¹·(higher terms)` (Shupe et al. 2005), the same decomposition
-//! astrometry.net uses. Each iteration re-centres the tangent point on the constant term.
-//!
-//! Weights come from the caller (IRLS: inlier probability / σ², Holland & Welsch 1977; Hogg, Bovy
-//! & Lang 2010). The inverse normal matrix, scaled by the fitted error scale², is the parameter
-//! covariance; [`WcsCovariance`] turns it into predicted position errors. Order is chosen by BIC
-//! (Schwarz 1978), not by an F-test.
-//!
-//! Instrument priors on the scale and roll can enter the fit as two pseudo-observations on the
-//! linear part ([`LinearPrior`]): a Gaussian prior on a linear-model parameter is equivalent to
-//! one more weighted observation of it (Gelman et al. 2013, *Bayesian Data Analysis* 3rd ed.,
-//! ch. 14, prior information as additional data points). They hold sparse fits near what the
-//! instrument is known to do and barely move fits the data determine.
-
 use fayde_core::Portable;
 use fayde_core::{PixelPos, SkyPos, UnitVector};
 use fayde_wcs::{
     gnomonic_inverse,
-    sip::{invert_dense, monomials, solve_dense},
+    sip::{monomials, solve_dense, DenseFactor},
     Parity, Poly, Sip, TanWcs, TangentPlane, Wcs,
 };
 
-/// One weighted correspondence.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Pair {
     pub px: [f64; 2],
-    /// The catalogue position as a unit vector ([`SkyPos::to_unit_vector`]). A fit projects
-    /// every pair once per pass and once more per candidate order: from the vector that is a
-    /// few multiplications, from right ascension and declination four sines and cosines.
     pub vec: [f64; 3],
     pub w: f64,
 }
 
 impl Pair {
-    /// A pair from a sky position.
     #[cfg(test)]
     pub(crate) fn at(px: [f64; 2], sky: SkyPos, w: f64) -> Self {
         Self {
@@ -48,34 +24,21 @@ impl Pair {
     }
 }
 
-/// Parameter covariance of a fitted WCS.
 #[derive(Debug, Clone, PartialEq)]
 pub struct WcsCovariance {
-    /// Monomials `(p, q)` of the fitted polynomial, in parameter order.
     pub terms: Vec<(usize, usize)>,
-    /// Inverse normal matrix (row-major, `terms.len()²`), shared by ξ and η.
     pub inv_normal: Vec<f64>,
-    /// Error scale² applied to `inv_normal` (may be < 1 for default centroid errors).
     pub scale2: f64,
-    /// Pixel scale, radians per pixel. Weights are 1/σ² in pixels while the fitted values are
-    /// tangent-plane radians, so the parameter covariance is `inv_normal × scale2 × rad_per_px²`.
     pub rad_per_px: f64,
-    /// Reference pixel.
     pub crpix: PixelPos,
-    /// Offset normalization `S` used in the fit: `inv_normal` refers to monomials of
-    /// `(u/S, v/S)`.
     pub norm: f64,
 }
 
 impl WcsCovariance {
-    /// 1σ error of the predicted sky position of pixel `p`, arcsec, per tangent-plane axis
-    /// `[ξ, η]`. At `CRPIX` this is the uncertainty of `CRVAL`.
     pub fn position_sigma_arcsec(&self, p: PixelPos) -> f64 {
         (self.basis_quadratic(p) * self.scale2).sqrt() * self.rad_per_px.to_degrees() * 3600.0
     }
 
-    /// fᵀ (AᵀWA)⁻¹ f for the monomial vector f at pixel `p`, without the error scale. Times a
-    /// pair's fit weight this is that pair's leverage (the hat-matrix diagonal).
     pub(crate) fn basis_quadratic(&self, p: PixelPos) -> f64 {
         let (u, v) = (
             (p.x - self.crpix.x) / self.norm,
@@ -96,7 +59,6 @@ impl WcsCovariance {
         q.max(0.0)
     }
 
-    /// Worst radial 1σ over a 5×5 grid covering a `width × height` frame, arcsec.
     pub fn worst_radial_sigma_arcsec(&self, width: f64, height: f64) -> f64 {
         let mut worst = 0.0f64;
         for i in 0..5 {
@@ -111,32 +73,19 @@ impl WcsCovariance {
         worst
     }
 
-    /// Radial 1σ error (√2 × per-axis) of pixel `p`, arcsec.
     pub fn radial_sigma_arcsec(&self, p: PixelPos) -> f64 {
         std::f64::consts::SQRT_2 * self.position_sigma_arcsec(p)
     }
 }
 
-/// Gaussian priors on the linear part of a fit, from the instrument: scale and roll, as two
-/// pseudo-observations linearised at the prior CD matrix
-/// `CD₀ = s₀ · [[f cos θ₀, sin θ₀], [−f sin θ₀, cos θ₀]]` (f = −1 for negative parity).
-/// The scale is observed along CD₀, the roll along ∂CD₀/∂θ; the two remaining directions of the
-/// CD matrix (skew and pixel anisotropy) stay free.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct LinearPrior {
-    /// Scale and 1σ, radians per pixel.
     pub scale: Option<(f64, f64)>,
-    /// Roll `atan2(CD1_2, CD2_2)` and 1σ, radians.
     pub roll: Option<(f64, f64)>,
-    /// Parity, when known; otherwise that of the data-only fit.
     pub parity: Option<Parity>,
-    /// The factor between the caller's pair weights and true inverse variances
-    /// (`w = w_true × weight_scale2`), so the priors carry their stated weight.
     pub weight_scale2: f64,
 }
 
-/// Re-solve the linear system of [`fit_poly`] for ξ and η jointly with the prior rows. `cx`, `cy`
-/// are the data-only solution (fit units: coefficients of normalised offsets `u/norm`).
 #[allow(clippy::too_many_arguments)]
 fn solve_with_prior(
     normal: &[f64],
@@ -156,21 +105,16 @@ fn solve_with_prior(
         None if det < 0.0 => -1.0,
         None => 1.0,
     };
-    // Reference scale (fit units) and roll of the linearisation point.
     let s_ref = pr.scale.map_or(det.abs().sqrt(), |(s, _)| s * norm);
     let theta = pr.roll.map_or(c2.patan2(d2), |(r, _)| r);
     if !(s_ref > 0.0 && s_ref.is_finite() && theta.is_finite()) {
         return None;
     }
     let (sn, cs) = theta.psin_cos();
-    // Weights: the data weights are true inverse variances (in pixels) × weight_scale2, and a
-    // fit-unit coefficient error is rad_per_px × norm per pixel.
     let rad_per_px = s_ref / norm;
     let w0 = rad_per_px * rad_per_px * pr.weight_scale2;
-    // Rows over (c1, c2, d1, d2): (row, target, weight).
     let mut rows: Vec<([f64; 4], f64, f64)> = Vec::new();
     if let Some((s0, sigma)) = pr.scale.filter(|&(_, sg)| sg > 0.0) {
-        // ŝ = ⟨m, CD₀⟩ / |CD₀|², times s_ref: exact at CD₀, first order around it.
         rows.push((
             [flip * cs / 2.0, sn / 2.0, -flip * sn / 2.0, cs / 2.0],
             s0 * norm,
@@ -178,7 +122,6 @@ fn solve_with_prior(
         ));
     }
     if let Some((_, sigma)) = pr.roll.filter(|&(_, sg)| sg > 0.0) {
-        // δθ = ⟨m, ∂CD₀/∂θ⟩ / |∂CD₀/∂θ|²; ⟨CD₀, ∂CD₀/∂θ⟩ = 0, so δθ = 0 at CD₀.
         let t = 1.0 / (2.0 * s_ref);
         rows.push((
             [-flip * sn * t, cs * t, -flip * cs * t, -sn * t],
@@ -213,16 +156,11 @@ fn solve_with_prior(
     Some((x[..k].to_vec(), x[k..].to_vec()))
 }
 
-/// Result of one polynomial fit.
 pub(crate) struct PolyFit {
     pub wcs: Wcs,
     pub cov: WcsCovariance,
 }
 
-/// Fit a polynomial WCS of `order` (1 = TAN). Needs at least as many weighted pairs as parameters
-/// per axis (exactly as many gives the interpolating solution). With `prior`, the linear part is
-/// also held to the instrument's scale and roll. The covariance stays that of the data alone
-/// (conservative: the priors only add information).
 pub(crate) fn fit_poly(
     crval0: SkyPos,
     crpix: PixelPos,
@@ -235,17 +173,11 @@ pub(crate) fn fit_poly(
     if pairs.iter().filter(|p| p.w > 0.0).count() < k {
         return None;
     }
-    // Conditioning: fit in normalized offsets (u/S, v/S) with S the largest |offset|, so every
-    // monomial is O(1) and the normal matrix stays well conditioned at any order and detector
-    // size (raw u³ on a 2048 px chip spans ~1e18 against the constant term). Coefficients are
-    // rescaled by S^-(p+q) afterwards.
     let norm = pairs
         .iter()
         .filter(|p| p.w > 0.0)
         .map(|p| (p.px[0] - crpix.x).abs().max((p.px[1] - crpix.y).abs()))
         .fold(1.0f64, f64::max);
-    // The monomials of each pair: they depend on its pixel alone, so every pass uses them. The
-    // powers of u and v are worked out once per pair, not once per monomial.
     let fitted: Vec<&Pair> = pairs.iter().filter(|p| p.w > 0.0).collect();
     let mut monomial = vec![0.0; fitted.len() * k];
     let mut pu = vec![0.0; order + 1];
@@ -260,33 +192,40 @@ pub(crate) fn fit_poly(
             *fi = pu[a] * pv[b];
         }
     }
+    let mut normal = vec![0.0; k * k];
+    for (p, f) in fitted.iter().zip(monomial.chunks_exact(k)) {
+        for i in 0..k {
+            for j in 0..k {
+                normal[i * k + j] += p.w * f[i] * f[j];
+            }
+        }
+    }
+    let (factor, prior) = match prior {
+        Some(prior) => (DenseFactor::new(normal.clone(), k)?, Some((prior, normal))),
+        None => (DenseFactor::new(normal, k)?, None),
+    };
     let mut crval = crval0;
     let mut cx = vec![0.0; k];
     let mut cy = vec![0.0; k];
-    let mut normal = vec![0.0; k * k];
     for _ in 0..5 {
-        normal = vec![0.0; k * k];
         let mut vx = vec![0.0; k];
         let mut vy = vec![0.0; k];
         let plane = TangentPlane::at(crval);
         for (p, f) in fitted.iter().zip(monomial.chunks_exact(k)) {
             let (xi, eta) = plane.project(UnitVector(p.vec))?;
             for i in 0..k {
-                for j in 0..k {
-                    normal[i * k + j] += p.w * f[i] * f[j];
-                }
                 vx[i] += p.w * f[i] * xi;
                 vy[i] += p.w * f[i] * eta;
             }
         }
-        cx = solve_dense(normal.clone(), vx.clone())?;
-        cy = solve_dense(normal.clone(), vy.clone())?;
-        if let Some(pr) = prior {
-            if let Some((px, py)) = solve_with_prior(&normal, &vx, &vy, k, &cx, &cy, norm, pr) {
-                (cx, cy) = (px, py);
+        (cx, cy) = match &prior {
+            Some((prior, normal)) => {
+                let cx = factor.solve(vx.clone())?;
+                let cy = factor.solve(vy.clone())?;
+                solve_with_prior(normal, &vx, &vy, k, &cx, &cy, norm, prior).unwrap_or((cx, cy))
             }
-        }
-        // Term 0 is the constant: the tangent-point offset.
+            None => (factor.solve(vx)?, factor.solve(vy)?),
+        };
         crval = gnomonic_inverse(crval, cx[0], cy[0]);
         if cx[0].phypot(cy[0]) < 1e-13 {
             cx[0] = 0.0;
@@ -294,13 +233,11 @@ pub(crate) fn fit_poly(
             break;
         }
     }
-    // Back to pixel units.
     for (i, &(a, b)) in terms.iter().enumerate() {
         let s = norm.ppowi((a + b) as i32);
         cx[i] /= s;
         cy[i] /= s;
     }
-    // Terms 1 and 2 are (1,0) and (0,1): the linear part.
     let cd_rad = [[cx[1], cx[2]], [cy[1], cy[2]]];
     let tan = TanWcs::new(crval, crpix, cd_rad.map(|r| r.map(f64::to_degrees))).ok()?;
     let sip = (order >= 2).then(|| {
@@ -328,7 +265,7 @@ pub(crate) fn fit_poly(
             },
         }
     });
-    let inv_normal = invert_dense(&normal, k)?;
+    let inv_normal = factor.inverse()?;
     Some(PolyFit {
         wcs: Wcs { tan, sip },
         cov: WcsCovariance {
@@ -344,13 +281,11 @@ pub(crate) fn fit_poly(
     })
 }
 
-/// Affine TAN fit (order 1).
 #[cfg(test)]
 pub(crate) fn fit_tan(crval0: SkyPos, crpix: PixelPos, pairs: &[Pair]) -> Option<TanWcs> {
     fit_poly(crval0, crpix, pairs, 1, None).map(|f| f.wcs.tan)
 }
 
-/// Weighted χ² of `wcs` over `pairs`, in pixels (residual / σ through the weights).
 pub(crate) fn chi2(wcs: &Wcs, pairs: &[Pair]) -> Option<f64> {
     let mut s = 0.0;
     for p in pairs.iter().filter(|p| p.w > 0.0) {
@@ -360,25 +295,9 @@ pub(crate) fn chi2(wcs: &Wcs, pairs: &[Pair]) -> Option<f64> {
     Some(s)
 }
 
-/// Observations (2 per match) per fitted parameter a distortion order needs to be a BIC
-/// candidate in a fit that is returned: n ≥ 4k, i.e. 24 matches for order 2 and 40 for order 3.
-/// See [`fit_best_order`].
 pub(crate) const FINAL_OBS_PER_PARAM: f64 = 4.0;
-/// The same limit while a tune-up is still collecting matches (n ≥ 2k: 12 and 20 matches). Its
-/// result is refitted under [`FINAL_OBS_PER_PARAM`] before it can be returned.
 pub(crate) const GROWTH_OBS_PER_PARAM: f64 = 2.0;
 
-/// Fit orders `1..=max_order` and keep the lowest BIC = n·ln(χ²/n) + k·ln(n), with k = 2 × terms and
-/// n = 2 × (sum of inlier probabilities). Returns the fit and its χ².
-///
-/// An order above 1 is a candidate only with `obs_per_param` observations per parameter
-/// (n ≥ `obs_per_param` × k). The profiled BIC has no floor: as k approaches n the fit
-/// interpolates, χ² → 0 and n·ln(χ²/n) → −∞, so without a rule a frame with exactly 6 or 10
-/// matches always picks the interpolating polynomial, which is wrong by many pixels away from
-/// its stars. Short of interpolation it is still too liberal for a few dozen matches with
-/// outliers among them: on 1,200 undistorted frames of 12–50 stars, n ≥ 2k chose distortion 16
-/// times (corner errors up to 107″), n ≥ 3k 5 times (84″), n ≥ 4k once (3″). A BIC margin
-/// instead of a count did not help (still 3 false choices at a margin of 50). Fayde's own rule.
 pub(crate) fn fit_best_order(
     crval0: SkyPos,
     crpix: PixelPos,
@@ -400,8 +319,6 @@ pub(crate) fn fit_best_order(
         let Some(c2) = chi2(&fit.wcs, pairs) else {
             break;
         };
-        // Profile out the unknown noise variance (Schwarz 1978). A common rescaling
-        // of the weights adds the same constant to every candidate BIC.
         let bic =
             n * (c2 / n).max(f64::MIN_POSITIVE).pln() + (2 * fit.cov.terms.len()) as f64 * n.pln();
         if best.as_ref().is_none_or(|b| bic < b.0) {
@@ -409,6 +326,85 @@ pub(crate) fn fit_best_order(
         }
     }
     best.map(|(_, f, c2)| (f, c2))
+}
+
+pub(crate) const MIN_DISTORTION_CELLS: usize = 4;
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn held_out_error(
+    crval0: SkyPos,
+    crpix: PixelPos,
+    pairs: &[Pair],
+    order: usize,
+    prior: Option<&LinearPrior>,
+    cells: usize,
+    size: [f64; 2],
+    obs_per_param: f64,
+) -> Option<f64> {
+    let cell = |px: [f64; 2]| {
+        let at = |v: f64, n: f64| (((v + 0.5) / n * cells as f64).max(0.0) as usize).min(cells - 1);
+        at(px[1], size[1]) * cells + at(px[0], size[0])
+    };
+    let params = (2 * monomials(0, order).len()) as f64;
+    let (mut sum, mut wsum) = (0.0f64, 0.0f64);
+    for c in 0..cells * cells {
+        let test: Vec<&Pair> = pairs
+            .iter()
+            .filter(|p| p.w > 0.0 && cell(p.px) == c)
+            .collect();
+        if test.is_empty() {
+            continue;
+        }
+        let train: Vec<Pair> = pairs.iter().filter(|p| cell(p.px) != c).copied().collect();
+        let n = 2.0 * train.iter().filter(|p| p.w > 0.0).count() as f64;
+        if order > 1 && n < obs_per_param * params {
+            return None;
+        }
+        let fit = fit_poly(crval0, crpix, &train, order, prior)?;
+        for p in test {
+            let q = fit.wcs.vector_to_pixel(UnitVector(p.vec))?;
+            sum += p.w * ((p.px[0] - q.x).ppowi(2) + (p.px[1] - q.y).ppowi(2));
+            wsum += p.w;
+        }
+    }
+    (wsum > 0.0 && sum.is_finite()).then(|| sum / wsum)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn held_out_order(
+    crval0: SkyPos,
+    crpix: PixelPos,
+    pairs: &[Pair],
+    order: usize,
+    prior: Option<&LinearPrior>,
+    cells: usize,
+    size: [f64; 2],
+    obs_per_param: f64,
+    margin: f64,
+) -> usize {
+    let cell = |px: [f64; 2]| {
+        let at = |v: f64, n: f64| (((v + 0.5) / n * cells as f64).max(0.0) as usize).min(cells - 1);
+        at(px[1], size[1]) * cells + at(px[0], size[0])
+    };
+    let mut occupied = vec![false; cells * cells];
+    for p in pairs.iter().filter(|p| p.w > 0.0) {
+        occupied[cell(p.px)] = true;
+    }
+    if order > 1 && occupied.iter().filter(|&&o| o).count() < MIN_DISTORTION_CELLS {
+        return 1;
+    }
+    let errs: Vec<Option<f64>> = (1..=order)
+        .map(|o| held_out_error(crval0, crpix, pairs, o, prior, cells, size, obs_per_param))
+        .collect();
+    if errs[order - 1].is_none() {
+        return order;
+    }
+    let Some(best) = errs.iter().flatten().copied().reduce(f64::min) else {
+        return order;
+    };
+    errs.iter()
+        .position(|e| e.is_some_and(|e| e <= margin * best))
+        .map_or(order, |i| i + 1)
 }
 
 #[cfg(test)]
@@ -475,7 +471,6 @@ mod tests {
                 },
             }),
         };
-        // σ = 0.1 px → weight 100.
         let pairs: Vec<Pair> = grid(&truth)
             .into_iter()
             .map(|p| Pair { w: 100.0, ..p })
@@ -495,7 +490,6 @@ mod tests {
             let p = PixelPos::new(x, y);
             assert!(fit.wcs.pixel_to_sky(p).separation(truth.pixel_to_sky(p)) < 1e-12);
         }
-        // Without distortion, BIC keeps TAN.
         let flat: Vec<Pair> = grid(&tan.into())
             .into_iter()
             .enumerate()
@@ -522,9 +516,134 @@ mod tests {
     }
 
     #[test]
+    fn held_out_cells_reject_distortion_fitted_to_a_corner() {
+        let tan = TanWcs::new(
+            SkyPos::from_degrees(150.0, 2.0).unwrap(),
+            PixelPos::new(511.5, 511.5),
+            [[-8.3e-4, 1e-5], [1e-5, 8.3e-4]],
+        )
+        .unwrap();
+        let truth: Wcs = tan.into();
+        let pairs: Vec<Pair> = grid(&truth)
+            .into_iter()
+            .chain((0..40).map(|k| {
+                let px = [700.0 + (k * 37 % 300) as f64, 700.0 + (k * 53 % 300) as f64];
+                Pair::at(px, truth.pixel_to_sky(PixelPos::new(px[0], px[1])), 1.0)
+            }))
+            .map(|p| {
+                let (u, v) = ((p.px[0] - 680.0).max(0.0), (p.px[1] - 680.0).max(0.0));
+                let bend = 2e-7 * u * u * (u.min(v) / 300.0);
+                Pair {
+                    px: [p.px[0] + bend, p.px[1] + 0.5 * bend],
+                    w: 100.0,
+                    ..p
+                }
+            })
+            .collect();
+        let size = [1024.0, 1024.0];
+        let (fit, _) = fit_best_order(
+            tan.crval(),
+            tan.crpix(),
+            &pairs,
+            100.0,
+            3,
+            FINAL_OBS_PER_PARAM,
+            None,
+        )
+        .unwrap();
+        assert!(fit.wcs.sip_order() > 1);
+        let keep = held_out_order(
+            tan.crval(),
+            tan.crpix(),
+            &pairs,
+            fit.wcs.sip_order(),
+            None,
+            3,
+            size,
+            GROWTH_OBS_PER_PARAM,
+            1.05,
+        );
+        assert_eq!(keep, 1);
+        let corner: Vec<Pair> = pairs
+            .iter()
+            .filter(|p| p.px[0] > 340.0 && p.px[1] > 680.0)
+            .copied()
+            .collect();
+        let keep = held_out_order(
+            tan.crval(),
+            tan.crpix(),
+            &corner,
+            3,
+            None,
+            3,
+            size,
+            GROWTH_OBS_PER_PARAM,
+            1.05,
+        );
+        assert_eq!(keep, 1);
+    }
+
+    #[test]
+    fn held_out_cells_keep_real_distortion() {
+        let tan = TanWcs::new(
+            SkyPos::from_degrees(150.0, 2.0).unwrap(),
+            PixelPos::new(511.5, 511.5),
+            [[-8.3e-4, 1e-5], [1e-5, 8.3e-4]],
+        )
+        .unwrap();
+        let k = 2e-8;
+        let poly = |terms| Poly { order: 3, terms };
+        let truth = Wcs {
+            tan,
+            sip: Some(Sip {
+                a: poly(vec![(3, 0, k), (1, 2, k)]),
+                b: poly(vec![(2, 1, k), (0, 3, k)]),
+                ap: Poly {
+                    order: 0,
+                    terms: vec![],
+                },
+                bp: Poly {
+                    order: 0,
+                    terms: vec![],
+                },
+            }),
+        };
+        let pairs: Vec<Pair> = grid(&truth)
+            .into_iter()
+            .map(|p| Pair { w: 100.0, ..p })
+            .collect();
+        let size = [1024.0, 1024.0];
+        let err = |o| {
+            held_out_error(
+                tan.crval(),
+                tan.crpix(),
+                &pairs,
+                o,
+                None,
+                3,
+                size,
+                GROWTH_OBS_PER_PARAM,
+            )
+        };
+        let (e1, e3) = (err(1).unwrap(), err(3).unwrap());
+        assert!(e3.is_finite() && e3 * 1.05 < e1, "TAN {e1}, cubic {e3}");
+        assert!(err(2).is_none_or(|e2| e3 * 1.05 < e2));
+        let keep = held_out_order(
+            tan.crval(),
+            tan.crpix(),
+            &pairs,
+            3,
+            None,
+            3,
+            size,
+            GROWTH_OBS_PER_PARAM,
+            1.05,
+        );
+        assert_eq!(keep, 3);
+    }
+
+    #[test]
     fn interpolating_orders_are_not_bic_candidates() {
-        // A plain TAN with 0.3 px noise and σ supplied. With 6 pairs order 2 interpolates, with
-        // 10 pairs order 3 does: χ² → 0 and the profiled BIC would pick them every time.
         let tan = TanWcs::new(
             SkyPos::from_degrees(150.0, 2.0).unwrap(),
             PixelPos::new(511.5, 511.5),
@@ -543,7 +662,6 @@ mod tests {
                 ..p
             })
             .collect();
-        // `n` pairs spread over the frame (the first few grid points are nearly collinear).
         let spread = |n: usize| -> Vec<Pair> { (0..n).map(|i| noisy[i * (60 / n)]).collect() };
         for n in [6usize, 7, 8, 10, 11] {
             let pairs = spread(n);
@@ -566,7 +684,6 @@ mod tests {
             );
             assert!(err < 15.0, "{n} pairs: corner off by {err}″");
         }
-        // Order 2 becomes a candidate at 24 matches, order 3 at 40; noise alone still keeps TAN.
         for n in [12usize, 20, 30, 60] {
             let pairs = spread(n);
             let (fit, _) = fit_best_order(
@@ -585,15 +702,13 @@ mod tests {
 
     #[test]
     fn large_detector_order3_is_well_conditioned() {
-        // 4096 px: raw u³ reaches ~1e10 and its square ~1e20 in the normal matrix; without
-        // normalized offsets the cubic terms lose precision.
         let tan = TanWcs::new(
             SkyPos::from_degrees(30.0, -60.0).unwrap(),
             PixelPos::new(2047.5, 2047.5),
             [[-2.8e-4, 3e-6], [3e-6, 2.8e-4]],
         )
         .unwrap();
-        let k = 1.2e-9; // ~0.9 px of barrel at the corners
+        let k = 1.2e-9;
         let truth = Wcs {
             tan,
             sip: Some(Sip {
@@ -661,7 +776,6 @@ mod tests {
         let corner = PixelPos::new(0.0, 0.0);
         assert!(f15.position_sigma_arcsec(c) > 1.5 * f60.position_sigma_arcsec(c));
         assert!(f60.position_sigma_arcsec(corner) > f60.position_sigma_arcsec(c));
-        // Centre error ≈ σ/√N × scale: 0.3 px / √60 × 2.88″.
         let expect = 0.3 / 60f64.sqrt() * 2.88;
         let got = f60.position_sigma_arcsec(c);
         assert!((got / expect - 1.0).abs() < 0.3, "{got} vs {expect}");

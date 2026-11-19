@@ -1,36 +1,3 @@
-//! `fayde solve`, `fayde verify`, `fayde refit`: one source list at a time.
-//!
-//! ```text
-//! fayde solve  (--sources <frame.sources.fits> | --image <frame.fits>) --ucac4 <dir> [request options]
-//!              [--index <a.fidx>]... [-o <out.wcs>]
-//! fayde verify (--sources <frame.sources.fits> | --image <frame.fits>) --ucac4 <dir> --wcs <in.wcs>
-//! fayde refit  (--sources <frame.sources.fits> | --image <frame.fits>) --ucac4 <dir> --wcs <in.wcs>
-//!              [-o <out.wcs>]
-//!
-//! `--xyls` and `--at-xyls` are accepted as earlier names of `--sources` and `--at-sources`.
-//!
-//! request options:
-//!   --header <frame.fits> --instrument <profile.json> --width <px> --height <px>
-//!   --ra <deg> --dec <deg> --radius <deg> --pointing-sigma <deg>
-//!   --scale <arcsec/px> --scale-sigma <fraction>
-//!   --roll <deg> --roll-sigma <deg> --roll-max <deg> --parity negative|positive
-//!   --trail-length <px> --trail-angle <deg> --epoch <year> --deadline <s> --max-sip-order <n>
-//!   --pixel-error <px> --accept-log-odds <x> --max-hypotheses <n>
-//!   --no-priors --no-pointing --no-header-wcs --search-outside-pointing
-//!   --relax-priors-on-failure
-//!
-//! `--index` may be repeated (one path each); a comma-separated list still works for paths
-//! without commas. `--no-priors` drops every prior; `--no-pointing` only the pointing.
-//! ```
-//!
-//! Solved and verify reports list the matched pairs (`pairs`): source index in the input
-//! table, source position (FITS 1-based, as in the source list), catalogue star id (UCAC4: the
-//! running number RNM), position at the solve epoch and magnitude, predicted pixel (FITS
-//! 1-based), residual (source − predicted, px) and inlier probability (the match weight).
-//!
-//! Priors are taken from, in order of precedence: the command line, the instrument profile,
-//! the frame header. The report (JSON) goes to stdout; a WCS, with provenance comments, to `-o`.
-
 use std::collections::HashMap;
 
 use fayde_api::{build_request, AtCheck, AtPosition, RequestOptions, Solver};
@@ -117,8 +84,6 @@ pub(crate) fn run(args: &[&str], mode: Mode) -> Result<(), String> {
     if o.contains_key("o") && o.contains_key("output") {
         return Err("-o and --output are the same option: give one".into());
     }
-    // A command-line error, like every other one, leaves an existing -o file alone: checked
-    // here, before the part of the run whose failure removes it.
     match (o.contains_key("sources"), o.contains_key("image")) {
         (true, true) => return Err("give --sources or --image, not both".into()),
         (false, false) => {
@@ -129,24 +94,15 @@ pub(crate) fn run(args: &[&str], mode: Mode) -> Result<(), String> {
     let Some(path) = output_path(&o, mode) else {
         return solve_once(&o, mode, None);
     };
-    // Found now, not after the solve: an unwritable output must not cost the solution.
     crate::check_output_path(path)?;
-    // The output is removed when the run fails (below), so it must not be one of the inputs:
-    // `refit --wcs a.wcs -o a.wcs` would otherwise delete the WCS it was given.
     for key in ["wcs", "sources", "image", "header", "instrument", "ucac4"] {
         if let Some(input) = o.get(key) {
-            if same_file(path, input) {
-                return Err(format!("-o {path} is the --{key} input: write elsewhere"));
-            }
+            crate::check_output_against_input(path, input, &format!("the --{key} input"))?;
         }
     }
     for input in index_paths(&o) {
-        if same_file(path, &input) {
-            return Err(format!("-o {path} is an --index input: write elsewhere"));
-        }
+        crate::check_output_against_input(path, &input, "an --index input")?;
     }
-    // Any failure from here on (unreadable input, catalogue, solver error, no solution, failed
-    // write) leaves no file at -o: one left by an earlier run would pass for this frame's WCS.
     let result = solve_once(&o, mode, Some(path));
     if result.is_err() {
         match std::fs::remove_file(path) {
@@ -158,8 +114,6 @@ pub(crate) fn run(args: &[&str], mode: Mode) -> Result<(), String> {
     result
 }
 
-/// Where this run writes its WCS, if anywhere. `fayde verify` writes no file: its `-o` is named
-/// as unused and the path is never touched, neither checked nor cleared.
 fn output_path(o: &HashMap<String, String>, mode: Mode) -> Option<&str> {
     match mode {
         Mode::Verify => None,
@@ -168,13 +122,6 @@ fn output_path(o: &HashMap<String, String>, mode: Mode) -> Option<&str> {
 }
 
 /// Whether `a` and `b` name the same existing file (after resolving links and `..`).
-fn same_file(a: &str, b: &str) -> bool {
-    match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
-        (Ok(x), Ok(y)) => x == y,
-        _ => false,
-    }
-}
-
 /// One solve, verify or refit; `out_path` has been checked (writable, not an input).
 fn solve_once(
     o: &HashMap<String, String>,
@@ -183,7 +130,6 @@ fn solve_once(
 ) -> Result<(), String> {
     let (sources, size, image, detection) = load_sources(o)?;
     let mut opts = request_options(o)?;
-    // An image carries its own header: used for the priors unless --header is given.
     if opts.header.is_none() {
         opts.header = image.map(|i| i.header);
     }
@@ -220,7 +166,6 @@ fn solve_once(
     if let Some(path) = out_path {
         match &report.solution {
             Some(sol) => write_solution(path, sol, &built.request)?,
-            // No solution: a file left there by an earlier run would pass for this frame's WCS.
             None => match std::fs::remove_file(path) {
                 Ok(()) => eprintln!("fayde: no solution: removed the existing {path}"),
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
@@ -237,7 +182,6 @@ fn solve_once(
     Ok(())
 }
 
-/// `fayde verify --at`: is there a catalogue star at these positions under the given WCS?
 fn run_at(o: &HashMap<String, String>) -> Result<(), String> {
     let pair = |v: &str, what: &str| -> Result<(f64, f64), String> {
         let p: Vec<f64> = v
@@ -363,8 +307,6 @@ pub(crate) fn wrong_kind(path: &str, option: &str, e: fayde_fits::FitsError) -> 
     }
 }
 
-/// `--xyls` and `--at-xyls` are the earlier names of `--sources` and `--at-sources`, still
-/// accepted.
 fn canonical_names(o: &mut HashMap<String, String>) -> Result<(), String> {
     for (old, new) in [("xyls", "sources"), ("at-xyls", "at-sources")] {
         if let Some(v) = o.remove(old) {
@@ -383,7 +325,6 @@ fn canonical_names(o: &mut HashMap<String, String>) -> Result<(), String> {
     Ok(())
 }
 
-/// Options of source detection (`--image`).
 pub(crate) const DETECT_OPTIONS: &[&str] = &[
     "fwhm",
     "detect-threshold",
@@ -405,16 +346,10 @@ pub(crate) fn detect_options(
 }
 
 fn request_options(o: &HashMap<String, String>) -> Result<RequestOptions, String> {
-    let header = match o.get("header") {
-        Some(p) => Some(
-            FitsFile::open(p)
-                .map_err(|e| format!("{p}: {e}"))?
-                .primary()
-                .header
-                .clone(),
-        ),
-        None => None,
-    };
+    let header = o
+        .get("header")
+        .map(|p| fayde_fits::read_image_header(p).map_err(|e| format!("{p}: {e}")))
+        .transpose()?;
     let instrument = match o.get("instrument") {
         Some(p) => Some(InstrumentProfile::load(p).map_err(|e| format!("{p}: {e}"))?),
         None => None,
@@ -478,7 +413,6 @@ fn write_solution(path: &str, sol: &Solution, req: &SolveRequest) -> Result<(), 
     write_wcs_file(path, &cards).map_err(|e| format!("{path}: {e}"))
 }
 
-/// An option the command does not use is named on stderr rather than dropped in silence.
 fn unused_options(o: &HashMap<String, String>, mode: Mode) {
     let (name, unused): (&str, &[&str]) = match mode {
         Mode::Solve => return,

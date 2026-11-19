@@ -41,7 +41,6 @@ def problems(version, tag):
     crates = sorted(p for p in (ROOT / "crates").iterdir() if (p / "Cargo.toml").is_file())
     for crate in crates:
         manifest = tomllib.loads((crate / "Cargo.toml").read_text(encoding="utf-8"))
-        # A Fayde crate named with its own `path` would be published without a version.
         for table in ("dependencies", "dev-dependencies", "build-dependencies"):
             for name, dep in manifest.get(table, {}).items():
                 if isinstance(dep, dict) and "path" in dep:

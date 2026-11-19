@@ -1,5 +1,3 @@
-//! Roll and parity priors, accuracy away from the centre, truncated sources, verify and refit.
-
 use fayde_core::Portable;
 mod common;
 
@@ -49,8 +47,6 @@ fn accuracy_is_reported_where_it_is_worst_and_leave_one_out_tracks_noise() {
         sol.worst_sigma_arcsec > 1.5 * centre,
         "corners are less certain than the centre"
     );
-    // Noise is 0.3 px per axis → 0.42 px radial; leave-one-out residuals are slightly larger
-    // than in-sample ones, never smaller.
     assert!(
         loo >= sol.rms_px && loo < 1.3 * sol.rms_px,
         "{loo} vs {}",
@@ -59,16 +55,12 @@ fn accuracy_is_reported_where_it_is_worst_and_leave_one_out_tracks_noise() {
     assert!((loo / (0.3 * 2f64.sqrt()) - 1.0).abs() < 0.25);
 }
 
-/// Shift the sources nearest the frame edge along the trail, as a truncated trail's midpoint
-/// is; return how many were biased.
 fn truncate_edges(f: &mut Field, trail: Trail, mark: bool) -> usize {
     let (ca, sa) = (trail.angle.pcos(), trail.angle.psin());
     let mut n = 0;
     for (k, s) in f.request.sources.iter_mut().enumerate() {
         let edge = s.x.min(s.y).min(1023.0 - s.x).min(1023.0 - s.y);
         if f.source_star[k].is_some() && edge < 0.5 * trail.length_px {
-            // The cut removes the part beyond the edge: the midpoint moves inwards along the
-            // trail by half the cut length.
             let cut = 0.5 * trail.length_px - edge;
             let sign = if (s.x - 511.5) * ca + (s.y - 511.5) * sa > 0.0 {
                 -1.0
@@ -125,7 +117,6 @@ fn truncated_sources_are_kept_as_evidence_but_out_of_the_fit() {
 fn verify_accepts_the_truth_and_rejects_a_rotated_wcs() {
     let (cat, f) = field((150.0, 2.0), 37.0, Parity::Negative, 33);
     let good = verify_wcs(&f.request, &cat, &f.truth).unwrap();
-    // 2° rotation about the centre.
     let t = f.truth.tan;
     let (s, c) = 2f64.to_radians().psin_cos();
     let cd = t.cd();
@@ -147,9 +138,25 @@ fn verify_accepts_the_truth_and_rejects_a_rotated_wcs() {
 }
 
 #[test]
+fn verify_ignores_search_priors() {
+    let (cat, mut f) = field((150.0, 2.0), 37.0, Parity::Negative, 33);
+    let expected = verify_wcs(&f.request, &cat, &f.truth).unwrap();
+    f.request.priors.scale = Some(ScalePrior {
+        arcsec_per_px: 90_000.0,
+        sigma: 1.0,
+    });
+    f.request.priors.roll = Some(RollPrior {
+        angle: 0.0,
+        sigma: 1.0,
+        max_dev: -1.0,
+    });
+    assert_eq!(verify_wcs(&f.request, &cat, &f.truth).unwrap(), expected);
+    assert!(solve(&f.request, &cat).is_err());
+}
+
+#[test]
 fn refit_repairs_a_perturbed_overfitted_wcs() {
     let (cat, f) = field((150.0, 2.0), 37.0, Parity::Negative, 34);
-    // A stored solution 4 px off, rotated 0.3°, with spurious SIP terms (≈ 5 px at a corner).
     let t = f.truth.tan;
     let (s, c) = 0.3f64.to_radians().psin_cos();
     let cd = t.cd();
@@ -190,7 +197,6 @@ fn refit_repairs_a_perturbed_overfitted_wcs() {
     assert_eq!(sol.wcs.sip_order(), 1, "no distortion in the truth");
 }
 
-/// A sparse frame: the `n` brightest real stars plus 3 false sources, tight scale prior.
 fn sparse(seed: u64, n: usize) -> (MemoryCatalog, Field) {
     let (cat, mut f) = field((150.0, 2.0), 37.0, Parity::Negative, seed);
     let mut real: Vec<usize> = (0..f.request.sources.len())
@@ -221,8 +227,6 @@ fn sparse(seed: u64, n: usize) -> (MemoryCatalog, Field) {
 
 #[test]
 fn roll_and_parity_priors_on_sparse_frames() {
-    // Can roll + parity + a tight scale make 4–6-star frames solvable, and do they ever cause a
-    // wrong solution? Measured over 10 fields per star count.
     for n in [4usize, 5, 6] {
         let (mut solved_without, mut solved_with, mut hyp_without, mut hyp_with) =
             (0, 0, 0u64, 0u64);
@@ -263,7 +267,6 @@ fn roll_and_parity_priors_on_sparse_frames() {
         );
         assert!(solved_with >= solved_without);
         assert!(hyp_with <= hyp_without);
-        // Relative checks pass trivially if everything abstains: require real solves too.
         assert!(
             solved_with >= 8,
             "{n} stars: only {solved_with}/10 solved with roll/parity"
@@ -273,8 +276,6 @@ fn roll_and_parity_priors_on_sparse_frames() {
 
 #[test]
 fn a_wrong_hard_limit_costs_a_retry_not_the_solution() {
-    // Roll prior 10° off with a 1° hard limit: the first pass cannot find the field; the relaxed
-    // pass does, and reports which limit the solution breaks.
     let (cat, mut f) = field((150.0, 2.0), 37.0, Parity::Negative, 35);
     f.request.priors.roll = Some(RollPrior {
         angle: roll_of(&f.truth) + 10f64.to_radians(),
@@ -286,12 +287,12 @@ fn a_wrong_hard_limit_costs_a_retry_not_the_solution() {
     let Outcome::Abstained { reason, .. } = &strict else {
         panic!("{strict:?}");
     };
-    // The abstention says that the hard limits blocked candidates.
     assert!(reason.contains("outside the prior hard limits"), "{reason}");
 
     f.request.policy.relax_priors_on_failure = true;
     let sol = solved(solve_auto(&f.request, &cat, &[]).unwrap());
     let err = grid_rms(&sol.wcs, &f.truth);
+    assert!(sol.elapsed.as_secs_f64() >= sol.search.iter().map(|s| s.seconds).sum::<f64>());
     eprintln!(
         "relaxed retry: grid rms {err:.3}″, violated {:?}, {} hypotheses over {} stages",
         sol.violated_priors,
@@ -310,7 +311,6 @@ fn a_wrong_hard_limit_costs_a_retry_not_the_solution() {
             <= 1e-9 * sol.nfa.max(1e-300)
     );
 
-    // Correct priors: solved in the first pass, nothing violated.
     f.request.priors.roll = Some(RollPrior {
         angle: roll_of(&f.truth),
         sigma: 0.1f64.to_radians(),
@@ -323,10 +323,6 @@ fn a_wrong_hard_limit_costs_a_retry_not_the_solution() {
 
 #[test]
 fn instrument_priors_hold_sparse_fits_near_the_instrument() {
-    // 6 real stars + 3 false at 1.5 px centroid noise. A free 6-star fit wanders in
-    // scale and roll, and its corners with it; the scale and roll priors as terms of the final
-    // fit hold it near the instrument. Compared over 20 fields: tight instrument priors
-    // (0.1% scale, 0.1° roll) against loose ones (2%, 3°).
     let (mut loose_err, mut tight_err, mut loose_ds, mut tight_ds) =
         (vec![], vec![], vec![], vec![]);
     for seed in 0..20u64 {

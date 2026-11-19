@@ -1,5 +1,3 @@
-# Std maths calls the platform libm, whose last bit differs between macOS, Linux and Windows.
-# Use fayde_core::Portable (psin, pcos, ...) instead; see crates/fayde-core/src/math.rs.
 disallowed-methods = [
     { path = "f64::sin", reason = "platform-dependent last bit; use fayde_core::Portable::psin" },
     { path = "f64::cos", reason = "platform-dependent last bit; use fayde_core::Portable::pcos" },

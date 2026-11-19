@@ -14,70 +14,44 @@ use fayde_fits::header_priors;
 use fayde_wcs::{header::Value as Card, Header, Parity, Wcs};
 use serde_json::{json, Value};
 
-/// Fewest solved frames a calibration is made from.
 pub const CALIBRATE_MIN_FRAMES: usize = 5;
-/// The scale's 1σ is no tighter than this fraction of the scale. The solver's hard limit is
-/// 3σ on the scale it fits to a frame, and a fit to a dozen stars scatters by 0.1 to 0.2%
-/// whatever the instrument does: a σ from well-populated frames alone rejects the sparse ones.
 const SCALE_SIGMA_FLOOR: f64 = 0.001;
-/// The scale's 1σ as a multiple of the robust spread of the fitted scales.
 const SCALE_SIGMA_FACTOR: f64 = 1.5;
-/// The roll's 1σ as a multiple of the robust spread about the rule, and its floor, degrees.
 const ROLL_SIGMA_FACTOR: f64 = 2.0;
 const ROLL_SIGMA_FLOOR_DEG: f64 = 0.05;
-/// The roll's hard limit as a multiple of its 1σ, and its floor, degrees.
 const ROLL_LIMIT_FACTOR: f64 = 10.0;
 const ROLL_LIMIT_FLOOR_DEG: f64 = 1.0;
-/// A keyword whose rule leaves more scatter than this, degrees, does not give the roll.
 const ROLL_MAX_SPREAD_DEG: f64 = 2.0;
-/// Median of a Rayleigh distribution in units of its σ, `√(2 ln 2)`: the radial offset of a
-/// pointing whose two axes each have a Gaussian error σ.
 const RAYLEIGH_MEDIAN: f64 = 1.177_410_022_515_474_7;
 
-/// One solved frame.
 #[derive(Debug, Clone)]
 pub struct SolvedFrame {
-    /// The frame's header.
     pub header: Header,
-    /// Its solution.
     pub wcs: Wcs,
-    /// Image width, pixels.
     pub width: u32,
-    /// Image height, pixels.
     pub height: u32,
 }
 
-/// What [`calibrate_profile`] is told about the instrument's headers.
 #[derive(Debug, Clone, Default)]
 pub struct CalibrateOptions {
-    /// Header keyword holding the instrument's own roll angle, degrees. Without it the profile
-    /// has no roll rule.
     pub roll_keyword: Option<String>,
-    /// Header keywords of the binning factors along x and y (the x factor when y is absent).
-    /// With them the profile's scale is the unbinned one.
     pub binning: Option<(String, Option<String>)>,
-    /// The profile's name.
     pub name: Option<String>,
-    /// Measure the header pointing without the header's WCS, and have the profile tell the
-    /// solver to read it the same way (`header_wcs: false`).
     pub no_header_wcs: bool,
 }
 
-/// Median of `v` (the upper of the two middle values of an even count). `v` is not empty.
 fn median(v: &[f64]) -> f64 {
     let mut v = v.to_vec();
     v.sort_by(f64::total_cmp);
     v[v.len() / 2]
 }
 
-/// Median and robust standard deviation (1.4826 × the median absolute deviation).
 fn robust(v: &[f64]) -> (f64, f64) {
     let m = median(v);
     let dev: Vec<f64> = v.iter().map(|x| (x - m).abs()).collect();
     (m, 1.4826 * median(&dev))
 }
 
-/// An angle in degrees wrapped into [−180, 180).
 fn wrap(a: f64) -> f64 {
     (a + 180.0).rem_euclid(360.0) - 180.0
 }
@@ -117,7 +91,6 @@ pub fn calibrate_profile(frames: &[SolvedFrame], o: &CalibrateOptions) -> Result
     }
     let frame = |i: usize| format!("solved frame {}", i + 1);
 
-    // Scale, unbinned.
     let mut scales = Vec::with_capacity(frames.len());
     for (i, f) in frames.iter().enumerate() {
         let bin = match &o.binning {
@@ -146,7 +119,6 @@ pub fn calibrate_profile(frames: &[SolvedFrame], o: &CalibrateOptions) -> Result
     let (scale, scale_spread) = robust(&scales);
     let scale_sigma = (SCALE_SIGMA_FACTOR * scale_spread).max(SCALE_SIGMA_FLOOR * scale);
 
-    // Parity: one camera has one.
     let positive = frames
         .iter()
         .filter(|f| f.wcs.parity() == Parity::Positive)
@@ -157,7 +129,6 @@ pub fn calibrate_profile(frames: &[SolvedFrame], o: &CalibrateOptions) -> Result
         _ => None,
     };
 
-    // Roll: the position angle of the image +y axis, east of north, against the keyword.
     let mut roll = None;
     let mut roll_stats = Value::Null;
     if let Some(key) = &o.roll_keyword {
@@ -168,8 +139,6 @@ pub fn calibrate_profile(frames: &[SolvedFrame], o: &CalibrateOptions) -> Result
             let cd = f.wcs.cd();
             pairs.push((cd[0][1].patan2(cd[1][1]).to_degrees(), v));
         }
-        // offset = roll − sign × keyword, for the sign whose offsets agree best. The offsets
-        // are centred on their mean direction first, so that values near ±180° do not split.
         let fit = |sign: f64| {
             let offsets: Vec<f64> = pairs.iter().map(|(r, v)| wrap(r - sign * v)).collect();
             let (sn, cs) = offsets.iter().fold((0.0, 0.0), |(s, c), a| {
@@ -204,7 +173,6 @@ pub fn calibrate_profile(frames: &[SolvedFrame], o: &CalibrateOptions) -> Result
         roll_stats = json!({"robust_sigma_deg": spread, "worst_deg": worst});
     }
 
-    // Pointing: the header's against the solved frame centre.
     let mut offsets = Vec::new();
     for f in frames {
         let header = if o.no_header_wcs {
@@ -294,8 +262,6 @@ mod tests {
     use fayde_fits::InstrumentProfile;
     use fayde_wcs::TanWcs;
 
-    /// A frame of a camera with scale 2.5″/px (unbinned), positive parity and
-    /// `roll = 33 − ROLLKEY`, whose header pointing is `off` degrees south of the truth.
     fn frame(k: usize, bin: f64, scale_err: f64, roll_err: f64, off: f64) -> SolvedFrame {
         let key = -170.0 + 37.0 * k as f64; // crosses ±180° in the offsets
         let roll: f64 = (33.0 - key + roll_err).to_radians();
@@ -315,7 +281,6 @@ mod tests {
         header.set("YBINNING", Card::Int(bin as i64));
         header.set("RA", Card::Float(ra));
         header.set("DEC", Card::Float(dec - off));
-        // A WCS in the header that is far from the truth: only read when allowed.
         header.set("CTYPE1", Card::Str("RA---TAN".into()));
         header.set("CTYPE2", Card::Str("DEC--TAN".into()));
         header.set("CRVAL1", Card::Float(ra));
@@ -339,7 +304,6 @@ mod tests {
 
     #[test]
     fn recovers_scale_parity_roll_rule_and_pointing_error() {
-        // Nine frames, one of them binned, one with a wild scale and roll (a poor solution).
         let frames: Vec<SolvedFrame> = (0..9)
             .map(|k| {
                 let bin = if k == 3 { 2.0 } else { 1.0 };
@@ -352,11 +316,9 @@ mod tests {
             })
             .collect();
         let json = calibrate_profile(&frames, &options()).unwrap();
-        // The profile reader accepts it.
         let p = InstrumentProfile::from_json(&json.to_string()).unwrap();
         assert_eq!(p.name.as_deref(), Some("test camera"));
         assert!((p.scale_arcsec.unwrap() - 2.5).abs() < 5e-4, "{json}");
-        // The floor: 0.1% of the scale, though the frames agree far better.
         assert!(
             (p.scale_sigma_arcsec.unwrap() - 0.0025).abs() < 1e-9,
             "{json}"
@@ -365,12 +327,10 @@ mod tests {
         let roll = p.roll.unwrap();
         assert_eq!((roll.keyword.as_str(), roll.sign), ("ROLLKEY", -1.0));
         assert!((roll.offset_deg - 33.0).abs() < 0.03, "{json}");
-        // Spread about the rule 0.03° × 1.4826, doubled; the limit is at its 1° floor.
         assert!(
             (roll.sigma_deg - 0.089).abs() < 0.005 && roll.max_dev_deg == 1.0,
             "{json}"
         );
-        // Offsets of 0.010° to 0.026°: median 0.018°, so σ = 0.018 / 1.1774.
         assert!(
             (p.pointing_sigma_deg.unwrap() - 0.018 / 1.1774).abs() < 1e-4,
             "{json}"
@@ -380,7 +340,6 @@ mod tests {
         assert_eq!(json["calibration"]["frames"], 9);
         assert!((json["calibration"]["roll"]["worst_deg"].as_f64().unwrap() - 4.0).abs() < 0.05);
 
-        // With the header WCS allowed the pointing is the header's CRVAL, 1° off.
         let with_wcs = CalibrateOptions {
             no_header_wcs: false,
             ..options()
@@ -393,23 +352,18 @@ mod tests {
     #[test]
     fn says_what_it_cannot_calibrate() {
         let frames: Vec<SolvedFrame> = (0..6).map(|k| frame(k, 1.0, 0.0, 0.0, 0.01)).collect();
-        // Too few frames.
         let err = calibrate_profile(&frames[..4], &options()).unwrap_err();
         assert!(err.contains("at least 5"), "{err}");
-        // A keyword the roll does not follow.
         let mut shuffled = frames.clone();
         for (k, f) in shuffled.iter_mut().enumerate() {
             f.header.set("ROLLKEY", Card::Float(71.0 * (k * k) as f64));
         }
         let err = calibrate_profile(&shuffled, &options()).unwrap_err();
         assert!(err.contains("does not give the roll"), "{err}");
-        // A frame without the keyword, or without its binning.
         let mut missing = frames.clone();
         missing[2].header = Header::default();
         let err = calibrate_profile(&missing, &options()).unwrap_err();
         assert!(err.contains("solved frame 3"), "{err}");
-        // Mixed parity gives no parity; no roll keyword, no roll rule; no pointing in the
-        // headers, no pointing error.
         let mut mixed = frames.clone();
         let cd = mixed[1].wcs.cd();
         mixed[1].wcs = TanWcs::new(

@@ -1,4 +1,3 @@
-//! Synthetic sky fields shared by the solver tests.
 #![allow(dead_code)]
 
 use fayde_catalog::{memory::MemoryCatalog, Star};
@@ -22,7 +21,6 @@ impl Rng {
     }
 }
 
-/// Stars in a cap of `radius_deg` around `centre`: 400 per deg² to mag 16, N(<m) ∝ 10^(0.3 m).
 pub fn sky(centre: SkyPos, radius_deg: f64, rng: &mut Rng) -> Vec<Star> {
     let r = radius_deg.to_radians();
     let area_deg2 =
@@ -40,13 +38,11 @@ pub fn sky(centre: SkyPos, radius_deg: f64, rng: &mut Rng) -> Vec<Star> {
     ];
     (0..n)
         .map(|i| {
-            // Uniform in the cap.
             let cos_t = 1.0 - rng.uniform() * (1.0 - r.pcos());
             let sin_t = (1.0 - cos_t * cos_t).sqrt();
             let phi = 2.0 * std::f64::consts::PI * rng.uniform();
             let v =
                 [0, 1, 2].map(|k| c[k] * cos_t + sin_t * (phi.pcos() * e[k] + phi.psin() * nn[k]));
-            // Inverse CDF of N(<m) ∝ 10^(0.3 m) on [6, 16].
             let u = rng.uniform();
             let lo = 10f64.ppowf(0.3 * 6.0);
             let hi = 10f64.ppowf(0.3 * 16.0);
@@ -65,7 +61,6 @@ pub fn sky(centre: SkyPos, radius_deg: f64, rng: &mut Rng) -> Vec<Star> {
 pub struct Field {
     pub request: SolveRequest,
     pub truth: Wcs,
-    /// Star id behind each source (None for false sources).
     pub source_star: Vec<Option<u64>>,
 }
 
@@ -88,7 +83,6 @@ pub fn field_with_noise(
     field_full(centre, roll_deg, parity, seed, noise_px, 0.0)
 }
 
-/// Like [`field_full`] with 0.3 px noise, no distortion and `scale` arcsec/px.
 pub fn field_scaled(
     centre: (f64, f64),
     roll_deg: f64,
@@ -99,7 +93,6 @@ pub fn field_scaled(
     field_any(centre, roll_deg, parity, seed, 0.3, 0.0, scale)
 }
 
-/// `barrel`: SIP coefficient k in `u' = u(1 + k r²)`; 2e-8 gives ~1.4 px at the corners.
 pub fn field_full(
     centre: (f64, f64),
     roll_deg: f64,
@@ -131,7 +124,6 @@ fn field_any(
     } else {
         1.0
     };
-    // +y axis at position angle `roll` east of north: CD column 2 = s·(sin roll, cos roll).
     let cd = [[flip * s * cr, s * sr], [-flip * s * sr, s * cr]];
     let tan = TanWcs::new(c, PixelPos::new(511.5, 511.5), cd).unwrap();
     let truth = if barrel == 0.0 {
@@ -184,7 +176,6 @@ fn field_any(
     }
     let n_false = (items.len() as f64 * 0.3) as usize;
     for _ in 0..n_false {
-        // False sources with the same flux distribution as the real ones (some are bright).
         let pick = items[(rng.uniform() * items.len() as f64) as usize % items.len()].0;
         let src = Source {
             x: rng.uniform() * 1023.0,
@@ -196,12 +187,10 @@ fn field_any(
         };
         items.push((src.flux.unwrap(), src, None));
     }
-    // Shuffle deterministically by a hash so order carries no information.
     items.sort_by_key(|it| ((it.1.x * 1e6) as i64).wrapping_mul(2654435761) % 1_000_003);
     let source_star = items.iter().map(|it| it.2).collect();
     let sources = items.into_iter().map(|it| it.1).collect();
 
-    // Pointing prior 0.2° off the truth.
     let off = SkyPos::from_degrees(
         centre.0 + 0.2 / centre.1.to_radians().pcos(),
         centre.1 - 0.05,

@@ -1,13 +1,3 @@
-//! The `fayde` command-line tool, as a library: the `fayde` binary and the `fayde` command that
-//! the Python package installs both call [`run`], so the two are the same program.
-//!
-//! ```text
-//! fayde index build --ucac4 <dir> --fov <deg> -o <file> [--epoch <year>] [--mag-limit <m>]
-//!                   [--stars-per-fov <n>] [--oversampling <x>] [--patterns-per-field <n>]
-//!                   [--stars-per-field <n>] [--min-edge <deg>] [--region <ra,dec,r>]
-//! fayde index info <file>
-//! ```
-
 use std::{collections::HashMap, time::Instant};
 
 use fayde_catalog::ucac4::Ucac4Catalog;
@@ -19,9 +9,6 @@ mod compare;
 mod detect_cmd;
 mod solve_cmd;
 
-/// Run the `fayde` command with `args`, the arguments after the program name. Prints the
-/// command's output and errors, and returns the process exit status: 0 when the command
-/// completes, 1 when it fails.
 pub fn run(args: &[String]) -> u8 {
     if args.iter().any(|a| a == "--help" || a == "-h") || args.is_empty() {
         let help = match args.first().map(String::as_str) {
@@ -70,8 +57,6 @@ fn finish(result: Result<(), String>) -> u8 {
     }
 }
 
-/// Print a line to stdout. A reader that has gone away (`fayde solve ... | head -1`) is not an
-/// error, and `println!` would panic on it; any other write failure is reported.
 pub(crate) fn out(text: &str) -> Result<(), String> {
     use std::io::Write;
     let mut stdout = std::io::stdout().lock();
@@ -82,8 +67,6 @@ pub(crate) fn out(text: &str) -> Result<(), String> {
     }
 }
 
-/// Check that `path` can be written, before the work whose result goes there: an output in a
-/// missing or read-only directory must not cost a solve or an index build.
 pub(crate) fn check_output_path(path: &str) -> Result<(), String> {
     let p = std::path::Path::new(path);
     if p.is_dir() {
@@ -93,11 +76,22 @@ pub(crate) fn check_output_path(path: &str) -> Result<(), String> {
         Some(d) if !d.as_os_str().is_empty() => d,
         _ => std::path::Path::new("."),
     };
-    // A new temporary file beside the output (O_CREAT|O_EXCL: never follows or truncates an
-    // existing file or symlink), removed again at once.
     let (_, probe) = fayde_core::fsutil::create_temp_beside(p)
         .map_err(|e| format!("{path}: cannot write in {}: {e}", dir.display()))?;
     let _ = std::fs::remove_file(&probe);
+    Ok(())
+}
+
+pub(crate) fn check_output_against_input(
+    path: &str,
+    input: &str,
+    name: &str,
+) -> Result<(), String> {
+    if let (Ok(output), Ok(input)) = (std::fs::canonicalize(path), std::fs::canonicalize(input)) {
+        if output == input {
+            return Err(format!("-o {path} is {name}: write elsewhere"));
+        }
+    }
     Ok(())
 }
 
@@ -133,7 +127,6 @@ const USAGE: &str = "usage:
   fayde bench --ucac4 <dir> --index <file> [--frames <n>] [--seed <n>] [--size <px>] [--scale <arcsec/px>]
               [--image-mag <m>] [--deadline <s>] [--pattern-sources <n>]";
 
-/// `fayde solve|verify|refit --help`: every request option with its default.
 const REQUEST_HELP: &str =
     "fayde solve  (--sources <frame.sources.fits> | --image <frame.fits>) --ucac4 <dir> [options] [--index <a.fidx>]...
              [-o <out.wcs>]
@@ -198,7 +191,6 @@ verify --at
   --search-radius <arcsec> stars reported within   default 30
   --max-stars <n>          stars per position      default 3";
 
-/// `fayde calibrate --help`.
 const CALIBRATE_HELP: &str = "fayde calibrate --solved <list> [options] [-o <profile.json>]
 
 Writes an instrument profile (for --instrument) from frames Fayde has solved: the pixel scale,
@@ -223,7 +215,6 @@ nominal scale (fayde solve --scale <arcsec/px> ... -o frame.wcs), then calibrate
 The profile goes to stdout. Its \"calibration\" member holds the numbers behind it: frames
 used, spreads, worst deviations.";
 
-/// `fayde detect --help`, and the detection options of `--image`.
 const DETECT_HELP: &str = "fayde detect --image <frame.fits> [-o <frame.sources.fits>] [options]
 
 Finds stars (point sources: sidereal tracking or stare) in a FITS image and prints a JSON
@@ -246,7 +237,6 @@ reads the frame's header from the image unless --header is given.
   -o <frame.sources.fits>     also write the sources as a source list (Fayde's FITS table:
                               X, Y, FLUX, SIGMA, P_STAR, TRUNCATED); name it after the frame";
 
-/// `fayde index build --help`.
 const INDEX_BUILD_HELP: &str = "fayde index build --ucac4 <dir> --fov <deg> -o <file> [options]
 
   --fov <deg>                     field of view the index serves (required)
@@ -263,10 +253,6 @@ const INDEX_BUILD_HELP: &str = "fayde index build --ucac4 <dir> --fov <deg> -o <
 Recommended set, sizes and memory: docs/index-set.md. `fayde index info <file>` prints the
 content hash.";
 
-/// `--key value` pairs.
-/// Parse `--key value` options and `--flag` switches. `known` lists the keys that take a value,
-/// `flags` the switches (stored with value "1"). Unknown, duplicated or valueless keys are errors,
-/// so a typo such as `--raduis` is reported instead of silently ignored.
 pub(crate) fn options(
     args: &[&str],
     known: &[&str],
@@ -302,12 +288,9 @@ pub(crate) fn options(
     Ok(out)
 }
 
-/// Options that may be given more than once; their values are joined with [`LIST_SEP`].
 const REPEATABLE: &[&str] = &["index", "at", "at-sky", "at-sources", "at-xyls"];
 pub(crate) const LIST_SEP: char = '\u{1f}';
 
-/// The paths given with `--index`: one per `--index`. For compatibility, a value that is not an
-/// existing file is also split on commas (`--index a.fidx,b.fidx`).
 pub(crate) fn index_paths(o: &HashMap<String, String>) -> Vec<String> {
     o.get("index")
         .map(|v| {
@@ -334,7 +317,6 @@ pub(crate) fn num<T: std::str::FromStr>(
         .transpose()
 }
 
-/// `--<k>` as a duration in seconds: finite, non-negative and representable.
 pub(crate) fn seconds(
     o: &HashMap<String, String>,
     k: &str,
@@ -411,7 +393,6 @@ fn index_build(args: &[&str]) -> Result<(), String> {
         };
         p.region = Some([ra, dec, rad]);
     }
-    // Both checked before the catalogue scan, which takes minutes on the full sky.
     p.validate().map_err(|e| e.to_string())?;
     check_output_path(out)?;
     let cat = Ucac4Catalog::open(dir).map_err(|e| e.to_string())?;
@@ -460,7 +441,6 @@ mod tests {
         .unwrap();
         assert_eq!(index_paths(&o), vec![comma, "x.fidx", "y.fidx"]);
         let _ = std::fs::remove_dir_all(&dir);
-        // Other options still refuse repeats.
         assert!(options(&["--ucac4", "a", "--ucac4", "b"], &["ucac4"], &[]).is_err());
     }
 
@@ -470,7 +450,6 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let s = |p: std::path::PathBuf| p.to_str().unwrap().to_string();
         assert!(check_output_path(&s(dir.join("a.wcs"))).is_ok());
-        // Nothing is left behind by the check.
         assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0);
         let e = check_output_path(&s(dir.clone())).unwrap_err();
         assert!(e.contains("is a directory"), "{e}");

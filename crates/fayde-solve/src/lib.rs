@@ -1,10 +1,4 @@
-//! Plate solving for Fayde.
-//!
-//! [`solve_auto`] plans the search from the request's metadata (pair seeds, ringed region pattern
-//! hash, scale-pruned or blind pattern hash across index bands), verifies hypotheses by log-odds
-//! with prior terms and a false-alarm count, and fits TAN or TAN-SIP (order by BIC) with a
-//! reported covariance. Sequence mode is not implemented yet. Algorithm sources are listed in
-//! `docs/references.md`.
+//! Plate solving from image centroids and a star catalogue. Start with [`solve_auto`].
 
 #![forbid(unsafe_code)]
 
@@ -23,4 +17,7 @@ pub use request::{
     Frame, Match, Outcome, PointingPrior, Policy, Priors, RollPrior, ScalePrior, Solution,
     SolveError, SolveMethod, SolveRequest, Source, StageTrace, Trail, Verification,
 };
-pub use solve::{refine_wcs, solve, solve_auto, solve_with_index, solve_with_indexes, verify_wcs};
+pub use solve::{
+    refine_wcs, solve, solve_auto, solve_auto_after, solve_with_index, solve_with_indexes,
+    verify_wcs,
+};

@@ -5,6 +5,60 @@ Versioning rules: `docs/development.md`, "Versioning and releases".
 Versions up to 0.2.1 were development versions and were not published; their notes are kept
 because the index files and their hashes date from 0.1.0.
 
+## 0.3.2 (2026-11-19)
+
+- Header coordinates whose last field reads exactly 60, such as `RA = '20:29:60.0'` (59.96 s
+  rounded up by the writer), are read as the next minute instead of being rejected; an RA of
+  exactly 24 hours is 0. Before, such a frame lost its header pointing and, without an index, was
+  not searched at all: 80 of 46,219 frames in a real archive. A decimal RA or DEC written with
+  padding, such as `RA = ' 12.5'`, is read as degrees; before, the padding made it read as
+  hours.
+- Distortion is fitted only where the stars support it. A SIP order is kept only if no lower
+  order predicts held-out cells of the frame as well. When the hint has a scale or roll, a
+  solution with distortion is fitted again as TAN with its scale and roll free; a TAN outside
+  the hint's limits that fits the sources at least as well means no solution, and one inside
+  them is kept if its posterior odds are higher. Before, a hint whose scale was wrong by more
+  than its limits, or matches with errors in one region, could give a solution bent by up to
+  146 px in the corners.
+- Image and source-list solves use the WCS position of the delivered frame centre, including
+  for cropped images. `--header` and `fayde calibrate` read the metadata of image extensions.
+  North-pole TAN headers use the FITS default orientation. Eighth- and ninth-order SIP
+  solutions write inverse polynomials that Fayde can read back.
+- Streak photometry masks bright stars that cross a streak. The report marks affected streaks
+  with `photometry_masked`; their flux includes an estimate for the covered ridge, and their SNR
+  uses only unmasked samples. For Rust users, `fayde_detect::Streak` gains the field
+  `photometry_masked`.
+- Distortion tune-ups honour the hypothesis cap, an expired pair-seed search stops before
+  reading the catalogue, and relaxed-prior timings include both attempts. Legacy indexes keep
+  their verified file hash in the solution provenance. `fayde verify` ignores the request's
+  priors, as documented.
+- `-o` may not name any input: `fayde detect` refuses its `--image`, and `fayde calibrate`
+  its `--solved` list and every frame and WCS the list names. `fayde calibrate -o` writes the
+  profile atomically.
+- A detection threshold below 1.5σ is refused: it kept noise peaks with no light, reported as
+  stars with negative flux.
+- When the stars' FWHM is at most one pixel at full resolution, Fayde keeps bright sources
+  that are too sharp for the usual shape checks; hot pixels and compact cosmic-ray hits can then
+  reach the source list. On simulated frames of FWHM 0.45 and 0.6 px, completeness rose from
+  0.23–0.84 to 0.98–1.00 with purity 0.98–1.00. Source lists for 2 px FWHM frames are
+  unchanged.
+- Detection estimates the sky background of frames that background subtraction clipped at a
+  floor, such as zero, by fitting each tile as a left-censored normal. On a simulated frame with
+  90% of the sky at the floor, 95 of 579 detections were stars before and 100 of 100 after.
+  On 35 real frames with 25–36% of their pixels at zero, all still solve; the fit residual
+  fell on 31 (median 0.40 to 0.35 px) and solutions moved by at most 0.14″. Constant padding
+  alone leaves the standard background estimate in use.
+- The stars' width is no longer taken from a crowd of cosmic-ray hits: in the histogram of
+  sizes, a mode at least three quarters as tall as the tallest counts as the stars' when it is
+  the widest, dip or not.
+- A warning when no observation time is found (catalogue positions at J2000.0). The
+  `IMAGEW`/`IMAGEH` cards of `wcs_cards` are whole 80-character cards, so the cards join into a
+  header.
+- Python: an image passed with `header=None` uses the header of its HDU, and arrays are
+  converted to 32-bit floats once instead of through a 64-bit copy.
+- Comments that restated the code are removed from the source, scripts and workflows.
+- All 109 real fine-pointing frames of the test set solve with 0.3.1 and with 0.3.2.
+
 ## 0.3.1 (2026-11-17)
 
 - `pip install fayde` also installs the `fayde` command. It runs the same code as the release

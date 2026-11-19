@@ -1,5 +1,3 @@
-//! `stars_at` (`fayde verify --at`).
-
 mod common;
 
 use common::field;
@@ -10,7 +8,6 @@ use fayde_wcs::Parity;
 #[test]
 fn a_source_on_a_star_is_consistent_and_an_empty_spot_is_not() {
     let (cat, f) = field((150.0, 2.0), 37.0, Parity::Negative, 45);
-    // A source with a star (the field generator records which star made each source).
     let (i, _) = f
         .source_star
         .iter()
@@ -19,7 +16,6 @@ fn a_source_on_a_star_is_consistent_and_an_empty_spot_is_not() {
         .expect("a real source");
     let src = &f.request.sources[i];
     let on_star = AtPosition::Pixel(PixelPos::new(src.x, src.y), Some(0.5));
-    // 25 arcsec from the source: a star's position error is far smaller.
     let near = f.truth.pixel_to_sky(PixelPos::new(src.x, src.y));
     let (ra, dec) = near.to_degrees();
     let off = AtPosition::Sky(SkyPos::from_degrees(ra, dec + 25.0 / 3600.0).unwrap(), None);
@@ -37,17 +33,30 @@ fn a_source_on_a_star_is_consistent_and_an_empty_spot_is_not() {
     assert_eq!(Some(r[0].stars[0].id), f.source_star[i]);
     assert!(r[0].stars[0].separation_arcsec < 3.0 * r[0].stars[0].sigma_arcsec);
     assert!(r[0].pixel.is_some());
-    // The offset position: nearest star is ~25" away, far outside its error.
     let s = &r[1].stars[0];
     assert!(s.separation_arcsec > 20.0, "{s:?}");
     assert!(!r[1].consistent);
     assert!(s.p_chance > 0.0 && s.p_chance < 1.0);
-    // Stars come nearest first, at most max_stars.
     assert!(r[1].stars.len() <= 3);
     assert!(r[1]
         .stars
         .windows(2)
         .all(|w| w[0].separation_arcsec <= w[1].separation_arcsec));
+    let without_stars = stars_at(
+        &cat,
+        &f.truth,
+        &[on_star, off],
+        &AtOptions {
+            max_stars: 0,
+            search_radius_arcsec: 60.0,
+            ..AtOptions::default()
+        },
+    )
+    .unwrap();
+    for (result, expected) in without_stars.iter().zip(&r) {
+        assert!(result.stars.is_empty());
+        assert_eq!(result.consistent, expected.consistent);
+    }
 }
 
 #[test]
@@ -77,7 +86,6 @@ fn bad_options_and_positions_are_errors() {
         .is_empty());
 }
 
-/// Review fixes: far-apart positions, tiny search radii, the radial WCS σ.
 #[test]
 fn spread_positions_tiny_radii_and_radial_wcs_sigma() {
     let (cat, f) = field((150.0, 2.0), 37.0, Parity::Negative, 47);
@@ -89,7 +97,6 @@ fn spread_positions_tiny_radii_and_radial_wcs_sigma() {
         .unwrap();
     let src = &f.request.sources[i];
     let here = f.truth.pixel_to_sky(PixelPos::new(src.x, src.y));
-    // Positions on opposite sides of the sky: each gets its own cone and its own answer.
     let (ra, dec) = here.to_degrees();
     let antipode = SkyPos::from_degrees((ra + 180.0) % 360.0, -dec).unwrap();
     let r = stars_at(
@@ -104,7 +111,6 @@ fn spread_positions_tiny_radii_and_radial_wcs_sigma() {
     .unwrap();
     assert!(r[0].consistent && r[1].stars.is_empty());
 
-    // A tiny search radius still gives a finite density, not p_chance = 1.
     let tiny = stars_at(
         &cat,
         &f.truth,
@@ -118,7 +124,6 @@ fn spread_positions_tiny_radii_and_radial_wcs_sigma() {
     let s = &tiny[0].stars[0];
     assert!(s.p_chance < 1.0, "{s:?}");
 
-    // The WCS σ is radial: per-axis = radial / √2.
     let exact = AtPosition::Sky(r[0].stars[0].pos, Some(0.0));
     let w = stars_at(
         &cat,

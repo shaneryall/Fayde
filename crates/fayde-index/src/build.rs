@@ -1,23 +1,3 @@
-//! Building an index from catalogue stars.
-//!
-//! Sources: Lang et al. 2010 (AJ 139, 1782) for uniform selection; Górski et al. 2005 for
-//! HEALPix; González 2010 (Math. Geosci. 42, 49) for the Fibonacci lattice; cedar-solve for
-//! lattice fields and breadth-first patterns; Brown & Stubis 2017 (TETRA) / ESA tetra3 for
-//! brightest-first minimum-separation pattern thinning. The proper-motion cut is Fayde's own. See
-//! `docs/references.md`.
-//!
-//! 1. **Selection** (astrometry.net `uniformize-catalog` idea): stars are binned into HEALPix
-//!    cells sized so that a field of view holds about `stars_per_fov` of them, and the
-//!    `per_cell` brightest separated stars per cell are kept (including cross-cell checks).
-//!    Stars too faint, without a magnitude, or moving fast
-//!    enough to distort patterns within ±`motion_years` are dropped.
-//!    The pattern tier is greedily thinned brightest-first with tetra3's minimum separation.
-//! 2. **Fields** (cedar-solve "lattice fields"): field centres on a Fibonacci sphere, oversampled
-//!    so fields overlap. Each field takes its `stars_per_field` brightest selected stars.
-//! 3. **Patterns**: 4-combinations of those stars in breadth-first order (all patterns of the 4
-//!    brightest, then those adding the 5th, …), at most `patterns_per_field` per field, skipping
-//!    patterns with an edge shorter than `min_edge_deg` and duplicates across fields.
-
 use fayde_core::Portable;
 use std::collections::{HashMap, HashSet};
 
@@ -32,48 +12,24 @@ use crate::{
     Index, IndexMeta, IndexStar,
 };
 
-/// Build parameters. Defaults suit a ~1° field with 30–60 detected sources.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BuildParams {
-    /// Field-of-view diameter the patterns are built for, degrees. Patterns never exceed it.
     pub fov_deg: f64,
-    /// Shortest allowed pattern edge, degrees.
     pub min_edge_deg: f64,
-    /// Target selected-star density: stars per field of view.
     pub stars_per_fov: f64,
-    /// Stars kept per HEALPix cell.
     pub per_cell: usize,
-    /// Minimum angular separation of dense-tier stars, arcseconds. Zero disables thinning.
-    /// A brighter incoming star replaces nearby kept stars, including across cell boundaries.
     #[serde(default = "default_min_sep_arcsec")]
     pub min_sep_arcsec: f64,
-    /// Stars per lattice field used for patterns (taken from the pattern tier, brightest first).
     pub stars_per_field: usize,
-    /// Target density of the sparse pattern tier, stars per fov² area. Greedy brightest-first
-    /// thinning uses tetra3's `r_min = 0.6 * fov / sqrt(target)`; achieved density depends on
-    /// available dense stars. A frame with diagonal fov covers about half of fov², so a target
-    /// of 20 gives roughly 10 pattern stars per frame. Only this tier supplies patterns.
     #[serde(default = "default_pattern_stars_per_fov")]
     pub pattern_stars_per_fov: f64,
-    /// Patterns per lattice field.
     pub patterns_per_field: usize,
-    /// Lattice oversampling: how many fields cover each point of the sky on average. cedar-solve
-    /// uses 100; at 2× only a few image 4-sets fall inside one field's brightest stars.
     pub field_oversampling: f64,
-    /// Ratio tolerance the table is binned for.
     pub pattern_max_error: f64,
-    /// Faintest magnitude considered.
     pub mag_limit: Option<f32>,
-    /// Epoch of the index star positions (the query epoch given to the catalogue).
     pub epoch_year: f64,
-    /// Stars moving more than `max_motion_frac × pattern_max_error × fov/2` within
-    /// ±`motion_years` of the epoch are left out of patterns. A shift δ of one star changes a
-    /// pattern's ratios by about δ / (largest edge), and fov/2 is a typical largest edge, so this
-    /// keeps motion-induced ratio error below `max_motion_frac` of the bin tolerance.
     pub max_motion_frac: f64,
-    /// See `max_motion_frac`.
     pub motion_years: f64,
-    /// Restrict to a region: centre RA/Dec (deg) and radius (deg). `None` = whole sky.
     pub region: Option<[f64; 3]>,
 }
 
@@ -99,14 +55,10 @@ impl Default for BuildParams {
     }
 }
 
-/// Errors building an index.
 #[derive(Debug, Clone, PartialEq)]
 pub enum BuildError {
-    /// Parameters are inconsistent.
     InvalidParams(String),
-    /// No stars survived selection.
     NoStars,
-    /// Reading the catalogue failed.
     Catalog(String),
 }
 
@@ -115,19 +67,16 @@ impl std::fmt::Display for BuildError {
         match self {
             Self::InvalidParams(s) => write!(f, "invalid index parameters: {s}"),
             Self::NoStars => write!(f, "no stars survived selection"),
-            Self::Catalog(e) => write!(f, "catalogue: {e}"),
+            Self::Catalog(e) => write!(f, "{e}"),
         }
     }
 }
 
 impl std::error::Error for BuildError {}
 
-/// Most lattice fields a build may ask for. The field centres are held in memory at 24 bytes
-/// each, so this is a 24 GB ceiling; the recommended all-sky indexes use about 5 million.
 pub const MAX_LATTICE_FIELDS: f64 = 1e9;
 
 impl BuildParams {
-    /// Lattice fields the parameters imply: `field_oversampling` fields over every sky point.
     fn lattice_fields(&self) -> f64 {
         let field_r = self.fov_deg.to_radians() / 2.0;
         let cap_area = 2.0 * std::f64::consts::PI * (1.0 - field_r.pcos());
@@ -136,8 +85,6 @@ impl BuildParams {
             .max(1.0)
     }
 
-    /// Check the parameters. [`build`] does this itself; call it first when reading the
-    /// catalogue is expensive, so a bad parameter is reported before the scan.
     pub fn validate(&self) -> Result<(), BuildError> {
         let bad = |s: &str| Err(BuildError::InvalidParams(s.into()));
         if !(self.fov_deg > 0.0 && self.fov_deg < 90.0) {
@@ -180,7 +127,6 @@ impl BuildParams {
         if self.mag_limit.is_some_and(|m| !m.is_finite()) {
             return bad("mag_limit must be finite");
         }
-        // NaN and negative values would switch the proper-motion cut off without saying so.
         if !(self.max_motion_frac >= 0.0 && self.motion_years >= 0.0) {
             return bad("max_motion_frac and motion_years must be >= 0");
         }
@@ -192,24 +138,19 @@ impl BuildParams {
         Ok(())
     }
 
-    /// Epoch to request catalogue positions at.
     pub fn epoch(&self) -> Epoch {
         Epoch::julian_year(self.epoch_year).expect("validated")
     }
 }
 
-/// Default for [`BuildParams::pattern_stars_per_fov`] (also used for files written before it
-/// existed).
 pub fn default_pattern_stars_per_fov() -> f64 {
     20.0
 }
 
-/// Default dense-tier minimum separation, also used when reading older index metadata.
 pub fn default_min_sep_arcsec() -> f64 {
     10.0
 }
 
-/// Select stars uniformly (step 1). Output is deterministic: by HEALPix cell, then brightness.
 pub fn select_stars(stars: &[Star], p: &BuildParams) -> (Vec<Star>, Healpix) {
     let mut sel = Selector::new(p);
     for s in stars {
@@ -218,13 +159,8 @@ pub fn select_stars(stars: &[Star], p: &BuildParams) -> (Vec<Star>, Healpix) {
     sel.finish()
 }
 
-/// A star with its sort key (magnitude, id).
 type Ranked = (f32, u64, Star);
 
-/// Streaming version of [`select_stars`]: keeps at most `per_cell` separated stars per cell,
-/// so an all-sky catalogue can be selected without holding it in memory. Replacements use
-/// magnitude, then ID. Given the same stream, selection is deterministic; rejected stars are
-/// not reconsidered if a later replacement would free space for them.
 pub struct Selector {
     hp: Healpix,
     per_cell: usize,
@@ -237,10 +173,8 @@ pub struct Selector {
 }
 
 impl Selector {
-    /// A selector for `p`.
     pub fn new(p: &BuildParams) -> Self {
         let fov = p.fov_deg.to_radians();
-        // A fov-sized square holds stars_per_fov / per_cell cells.
         let cells_per_fov = (p.stars_per_fov / p.per_cell as f64).max(1.0);
         Self {
             hp: Healpix::for_pixel_side(fov / cells_per_fov.sqrt()),
@@ -255,7 +189,6 @@ impl Selector {
         }
     }
 
-    /// Offer one star.
     pub fn push(&mut self, s: Star) {
         self.seen += 1;
         let Some(m) = s.mag.filter(|m| m.is_finite()) else {
@@ -273,7 +206,6 @@ impl Selector {
         let v = s.pos.to_unit_vector();
         let pixel = self.hp.pixel(v);
         let rank = |c: &Ranked| c.0.total_cmp(&m).then(c.1.cmp(&s.id));
-        // Most catalogue stars cannot enter a full cell. Reject them before spatial queries.
         if self.cells.get(&pixel).is_some_and(|cell| {
             cell.len() == self.per_cell && rank(cell.last().expect("nonempty cell")).is_lt()
         }) {
@@ -281,8 +213,6 @@ impl Selector {
         }
         if let Some(grid) = &mut self.separation {
             let close: Vec<_> = grid.nearby(v.0).copied().collect();
-            // Check every neighbour before changing anything: one better neighbour vetoes
-            // replacement even when the candidate is brighter than other neighbours.
             if close
                 .iter()
                 .any(|c| !c.mag.total_cmp(&m).then(c.id.cmp(&s.id)).is_gt())
@@ -312,12 +242,10 @@ impl Selector {
         }
     }
 
-    /// Stars offered so far.
     pub fn seen(&self) -> u64 {
         self.seen
     }
 
-    /// Selected stars, ordered by cell then brightness (deterministic).
     pub fn finish(self) -> (Vec<Star>, Healpix) {
         let mut cells: Vec<(u64, Vec<Ranked>)> = self.cells.into_iter().collect();
         cells.sort_by_key(|c| c.0);
@@ -329,19 +257,9 @@ impl Selector {
     }
 }
 
-/// Builder identity stored in every index (and so in its content hash). It names the release
-/// that introduced the current index-building code, not the running crate version: a release
-/// that leaves the builder unchanged builds the same bytes, so published hashes stay valid.
-/// Change it, to the version of the release, whenever a change alters the bytes an index build
-/// produces (selection, patterns, table, serialization); the golden-bytes tests then fail until
-/// re-pinned, and the release is breaking under the versioning rules (docs/development.md).
 pub const BUILDER: &str = "fayde-index 0.1.0";
 
-/// Field centres on a Fibonacci sphere (deterministic).
 pub fn lattice(n: usize) -> Vec<[f64; 3]> {
-    // Golden angle as a fraction of a turn, (3 − √5)/2. The angle is reduced to one turn before
-    // sin/cos: `golden_angle · i` reaches millions of radians, where argument reduction is slow
-    // and loses the low bits.
     let golden_turn = (3.0 - 5f64.sqrt()) / 2.0;
     (0..n)
         .map(|i| {
@@ -353,7 +271,6 @@ pub fn lattice(n: usize) -> Vec<[f64; 3]> {
         .collect()
 }
 
-/// Build an index from catalogue stars already propagated to `params.epoch_year`.
 pub fn build(
     stars: &[Star],
     catalog: CatalogId,
@@ -364,8 +281,6 @@ pub fn build(
     build_selected(selected, hp, catalog, params, &mut |_| {})
 }
 
-/// Build an index by streaming every star of `catalog` (at `params.epoch_year`) through the
-/// selector. Memory scales with the selected stars, not the catalogue.
 pub fn build_from_catalog(
     catalog: &dyn fayde_catalog::Catalog,
     params: &BuildParams,
@@ -373,7 +288,6 @@ pub fn build_from_catalog(
     build_from_catalog_with_progress(catalog, params, &mut |_| {})
 }
 
-/// [`build_from_catalog`] reporting progress messages (stage changes and every ~1% of fields).
 pub fn build_from_catalog_with_progress(
     catalog: &dyn fayde_catalog::Catalog,
     params: &BuildParams,
@@ -388,7 +302,6 @@ pub fn build_from_catalog_with_progress(
     };
     let mut sel = Selector::new(params);
     match params.region {
-        // A regional index reads only its cone.
         Some([ra, dec, r]) => {
             let c = SkyPos::from_degrees(ra, dec)
                 .ok_or_else(|| BuildError::InvalidParams("region centre".into()))?;
@@ -422,10 +335,6 @@ fn index_star(s: &Star) -> IndexStar {
     }
 }
 
-// Incremental radius search in Cartesian unit-vector space. Buckets have side at least the
-// chord radius, so any neighbour must be in one of the 27 touching buckets. Exact distances
-// eliminate bucket-boundary artifacts, including at RA wrap and the poles. Only kept stars
-// are stored; insertion/removal do not rebuild the static KdTree used later for field queries.
 struct SeparationGrid {
     radius: f64,
     buckets: HashMap<[i64; 3], Vec<IndexStar>>,
@@ -440,7 +349,6 @@ impl SeparationGrid {
     }
 
     fn bucket(&self, v: [f64; 3]) -> [i64; 3] {
-        // Keep bucket coordinates representable even for sub-nanoradian requested radii.
         v.map(|x| (x / self.radius.max(1e-12)).floor() as i64)
     }
 
@@ -476,13 +384,9 @@ impl SeparationGrid {
 }
 
 fn pattern_min_sep(params: &BuildParams) -> f64 {
-    // ESA tetra3 generate_database (Brown & Stubis 2017 / TETRA): the characteristic spacing
-    // is fov/sqrt(N), scaled by 0.6 for greedy thinning. This is an empirical density relation,
-    // not an exact count: sparse inputs undershoot and saturated inputs can overshoot N/fov².
     0.6 * params.fov_deg.to_radians() / params.pattern_stars_per_fov.sqrt()
 }
 
-// Kept separate from pattern enumeration so thinning can be measured on an all-sky input.
 fn select_pattern_stars(index_stars: &mut [IndexStar], params: &BuildParams) -> Vec<usize> {
     let mut order: Vec<_> = (0..index_stars.len()).collect();
     order.sort_unstable_by(|&a, &b| {
@@ -501,15 +405,10 @@ fn select_pattern_stars(index_stars: &mut [IndexStar], params: &BuildParams) -> 
             selected.push(i);
         }
     }
-    // Preserve the index's stable order for field searches and pattern IDs.
     selected.sort_unstable();
     selected
 }
 
-/// Patterns in generation order, as their canonical star numbers only (16 bytes each). The hash
-/// key and the largest edge are recomputed from the stars when the table is filled, and the
-/// fixed-size chunks never reallocate: a single growing vector of (key, stars, edge) held twice
-/// the bytes per pattern and doubled its allocation on the way up.
 #[derive(Default)]
 struct PatternLog {
     chunks: Vec<Vec<[u32; 4]>>,
@@ -517,7 +416,6 @@ struct PatternLog {
 }
 
 impl PatternLog {
-    /// Patterns per chunk (16 MiB).
     const CHUNK: usize = 1 << 20;
 
     fn push(&mut self, stars: [u32; 4]) {
@@ -605,7 +503,6 @@ fn build_selected(
         members.truncate(params.stars_per_field);
         let mut made = 0;
         'field: for n in 4..=members.len() {
-            // Breadth-first: every combination whose faintest member is members[n-1].
             let last = members[n - 1];
             for a in 0..n - 1 {
                 for b in a + 1..n - 1 {
@@ -633,18 +530,14 @@ fn build_selected(
         }
     }
 
-    // The duplicate check is over: free it before the table, the largest allocation, exists.
     drop(seen);
     let mut table = PatternTable::for_patterns(patterns.len());
     for chunk in patterns.chunks {
         for stars in chunk {
-            // The six edges are the same numbers whatever the order of the four stars, so
-            // the key and the largest edge are those found when the pattern was generated.
             let pts = stars.map(|i| index_stars[i as usize].vec);
             let (shape, _) = shape_of(&pts, angle);
             table.insert(key(&shape.ratios, bins), stars, shape.largest);
         }
-        // `chunk` is freed here, so the log shrinks as the table fills.
     }
     let meta = IndexMeta {
         format_version: crate::FORMAT_VERSION,
@@ -686,18 +579,15 @@ mod tests {
         stars.push(fast);
         let p = BuildParams {
             mag_limit: Some(12.0),
-            min_sep_arcsec: 0.0, // Isolate the per-cell cap from separation thinning.
+            min_sep_arcsec: 0.0,
             ..BuildParams::default()
         };
         let (sel, _) = select_stars(&stars, &p);
-        // All 50 are in one cell: only the 2 brightest survive; the fast star is dropped.
         assert_eq!(sel.iter().map(|s| s.id).collect::<Vec<_>>(), vec![0, 1]);
     }
 
     #[test]
     fn pattern_tier_has_no_coarse_cell_boundary_artifact() {
-        // At this scale v3 uses nside 64 and keeps one star per coarse cell.
-        // The two bright stars are 0.1*fov apart, both west of the RA=45° boundary.
         let p = BuildParams {
             fov_deg: 7.0,
             pattern_stars_per_fov: 64.0,
@@ -757,8 +647,6 @@ mod tests {
 
     #[test]
     fn pattern_tier_uniform_sky_density_and_separation() {
-        // Uniform all-sky positions and independent deterministic brightness ranks.
-        // 1.6M / 41253 square degrees = 38.8 dense stars per 1° FOV squared.
         let p = BuildParams::default();
         let mut seed = 7u64;
         let mut rnd = || {
@@ -792,7 +680,6 @@ mod tests {
             p.pattern_stars_per_fov
         );
         assert!((density / p.pattern_stars_per_fov - 1.0).abs() <= 0.3);
-        // Independent static-tree oracle: every accepted point has only itself in its radius.
         let tree = KdTree::build(selected.iter().map(|&i| stars[i].vec).collect());
         let radius = chord(0.6 * p.fov_deg.to_radians() / p.pattern_stars_per_fov.sqrt());
         for i in 0..tree.len() {
@@ -813,7 +700,6 @@ mod tests {
             ((0.0, 89.9996), (180.0, 89.9996)),
         ] {
             let bright = star(1, a.0, a.1, 5.0);
-            // Equal magnitude tests the ID tie-break in both stream orders as well.
             for mag in [5.0, 6.0] {
                 let faint = star(2, b.0, b.1, mag);
                 for stars in [[bright, faint], [faint, bright]] {

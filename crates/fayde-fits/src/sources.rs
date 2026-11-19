@@ -1,5 +1,3 @@
-//! Source lists from FITS binary tables.
-
 use std::path::Path;
 
 use fayde_core::PixelConvention;
@@ -7,14 +5,10 @@ use fayde_solve::Source;
 
 use crate::{pad_card, FitsError, FitsFile, Hdu};
 
-/// A source list read from a FITS table.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SourceList {
-    /// Sources in Fayde's zero-based pixel convention, in table order.
     pub sources: Vec<Source>,
-    /// `IMAGEW`, if present.
     pub width: Option<u32>,
-    /// `IMAGEH`, if present.
     pub height: Option<u32>,
 }
 
@@ -22,15 +16,12 @@ pub struct SourceList {
 struct Column {
     offset: usize,
     kind: u8,
-    /// `TSCALn`, `TZEROn`: physical = zero + scale × stored (FITS Standard 4.0 §7.3.2).
     scale: f64,
     zero: f64,
-    /// `TNULLn` of an integer column: the stored value meaning "undefined".
     null: Option<i64>,
 }
 
 impl Column {
-    /// The physical value of this column in `row`; `None` for undefined or unreadable values.
     fn read(&self, row: &[u8]) -> Option<f64> {
         let at = self.offset;
         let b = |n: usize| row.get(at..at + n);
@@ -42,7 +33,6 @@ impl Column {
             b'I' => int(i64::from(i16::from_be_bytes(b(2)?.try_into().ok()?)))?,
             b'K' => int(i64::from_be_bytes(b(8)?.try_into().ok()?))?,
             b'B' => int(i64::from(*row.get(at)?))?,
-            // Logical: not scaled.
             b'L' => return Some(f64::from(u8::from(*row.get(at)? == b'T'))),
             _ => return None,
         };
@@ -64,7 +54,6 @@ fn width_of(kind: u8) -> Option<usize> {
     })
 }
 
-/// Optional per-source columns of a source list.
 struct Optional {
     flux: Option<Column>,
     truncated: Option<Column>,
@@ -72,13 +61,8 @@ struct Optional {
     p_star: Option<Column>,
 }
 
-/// Columns by upper-case name (`TTYPEn`), for scalar numeric columns.
 fn columns(hdu: &Hdu) -> Result<Vec<(String, Column)>, FitsError> {
-    let n = hdu
-        .header
-        .get("TFIELDS")
-        .and_then(|v| v.as_f64())
-        .unwrap_or(0.0) as usize;
+    let n = hdu.dimension("TFIELDS", 0)?;
     let mut out = Vec::new();
     let mut offset = 0usize;
     for i in 1..=n {
@@ -93,7 +77,9 @@ fn columns(hdu: &Hdu) -> Result<Vec<(String, Column)>, FitsError> {
         let repeat: usize = if digits.is_empty() {
             1
         } else {
-            digits.parse().unwrap_or(1)
+            digits
+                .parse()
+                .map_err(|_| FitsError::Invalid(format!("TFORM{i}: repeat is too large")))?
         };
         let kind = *form
             .as_bytes()
@@ -107,14 +93,19 @@ fn columns(hdu: &Hdu) -> Result<Vec<(String, Column)>, FitsError> {
             .unwrap_or("")
             .trim()
             .to_ascii_uppercase();
-        if repeat == 1 {
-            let num = |k: &str| hdu.header.get(&format!("{k}{i}")).and_then(|v| v.as_f64());
-            let scale = num("TSCAL").unwrap_or(1.0);
-            let zero = num("TZERO").unwrap_or(0.0);
-            if !(scale.is_finite() && zero.is_finite()) {
-                return Err(FitsError::Invalid(format!("TSCAL{i}/TZERO{i} not finite")));
-            }
-            let null = num("TNULL").filter(|v| v.fract() == 0.0).map(|v| v as i64);
+        if repeat == 1
+            && matches!(
+                name.as_str(),
+                "X" | "Y" | "FLUX" | "TRUNCATED" | "SIGMA" | "SIGMA_PX" | "P_STAR"
+            )
+        {
+            let scale = hdu.number(&format!("TSCAL{i}"))?.unwrap_or(1.0);
+            let zero = hdu.number(&format!("TZERO{i}"))?.unwrap_or(0.0);
+            let null = if matches!(kind, b'B' | b'I' | b'J' | b'K') {
+                hdu.int(&format!("TNULL{i}"))?
+            } else {
+                None
+            };
             out.push((
                 name,
                 Column {
@@ -138,11 +129,6 @@ fn columns(hdu: &Hdu) -> Result<Vec<(String, Column)>, FitsError> {
     Ok(out)
 }
 
-/// Write `sources` as a source list (`frame.sources.fits`): an empty primary HDU, then a binary
-/// table `EXTNAME = 'SOURCES'` with `X`, `Y`
-/// (FITS 1-based, `D`), `FLUX`, `SIGMA` and `P_STAR` (`D`, NaN when absent) and `TRUNCATED` (`L`), with
-/// `IMAGEW`/`IMAGEH`. [`read_sources`] reads it back unchanged. Written to a temporary file and
-/// renamed into place.
 pub fn write_sources(
     path: impl AsRef<Path>,
     sources: &[Source],
@@ -189,7 +175,6 @@ pub fn write_sources(
         cards.push(format!("TTYPE{}  = '{name:<8}'", k + 1));
         cards.push(format!("TFORM{}  = '{form:<8}'", k + 1));
     }
-    // Say what the table is, so it is recognisable in any FITS viewer even if renamed.
     cards.push("EXTNAME = 'SOURCES'".into());
     cards.push(format!(
         "CREATOR = '{:<18}'",
@@ -218,34 +203,16 @@ pub fn write_sources(
         out.push(if s.truncated { b'T' } else { b'F' });
     }
     block(&mut out, 0);
-    let path = path.as_ref();
-    let (mut f, tmp) = fayde_core::fsutil::create_temp_beside(path)?;
-    let write = || -> std::io::Result<()> {
-        use std::io::Write;
-        f.write_all(&out)?;
-        f.sync_all()?;
-        drop(f);
-        std::fs::rename(&tmp, path)
-    };
-    write().map_err(|e| {
-        let _ = std::fs::remove_file(&tmp);
-        FitsError::from(e)
-    })
+    fayde_core::fsutil::write_atomic(path.as_ref(), &out).map_err(FitsError::from)
 }
 
-/// What a FITS file holds, judged by its contents (not its name).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileKind {
-    /// A binary table with `X` and `Y` columns: a source list.
     SourceList,
-    /// A 2-D image (primary HDU or an `IMAGE` extension).
     Image,
-    /// Neither.
     Other,
 }
 
-/// What `f` holds: a source list if any table has `X` and `Y` columns, else an image if any
-/// HDU holds a 2-D array, else neither.
 pub fn file_kind(f: &FitsFile) -> FileKind {
     let has =
         |cols: &[(String, Column)], n: &str| cols.iter().any(|(c, _)| c.eq_ignore_ascii_case(n));
@@ -261,8 +228,8 @@ pub fn file_kind(f: &FitsFile) -> FileKind {
         let image_hdu = i == 0
             || h.xtension()
                 .is_some_and(|x| x.trim().eq_ignore_ascii_case("IMAGE"));
-        let n = |k: &str| h.header.get(k).and_then(|v| v.as_f64()).unwrap_or(0.0);
-        image_hdu && n("NAXIS") >= 2.0 && n("NAXIS1") > 0.0 && n("NAXIS2") > 0.0
+        let n = |k: &str| h.dimension(k, 0).unwrap_or(0);
+        image_hdu && n("NAXIS") >= 2 && n("NAXIS1") > 0 && n("NAXIS2") > 0
     });
     if image {
         FileKind::Image
@@ -271,22 +238,16 @@ pub fn file_kind(f: &FitsFile) -> FileKind {
     }
 }
 
-/// Read the first binary table with `X` and `Y` columns (FITS 1-based pixels). Optional
-/// columns: `FLUX`, `TRUNCATED` (logical or integer), `SIGMA` or `SIGMA_PX` (1σ centroid
-/// error, pixels) and `P_STAR` (prior probability of a real star, 0–1). `IMAGEW`/`IMAGEH`
-/// are taken from the table header or the primary header.
+/// Read FITS `X` and `Y` columns and convert their one-based coordinates to zero-based pixel centres.
 pub fn read_sources(path: impl AsRef<Path>) -> Result<SourceList, FitsError> {
     let f = FitsFile::open(path)?;
-    // The first binary table with scalar X and Y columns: a file may carry other tables
-    // (metadata, per-frame records) before the source list.
     let mut tables = 0;
     let mut first_err = None;
     let mut found = None;
-    for hdu in f
-        .hdus()
-        .iter()
-        .filter(|h| h.xtension().map(str::trim) == Some("BINTABLE"))
-    {
+    for hdu in f.hdus().iter().filter(|h| {
+        h.xtension()
+            .is_some_and(|xt| xt.trim().eq_ignore_ascii_case("BINTABLE"))
+    }) {
         tables += 1;
         match columns(hdu) {
             Ok(cols) => {
@@ -314,16 +275,8 @@ pub fn read_sources(path: impl AsRef<Path>) -> Result<SourceList, FitsError> {
             _ => FitsError::Invalid("no binary table with X and Y columns".into()),
         });
     };
-    let row_len = hdu
-        .header
-        .get("NAXIS1")
-        .and_then(|v| v.as_f64())
-        .unwrap_or(0.0) as usize;
-    let rows = hdu
-        .header
-        .get("NAXIS2")
-        .and_then(|v| v.as_f64())
-        .unwrap_or(0.0) as usize;
+    let row_len = hdu.dimension("NAXIS1", 0)?;
+    let rows = hdu.dimension("NAXIS2", 0)?;
     let data = f.data(hdu);
     if row_len == 0 || row_len.checked_mul(rows).is_none_or(|n| data.len() < n) {
         return Err(FitsError::Invalid(
@@ -339,14 +292,11 @@ pub fn read_sources(path: impl AsRef<Path>) -> Result<SourceList, FitsError> {
         let p = PixelConvention::Fits.to_internal(fx, fy);
         let mut s = Source::at(p.x, p.y);
         s.flux = opt.flux.and_then(|c| c.read(row));
-        // Per-source centroid error (pixels) and prior star probability, when given; values
-        // out of range are treated as absent rather than trusted.
         s.sigma_px = opt.sigma.and_then(|c| c.read(row)).filter(|v| *v > 0.0);
         s.p_star = opt
             .p_star
             .and_then(|c| c.read(row))
             .filter(|v| (0.0..=1.0).contains(v));
-        // Optional TRUNCATED column (logical or integer): the source is cut by the frame edge.
         s.truncated = opt
             .truncated
             .and_then(|c| c.read(row))
@@ -354,12 +304,9 @@ pub fn read_sources(path: impl AsRef<Path>) -> Result<SourceList, FitsError> {
         sources.push(s);
     }
     let dim = |k: &str| {
-        hdu.header
-            .get(k)
-            .or_else(|| f.primary().header.get(k))
-            .and_then(|v| v.as_f64())
-            .filter(|v| *v > 0.0)
-            .map(|v| v as u32)
+        [&hdu.header, &f.primary().header]
+            .into_iter()
+            .find_map(|h| h.get(k)?.as_f64().and_then(crate::pixel_dimension))
     };
     Ok(SourceList {
         sources,
@@ -372,7 +319,6 @@ pub fn read_sources(path: impl AsRef<Path>) -> Result<SourceList, FitsError> {
 mod tests {
     use super::*;
 
-    /// A FITS file: an empty primary HDU, then one BINTABLE per `(cards, rows)`.
     fn fits(tables: &[(&[&str], Vec<u8>)]) -> Vec<u8> {
         let block = |cards: &[String]| {
             let mut b: Vec<u8> = cards
@@ -400,7 +346,6 @@ mod tests {
     }
 
     fn read(bytes: Vec<u8>) -> Result<SourceList, FitsError> {
-        // Tests run in parallel: each file needs its own name.
         static N: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let path = std::env::temp_dir().join(format!(
@@ -435,11 +380,40 @@ mod tests {
     }
 
     #[test]
+    fn malformed_coordinate_scale_reports_its_keyword() {
+        let mut cards = XY_J.to_vec();
+        cards[10] = "TSCAL1  = broken";
+        let error = read(fits(&[(&cards, row(100, 20))])).unwrap_err();
+        assert!(error.to_string().contains("TSCAL1"), "{error}");
+    }
+
+    #[test]
     fn column_scaling_is_applied() {
-        // Stored X = 100, TSCAL 0.5, TZERO 1 → physical 51 (FITS) → 50 (zero-based).
         let xy = read(fits(&[(XY_J, row(100, 20))])).unwrap();
         assert_eq!(xy.sources[0].x, 50.0);
         assert_eq!(xy.sources[0].y, 19.0);
+    }
+
+    #[test]
+    fn a_64_bit_column_null_is_matched_exactly() {
+        let mut cards = XY_J.to_vec();
+        cards[3] = "NAXIS1  = 16";
+        cards[4] = "NAXIS2  = 2";
+        cards[7] = "TFIELDS = 3";
+        cards.extend([
+            "TTYPE3  = 'FLUX'",
+            "TFORM3  = '1K'",
+            "TNULL3  = 9007199254740993",
+        ]);
+        let null = (1_i64 << 53) + 1;
+        let mut rows = Vec::new();
+        for flux in [null, null - 1] {
+            rows.extend(row(100, 20));
+            rows.extend(flux.to_be_bytes());
+        }
+        let xy = read(fits(&[(&cards, rows)])).unwrap();
+        assert_eq!(xy.sources[0].flux, None);
+        assert_eq!(xy.sources[1].flux, Some((null - 1) as f64));
     }
 
     #[test]
@@ -503,7 +477,6 @@ mod tests {
         let xy = read(fits(&[(cards, rows)])).unwrap();
         assert_eq!(xy.sources[0].sigma_px, Some(0.25));
         assert!((xy.sources[0].p_star.unwrap() - 0.9).abs() < 1e-6);
-        // Out-of-range values are ignored, not trusted.
         assert_eq!(xy.sources[1].sigma_px, None);
         assert_eq!(xy.sources[1].p_star, None);
     }

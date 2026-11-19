@@ -1,5 +1,3 @@
-//! The adaptive planner chooses stages from the metadata a request carries.
-
 mod common;
 
 use common::{field, Field};
@@ -63,7 +61,6 @@ fn pointing_with_loose_scale_searches_the_inner_ring_first() {
         arcsec_per_px: 3.2,
         sigma: 0.5,
     });
-    // A 2° hard limit with σ = 0.2°.
     let mut pt = f.request.priors.pointing.unwrap();
     pt.max_radius = 2f64.to_radians();
     f.request.priors.pointing = Some(pt);
@@ -71,7 +68,6 @@ fn pointing_with_loose_scale_searches_the_inner_ring_first() {
     let s = stages(&sol);
     eprintln!("loose scale: {s:?}");
     assert_eq!(sol.method, SolveMethod::PatternHash);
-    // σ = 0.2° → inner ring 0.40° (the truth is 0.2° from the prior), before the 0.5° limit.
     assert!(s[0].ends_with("r<0.40°"), "{s:?}");
     assert_eq!(s.len(), 1, "solved in the inner ring");
     assert!(!sol.prior_violated);
@@ -105,7 +101,6 @@ fn no_metadata_is_blind() {
 #[test]
 fn wrong_pointing_abstains_unless_outside_search_is_allowed() {
     let (cat, mut f, idx) = setup();
-    // Header pointing 1.2° off with a 0.5° hard limit: the truth is outside the prior.
     f.request.priors.pointing = Some(PointingPrior {
         centre: SkyPos::from_degrees(CENTRE.0 + 1.2, CENTRE.1).unwrap(),
         sigma: 0.2f64.to_radians(),
@@ -159,15 +154,11 @@ fn indexes_that_cannot_cover_the_pointing_are_skipped() {
     }
 }
 
-/// A pointing known far better than its hard limit is searched close in first: within 3σ when
-/// that is at most half the limit. The seeds of that look come from a small cone, and a field
-/// a little outside it is still found from the stars it shares with the cone.
 #[test]
 fn a_small_pointing_sigma_searches_close_to_the_pointing_first() {
     let (cat, mut f, _) = setup();
     let mut pt = f.request.priors.pointing.unwrap();
     pt.max_radius = 2f64.to_radians();
-    // The truth is 0.2° from the prior: outside 3σ = 0.06°, well inside the frame around it.
     pt.sigma = 0.02f64.to_radians();
     f.request.priors.pointing = Some(pt);
     let sol = solved(solve_auto(&f.request, &cat, &[]).unwrap());
@@ -178,30 +169,23 @@ fn a_small_pointing_sigma_searches_close_to_the_pointing_first() {
     assert!(!sol.prior_violated);
     accurate(&sol, &f);
 
-    // A σ of more than a sixth of the limit: no first look, one search to the limit.
     pt.sigma = 0.4f64.to_radians();
     f.request.priors.pointing = Some(pt);
     let wide = solved(solve_auto(&f.request, &cat, &[]).unwrap());
     assert_eq!(stages(&wide), ["pair seeds r<2.00°"]);
     accurate(&wide, &f);
-    // Both searches end at the same field.
     let p = PixelPos::new(0.0, 0.0);
     let apart = to_arcsec(sol.wcs.pixel_to_sky(p).separation(wide.wcs.pixel_to_sky(p)));
     assert!(apart < 0.5, "{apart}″ between the two solutions");
-    // A σ of zero says nothing about the pointing's spread: no first look either.
     pt.sigma = 0.0;
     f.request.priors.pointing = Some(pt);
     let flat = solved(solve_auto(&f.request, &cat, &[]).unwrap());
     assert_eq!(stages(&flat), ["pair seeds r<2.00°"]);
 }
 
-/// A pointing in the tail of its error: the first look finds nothing and the search to the
-/// hard limit solves the frame.
 #[test]
 fn a_pointing_in_the_tail_is_found_by_the_search_to_the_limit() {
     let (cat, mut f, _) = setup();
-    // 1.6° from the truth: the frame (0.6° to its corners) shares no star with a first look
-    // of 0.15° around the pointing.
     f.request.priors.pointing = Some(PointingPrior {
         centre: SkyPos::from_degrees(CENTRE.0 + 1.6, CENTRE.1).unwrap(),
         sigma: 0.05f64.to_radians(),

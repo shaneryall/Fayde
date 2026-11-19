@@ -1,15 +1,11 @@
-//! The detector against synthetic frames with a known truth (`fayde_detect::synth`).
-
 use fayde_core::Portable;
 use fayde_detect::synth::{Cosmic, Psf, Rng, Scene, Star, Stray, Streak};
 use fayde_detect::{detect, Class, DetectOptions, Detected, Detection};
 
-/// Matched-filter signal-to-noise ratio → flux, for a star of σ `psf` on `scene`'s sky.
 fn flux_for(scene: &Scene, snr: f64) -> f64 {
     snr * scene.sky_noise() * 2.0 * std::f64::consts::PI.sqrt() * scene.psf_sigma()
 }
 
-/// `n` stars at random positions at least 12 px apart, with SNR log-uniform in `snr`.
 fn scatter(scene: &mut Scene, n: usize, snr: (f64, f64), rng: &mut Rng) {
     let (w, h) = (scene.width as f64, scene.height as f64);
     while scene.stars.len() < n {
@@ -26,7 +22,6 @@ fn scatter(scene: &mut Scene, n: usize, snr: (f64, f64), rng: &mut Rng) {
     }
 }
 
-/// The stellar detection nearest to `(x, y)` within `r` pixels.
 fn nearest(det: &Detection, x: f64, y: f64, r: f64) -> Option<&Detected> {
     det.stars()
         .filter(|d| (d.x - x).phypot(d.y - y) < r)
@@ -37,7 +32,6 @@ fn nearest(det: &Detection, x: f64, y: f64, r: f64) -> Option<&Detected> {
         })
 }
 
-/// 1σ from the median absolute value.
 fn robust(v: &[f64]) -> f64 {
     let mut a: Vec<f64> = v.iter().map(|x| x.abs()).collect();
     a.sort_by(f64::total_cmp);
@@ -46,10 +40,6 @@ fn robust(v: &[f64]) -> f64 {
 
 #[test]
 fn positions_are_as_good_as_claimed_and_as_the_bound_allows() {
-    // For each star width: every star above SNR 10 is found, the error over the claimed σ has
-    // unit spread, and for faint stars the error is that of the Cramér–Rao bound for a
-    // Gaussian star in background noise, √2·σ / SNR.
-    // Fewer stars where they are wider, so that the frames are equally crowded.
     for (psf, count, seed) in [(0.9, 500, 1u64), (1.5, 400, 2), (2.6, 150, 3)] {
         let mut scene = Scene::new(768, 768);
         scene.psf = Psf::Gaussian(psf);
@@ -62,14 +52,12 @@ fn positions_are_as_good_as_claimed_and_as_the_bound_allows() {
             ..DetectOptions::default()
         };
         let det = detect(&img, 768, 768, &opt).unwrap();
-        // Pixel integration adds 1/12 px² to the variance of the star.
         let width = (psf * psf + 1.0 / 12.0).sqrt();
         assert!(
             (det.stats.psf_sigma / width - 1.0).abs() < 0.05,
             "psf {psf}: measured {}",
             det.stats.psf_sigma
         );
-        // A crowded frame (a star every 1200 px²): the noise reads a little high, never low.
         let noise = det.stats.noise / scene.sky_noise();
         assert!(
             (0.97..1.12).contains(&noise),
@@ -106,8 +94,6 @@ fn positions_are_as_good_as_claimed_and_as_the_bound_allows() {
 
 #[test]
 fn empty_frames_give_about_the_false_stars_asked_for() {
-    // One noise peak per frame is the default. Over six frames with a sky gradient: a handful,
-    // none of them certain.
     let mut total = 0;
     for seed in 0..6 {
         let mut scene = Scene::new(640, 640);
@@ -120,7 +106,6 @@ fn empty_frames_give_about_the_false_stars_asked_for() {
         }
     }
     assert!(total <= 14, "{total} false stars in 6 frames");
-    // Ten times the allowance gives more, a fixed high threshold none.
     let scene = Scene::new(640, 640);
     let img = scene.render(77);
     let many = DetectOptions {
@@ -136,7 +121,6 @@ fn empty_frames_give_about_the_false_stars_asked_for() {
     assert!(detect(&img, 640, 640, &none).unwrap().sources.is_empty());
 }
 
-/// Whether `det` holds a streak with ends within `tol` pixels of `truth`'s (either way round).
 fn has_streak(det: &Detection, truth: (f64, f64, f64, f64), tol: f64) -> bool {
     det.streaks.iter().any(|t| {
         let d = |a: (f64, f64), b: (f64, f64)| (a.0 - b.0).phypot(a.1 - b.1);
@@ -151,7 +135,6 @@ fn streaks_are_traced_end_to_end_and_kept_out_of_the_stars() {
     let mut scene = Scene::new(900, 700);
     let noise = scene.sky_noise();
     scatter(&mut scene, 150, (8.0, 3000.0), &mut Rng(4));
-    // Two that cross, one of them leaving the frame; a short one; a faint one.
     let streaks = [
         (120.0, 80.0, 760.0, 560.0, 15.0),
         (860.0, -30.0, 520.0, 730.0, 45.0),
@@ -167,7 +150,6 @@ fn streaks_are_traced_end_to_end_and_kept_out_of_the_stars() {
             flux_per_px: f * noise,
         });
     }
-    // A bright star just past the end of the first streak, on its line.
     scene.stars.push(Star {
         x: 120.0 - 11.0,
         y: 80.0 - 8.25,
@@ -181,14 +163,11 @@ fn streaks_are_traced_end_to_end_and_kept_out_of_the_stars() {
         det.streaks
     );
     assert!(has_streak(&det, (90.0, 600.0, 118.0, 612.0), 2.0));
-    // The faint one, at five times the noise of the filtered image: its ends are where a
-    // ridge of that height drops under the noise, known to a few pixels.
     assert!(
         has_streak(&det, (300.0, 660.0, 650.0, 640.0), 10.0),
         "{:#?}",
         det.streaks
     );
-    // The one that leaves the frame at both ends: on its line, flagged, full length.
     let long = det
         .streaks
         .iter()
@@ -200,9 +179,7 @@ fn streaks_are_traced_end_to_end_and_kept_out_of_the_stars() {
     for t in &det.streaks {
         assert!((t.width / 1.53 - 1.0).abs() < 0.25, "width {}", t.width);
     }
-    // The star at the streak's end is still a star.
     assert!(nearest(&det, 109.0, 71.75, 1.0).is_some());
-    // Nothing handed to a solver lies on a streak away from a true star.
     let stray = det
         .stars()
         .filter(|d| {
@@ -228,7 +205,6 @@ fn streaks_are_traced_end_to_end_and_kept_out_of_the_stars() {
             .count()
             > 200
     );
-    // Without tracing, the ridge peaks are at least not stars.
     let off = DetectOptions {
         streaks: false,
         ..DetectOptions::default()
@@ -269,7 +245,6 @@ fn hot_pixels_and_cosmic_rays_are_not_stars() {
         scatter(&mut scene, 80, (15.0, 800.0), &mut Rng(9));
         let noise = scene.sky_noise();
         let mut rng = Rng(10);
-        // Hot pixels: at least 12 px from any star.
         while scene.hot.len() < 120 {
             let (x, y) = (
                 (6.0 + rng.uniform() * 500.0) as usize,
@@ -286,7 +261,6 @@ fn hot_pixels_and_cosmic_rays_are_not_stars() {
             }
         }
         let hot: Vec<(usize, usize, f64)> = scene.hot.clone();
-        // A cosmic-ray track: a line of five pixels.
         for i in 0..5 {
             scene.hot.push((40 + i, 300 + i / 2, 200.0 * noise));
         }
@@ -295,7 +269,6 @@ fn hot_pixels_and_cosmic_rays_are_not_stars() {
             .iter()
             .filter(|&&(x, y, _)| nearest(&det, x as f64, y as f64, 1.5).is_some())
             .count();
-        // Hot pixels outnumber the stars here; a few faint ones near the limit may pass.
         assert!(
             passed <= 6,
             "psf {psf}: {passed} of 120 hot pixels passed as stars"
@@ -310,7 +283,6 @@ fn hot_pixels_and_cosmic_rays_are_not_stars() {
             .filter(|s| nearest(&det, s.x, s.y, 2.0).is_some())
             .count();
         assert!(found >= 78, "psf {psf}: {found} of 80 stars");
-        // The stars' width is measured from the stars, not the hot pixels.
         let width = (psf * psf + 1.0 / 12.0).sqrt();
         assert!(
             (det.stats.psf_sigma / width - 1.0).abs() < 0.1,
@@ -321,9 +293,29 @@ fn hot_pixels_and_cosmic_rays_are_not_stars() {
 }
 
 #[test]
+fn undersampled_stars_survive_sharpness_checks() {
+    let mut scene = Scene::new(512, 512);
+    scene.psf = Psf::Gaussian(0.5 / 2.354_820_045);
+    scatter(&mut scene, 100, (15.0, 3000.0), &mut Rng(9));
+    for (x, y) in [(5, 80), (5, 180), (5, 280)] {
+        scene.hot.push((x, y, 500.0 * scene.sky_noise()));
+    }
+    let det = detect(&scene.render(11), 512, 512, &DetectOptions::default()).unwrap();
+    let found = scene
+        .stars
+        .iter()
+        .filter(|s| nearest(&det, s.x, s.y, 1.0).is_some())
+        .count();
+    assert!(found >= 95, "{found} of 100 undersampled stars found");
+    assert!(
+        det.stars().count() <= found + 10,
+        "{} detections without a matching star",
+        det.stars().count() - found
+    );
+}
+
+#[test]
 fn stray_light_makes_no_false_stars() {
-    // A glow of 20 times the sky from just outside a corner, halving every 120 px: steep and
-    // curved where it is bright, with photon noise to match.
     let mut scene = Scene::new(768, 768);
     scene.stray = Some(Stray {
         x: -40.0,
@@ -347,11 +339,9 @@ fn stray_light_makes_no_false_stars() {
         false_stars <= 3,
         "{false_stars} false stars under stray light"
     );
-    // Every star that is 12σ above the noise where it lies (the glow's included) is found.
     let model = scene.model();
     let (mut bright, mut found) = (0, 0);
     for st in &scene.stars {
-        // The background at the star: the model 8 px away.
         let i = (st.y as usize).min(759) * 768 + (st.x as usize + 8).min(767);
         let noise = (model[i] / scene.gain + scene.read_noise * scene.read_noise).sqrt();
         if st.flux > 12.0 * noise * 2.0 * std::f64::consts::PI.sqrt() * scene.psf_sigma() {
@@ -360,15 +350,11 @@ fn stray_light_makes_no_false_stars() {
         }
     }
     assert!(bright > 100 && found + 2 >= bright, "{found} of {bright}");
-    // The same frame without the ring test's help would be full of them: the mesh alone
-    // cannot follow the glow. (Checked by the frame's own background statistics.)
     assert!(det.stats.background > 1000.0);
 }
 
 #[test]
 fn cosmic_rays_by_the_hundred_are_not_stars() {
-    // A detector in a radiation belt: 15 hits for every star. Single pixels, clumps of a few
-    // pixels, and tracks up to 60 px long.
     let mut scene = Scene::new(512, 512);
     scatter(&mut scene, 60, (30.0, 800.0), &mut Rng(16));
     let noise = scene.sky_noise();
@@ -390,7 +376,6 @@ fn cosmic_rays_by_the_hundred_are_not_stars() {
         });
     }
     let det = detect(&scene.render(18), 512, 512, &DetectOptions::default()).unwrap();
-    // The stars' width is theirs, not the hits', and no hit sets a saturation level.
     assert!(
         (det.stats.psf_sigma / 1.528 - 1.0).abs() < 0.1,
         "{}",
@@ -413,7 +398,6 @@ fn cosmic_rays_by_the_hundred_are_not_stars() {
     };
     let passed = det.stars().filter(|d| on_hit(d) && !near_star(d)).count();
     assert!(passed <= 27, "{passed} of 900 hits passed as stars");
-    // Stars clear of any hit are all found.
     let (mut clear, mut found) = (0, 0);
     for st in &scene.stars {
         let hit_nearby = scene.cosmics.iter().any(|c| {
@@ -428,7 +412,6 @@ fn cosmic_rays_by_the_hundred_are_not_stars() {
         }
     }
     assert!(clear >= 20 && found == clear, "{found} of {clear}");
-    // Tracks long enough to be traced are reported as cosmic rays, not as satellites.
     assert!(
         det.streaks.iter().all(|t| t.cosmic_ray),
         "{:#?}",
@@ -438,9 +421,6 @@ fn cosmic_rays_by_the_hundred_are_not_stars() {
 
 #[test]
 fn stars_smeared_by_a_drift_are_still_stars() {
-    // The pointing drifts 4.8 px during the exposure: every star is a short trail, four times
-    // longer than wide in variance. The brightest must not be taken for cosmic rays (their
-    // narrow axis is well under the stars' mean width), nor the trails for streaks.
     let mut scene = Scene::new(640, 640);
     scene.psf = Psf::Gaussian(0.8);
     let mut centres = Scene::new(640, 640);
@@ -479,8 +459,6 @@ fn stars_smeared_by_a_drift_are_still_stars() {
     let mut lost = Vec::new();
     for st in &centres.stars {
         match nearest(&det, st.x, st.y, 2.0) {
-            // The middle of the trail: to a third of a pixel, or four times the claimed error
-            // for a faint one.
             Some(d) => {
                 let err = (d.x - st.x).phypot(d.y - st.y);
                 assert!(err < (4.0 * d.sigma_px).max(0.35), "{d:?} for {st:?}");
@@ -489,7 +467,6 @@ fn stars_smeared_by_a_drift_are_still_stars() {
         }
     }
     assert!(lost.is_empty(), "smeared stars lost, at SNR {lost:?}");
-    // The brightest twenty are all there, at the top of the list.
     let mut by_flux: Vec<&Star> = centres.stars.iter().collect();
     by_flux.sort_by(|a, b| b.flux.total_cmp(&a.flux));
     for st in &by_flux[..20] {
@@ -499,7 +476,6 @@ fn stars_smeared_by_a_drift_are_still_stars() {
             .unwrap();
         assert!(rank < 30, "a top-20 star at rank {rank}");
     }
-    // Hot pixels are still told apart.
     let passed = scene
         .hot
         .iter()
@@ -516,7 +492,6 @@ fn saturated_stars_keep_their_centre_with_or_without_a_bleed_trail() {
     scene.saturation = Some(60_000.0);
     scene.quantise = true;
     scatter(&mut scene, 60, (20.0, 500.0), &mut Rng(21));
-    // Peaks of 3 to 300 times the saturation level.
     let bright: Vec<(f64, f64, f64)> = (0..8)
         .map(|i| {
             (
@@ -531,7 +506,6 @@ fn saturated_stars_keep_their_centre_with_or_without_a_bleed_trail() {
         scene.stars.push(Star { x, y, flux });
     }
     let mut img = scene.render(8);
-    // Bleed trails on the three brightest: saturated columns 3 pixels wide, longer one way.
     for &(x, y, _) in &bright[5..] {
         let (cx, cy) = (x.round() as usize, y.round() as usize);
         for yy in cy.saturating_sub(150)..(cy + 60).min(h) {
@@ -557,7 +531,6 @@ fn saturated_stars_keep_their_centre_with_or_without_a_bleed_trail() {
                 "star ×{over}: {err} px, claimed {}",
                 d.sigma_px
             );
-            // One detection per star: nothing else within its saturated region.
             let near = det
                 .sources
                 .iter()
@@ -565,7 +538,6 @@ fn saturated_stars_keep_their_centre_with_or_without_a_bleed_trail() {
                 .count();
             assert_eq!(near, 1, "star ×{over}");
         }
-        // Saturated stars rank above every unsaturated one, in order of brightness.
         let ranks: Vec<usize> = bright
             .iter()
             .map(|&(x, y, _)| {
@@ -577,7 +549,6 @@ fn saturated_stars_keep_their_centre_with_or_without_a_bleed_trail() {
             .collect();
         assert!(ranks.iter().all(|r| *r < 8), "{ranks:?}");
         assert!(ranks.windows(2).all(|p| p[0] > p[1]), "{ranks:?}");
-        // The trails are not reported as stars along their length.
         let on_trails = det
             .stars()
             .filter(|s| {
@@ -620,7 +591,6 @@ fn wide_stars_are_binned_and_a_given_width_is_used() {
         .filter(|s| nearest(&det, s.x, s.y, 3.0).is_some())
         .count();
     assert!(found >= 39, "{found} of 40");
-    // Told the width, one pass at the right scale.
     let told = DetectOptions {
         psf_sigma: Some(9.0 / 2.3548),
         ..DetectOptions::default()
@@ -642,7 +612,6 @@ fn wide_stars_are_binned_and_a_given_width_is_used() {
 fn undefined_pixels_and_borders_are_handled() {
     let mut scene = Scene::new(400, 400);
     scatter(&mut scene, 40, (30.0, 500.0), &mut Rng(2));
-    // Two more stars: one inside a block of undefined pixels, one 3 px from the frame edge.
     let f = flux_for(&scene, 300.0);
     scene.stars.push(Star {
         x: 150.0,
@@ -676,7 +645,6 @@ fn undefined_pixels_and_borders_are_handled() {
         .iter()
         .all(|s| s.x.is_finite() && s.y.is_finite() && s.sigma_px > 0.0 && s.flux.is_finite()));
 
-    // Refused inputs.
     assert!(detect(&img, 400, 399, &DetectOptions::default()).is_err());
     assert!(detect(&[0.0; 100], 10, 10, &DetectOptions::default()).is_err());
     assert!(detect(&vec![f32::NAN; 1024], 32, 32, &DetectOptions::default()).is_err());
@@ -685,7 +653,6 @@ fn undefined_pixels_and_borders_are_handled() {
         ..DetectOptions::default()
     };
     assert!(detect(&img, 400, 400, &bad).is_err());
-    // A constant frame has nothing in it.
     let flat = detect(&vec![100.0; 64 * 64], 64, 64, &DetectOptions::default()).unwrap();
     assert!(flat.sources.is_empty());
 }
@@ -693,8 +660,6 @@ fn undefined_pixels_and_borders_are_handled() {
 #[test]
 fn hostile_settings_and_frames_end_quickly() {
     let started = std::time::Instant::now();
-    // A star width far larger than a tiny frame: binning must not shrink the frame to nothing
-    // (the filter once looped forever on a one-pixel-wide image).
     for (w, h) in [(16usize, 16usize), (20, 40), (33, 17)] {
         let scene = Scene::new(w, h);
         let wide = DetectOptions {
@@ -704,8 +669,6 @@ fn hostile_settings_and_frames_end_quickly() {
         let det = detect(&scene.render(1), w, h, &wide).unwrap();
         assert_eq!(det.stats.bin, 1, "{w} × {h}");
     }
-    // A saturation level down in the background (a header in other units): ignored, and the
-    // stars are found as without it.
     let mut scene = Scene::new(512, 512);
     scatter(&mut scene, 60, (20.0, 2000.0), &mut Rng(31));
     let img = scene.render(32);
@@ -717,15 +680,12 @@ fn hostile_settings_and_frames_end_quickly() {
     let det = detect(&img, 512, 512, &low).unwrap();
     assert_eq!(det.stats.saturation, None);
     assert_eq!(det.stars().count(), plain.stars().count());
-    // A level that most stars exceed: each saturated region is flooded once, however many
-    // peaks sit on it.
     let most = DetectOptions {
         saturation: Some((scene.sky + 25.0 * scene.sky_noise()) as f32),
         ..DetectOptions::default()
     };
     let det = detect(&img, 512, 512, &most).unwrap();
     assert!(det.stars().filter(|d| d.class == Class::Saturated).count() >= 20);
-    // A block saturated over a quarter of the frame, with a streak of saturation across it.
     let mut blocked = img.clone();
     for y in 100..400 {
         for x in 150..420 {
@@ -741,16 +701,13 @@ fn hostile_settings_and_frames_end_quickly() {
     };
     let det = detect(&blocked, 512, 512, &sat).unwrap();
     assert!(det.stars().filter(|d| d.class == Class::Saturated).count() <= 2);
-    // A frame saturated all over, and a threshold far down in the noise.
     let flat = vec![60_000f32; 700 * 700];
     assert!(detect(&flat, 700, 700, &sat).unwrap().sources.is_empty());
-    let noisy = DetectOptions {
+    let too_low = DetectOptions {
         threshold: Some(0.2),
         ..DetectOptions::default()
     };
-    let det = detect(&Scene::new(512, 512).render(5), 512, 512, &noisy).unwrap();
-    assert!(det.sources.len() > 1000);
-    // All of it in well under a minute, even unoptimised.
+    assert!(detect(&Scene::new(512, 512).render(5), 512, 512, &too_low).is_err());
     assert!(started.elapsed().as_secs() < 60, "{:?}", started.elapsed());
 }
 
@@ -768,7 +725,6 @@ fn the_list_is_brightest_first_and_can_be_cut() {
     let few = detect(&img, 500, 500, &cut).unwrap();
     assert_eq!(few.stars().count(), 25);
     assert_eq!(few.sources[..], all.sources[..few.sources.len()]);
-    // Flux is the star's: within 10% for the bright ones.
     for st in scene
         .stars
         .iter()
@@ -784,7 +740,6 @@ fn the_list_is_brightest_first_and_can_be_cut() {
     }
 }
 
-/// FNV-1a over the bit patterns of every number in the result.
 fn fingerprint(det: &Detection) -> u64 {
     let mut h = 0xcbf2_9ce4_8422_2325u64;
     let mut put = |v: f64| {
@@ -818,10 +773,6 @@ fn fingerprint(det: &Detection) -> u64 {
     h
 }
 
-/// The same frame gives the same bits on every machine: the value below was computed once and
-/// must not differ between macOS, Linux and Windows, x86-64 and arm64. A change to the detector
-/// that alters its output changes this value; update it in the same commit, after checking the
-/// other tests.
 #[test]
 fn results_are_pinned_to_the_bit() {
     let mut scene = Scene::new(512, 384);
@@ -854,4 +805,43 @@ fn results_are_pinned_to_the_bit() {
     );
 }
 
-const PINNED: u64 = 0xbdb2_0c59_497c_816e;
+const PINNED: u64 = 0xb2d2_5006_567b_e21e;
+
+#[test]
+fn bias_subtracted_points_with_a_clipped_sky() {
+    let mut scene = Scene::new(512, 512);
+    scatter(&mut scene, 100, (12.0, 300.0), &mut Rng(29));
+    let mut image = scene.render(36);
+    let pedestal = (scene.sky + 1.4 * scene.sky_noise()) as f32;
+    for value in &mut image {
+        *value = (*value - pedestal).round().max(0.0);
+    }
+    let zeros = image.iter().filter(|&&v| v == 0.0).count();
+    assert!(zeros > 9 * image.len() / 10);
+    let opt = DetectOptions {
+        gain: Some(scene.gain),
+        ..DetectOptions::default()
+    };
+    let det = detect(&image, 512, 512, &opt).unwrap();
+    let stars: Vec<_> = det.stars().collect();
+    let matches = stars
+        .iter()
+        .filter(|d| {
+            scene
+                .stars
+                .iter()
+                .any(|s| (d.x - s.x).phypot(d.y - s.y) < 2.0)
+        })
+        .count();
+    let recovered = scene
+        .stars
+        .iter()
+        .filter(|s| nearest(&det, s.x, s.y, 2.0).is_some())
+        .count();
+    assert!(
+        matches * 10 >= 9 * stars.len(),
+        "{matches}/{} matches",
+        stars.len()
+    );
+    assert!(recovered >= 70, "{recovered}/100 recovered");
+}

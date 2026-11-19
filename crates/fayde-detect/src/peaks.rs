@@ -1,68 +1,37 @@
-//! Peaks of the filtered image and their shape.
-//!
-//! A source is a strict local maximum of the matched-filtered image above the local threshold
-//! (the approach of DAOFIND, Stetson 1987, PASP 99, 191). Its position, size, elongation and
-//! amplitude come from one closed-form fit: a quadratic surface fitted by least squares to the
-//! logarithm of the 3 × 3 pixels around the maximum, which is exact for an elliptical Gaussian
-//! (Caruana et al. 1986, Anal. Chem. 58, 1162, in one dimension; Anthony & Granick 2009,
-//! Langmuir 25, 8152, in two). The quadratic fit to a 3 × 3 neighbourhood is the facet model of
-//! Haralick 1984 (IEEE TPAMI 6, 58). Working in the logarithm removes the pixel-phase bias of a
-//! quadratic fitted to the values themselves.
-
 use fayde_core::Portable;
 
 use crate::mesh::Mesh;
 
-/// A local maximum with its fitted shape. Coordinates are those of the filtered image.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Peak {
-    /// Pixel of the maximum.
     pub ix: usize,
-    /// Pixel of the maximum.
     pub iy: usize,
-    /// Fitted position.
     pub x: f64,
-    /// Fitted position.
     pub y: f64,
-    /// Filtered value at the maximum pixel minus the background.
     pub height: f64,
-    /// Fitted amplitude of the Gaussian (≥ `height`).
     pub amp: f64,
-    /// Local noise of the filtered image.
     pub noise: f64,
-    /// Local background.
     pub bg: f64,
-    /// Variance along the major axis, px² (filtered image, so kernel included). Infinite when
-    /// the surface does not curve downwards along that axis (a ridge).
     pub major2: f64,
-    /// Variance along the minor axis, px².
     pub minor2: f64,
-    /// Direction of the major axis, radians from +x towards +y, in `(−π/2, π/2]`.
     pub theta: f64,
-    /// False when the 3 × 3 fit could not be made (a neighbour at or below the background).
     pub fitted: bool,
 }
 
 impl Peak {
-    /// Height over noise.
     pub fn snr(&self) -> f64 {
         self.height / self.noise
     }
 
-    /// Mean variance of the two axes, px² (the major axis capped at 100 × the minor).
     pub fn size2(&self) -> f64 {
         0.5 * (self.major2.min(100.0 * self.minor2) + self.minor2)
     }
 
-    /// Major over minor axis length; infinite for a ridge.
     pub fn elongation(&self) -> f64 {
         (self.major2 / self.minor2).sqrt()
     }
 }
 
-/// Strict local maxima of `s` above `background + k × noise`, in raster order. Maxima on the
-/// outermost rows and columns are not reported (their neighbourhood is incomplete), nor those
-/// whose 3 × 3 neighbourhood holds a pixel that `valid` marks unusable.
 pub(crate) fn find(
     s: &[f32],
     w: usize,
@@ -90,8 +59,6 @@ pub(crate) fn find(
                 if x0 >= x1 {
                     continue;
                 }
-                // Most tiles of most rows hold nothing above the floor: count first (a loop
-                // the compiler vectorises), look closer only when the count is not zero.
                 let seg = &row[x0..x1];
                 let above = seg.iter().fold(0u32, |a, &v| a + u32::from(v > floor));
                 if above == 0 {
@@ -103,8 +70,6 @@ pub(crate) fn find(
                     }
                     let x = x0 + dx;
                     let (up, dn) = (&s[(y - 1) * w..y * w], &s[(y + 1) * w..(y + 2) * w]);
-                    // Strict against the pixels before it in raster order, non-strict against
-                    // those after: a plateau of equal values yields its first pixel only.
                     let is_max = v > up[x - 1]
                         && v > up[x]
                         && v > up[x + 1]
@@ -135,13 +100,7 @@ pub(crate) fn find(
     out
 }
 
-/// The median of the filtered image at eight points on a circle of radius `rho` pixels around
-/// `(x, y)`: the background a peak there stands on, whatever the frame does on larger scales
-/// (a gradient, the wing of a bright star, stray light), and unmoved by a neighbour or a streak
-/// crossing the circle. `None` with fewer than six of the points inside the frame.
 pub(crate) fn ring_median(s: &[f32], w: usize, h: usize, x: f64, y: f64, rho: f64) -> Option<f64> {
-    // Directions 22.5° + k·45°, so that no point lies along a row or column through the peak
-    // (where bleed trails and bad columns run).
     const DIRS: [(f64, f64); 8] = [
         (0.923_879_532_511_286_7, 0.382_683_432_365_089_8),
         (0.382_683_432_365_089_8, 0.923_879_532_511_286_7),
@@ -165,16 +124,11 @@ pub(crate) fn ring_median(s: &[f32], w: usize, h: usize, x: f64, y: f64, rho: f6
     }
     let v = &mut v[..n];
     v.sort_unstable_by(f64::total_cmp);
-    // The lower middle of an even count: a neighbour's light cannot raise it.
     Some(v[(n - 1) / 2])
 }
 
-/// Noise of [`ring_median`] over the noise of the filtered image: the median of eight nearly
-/// independent values has `1.2533 / √8` of their standard deviation.
 pub(crate) const RING_NOISE: f64 = 0.44;
 
-/// Fit the peak at pixel `(ix, iy)` of the filtered image `s` (an interior pixel), standing on
-/// background `bg` with noise `noise`.
 pub(crate) fn measure(s: &[f32], w: usize, ix: usize, iy: usize, bg: f64, noise: f64) -> Peak {
     let v = |dx: isize, dy: isize| -> f64 {
         let i = (iy as isize + dy) as usize * w + (ix as isize + dx) as usize;
@@ -195,8 +149,6 @@ pub(crate) fn measure(s: &[f32], w: usize, ix: usize, iy: usize, bg: f64, noise:
         theta: 0.0,
         fitted: false,
     };
-    // z[j][i] = ln of the value at (i − 1, j − 1). A neighbour at or below a small fraction of
-    // the height has no usable logarithm: the peak is then too sharp or too faint to fit.
     let mut z = [[0f64; 3]; 3];
     for (j, row) in z.iter_mut().enumerate() {
         for (i, c) in row.iter_mut().enumerate() {
@@ -207,8 +159,6 @@ pub(crate) fn measure(s: &[f32], w: usize, ix: usize, iy: usize, bg: f64, noise:
             *c = val.pln();
         }
     }
-    // Least-squares quadratic z ≈ p0 + gx·x + gy·y + ½·hxx·x² + hxy·x·y + ½·hyy·y² on the grid
-    // x, y ∈ {−1, 0, 1} (normal equations solved in closed form).
     let col = |i: usize| z[0][i] + z[1][i] + z[2][i];
     let row = |j: usize| z[j][0] + z[j][1] + z[j][2];
     let total = col(0) + col(1) + col(2);
@@ -219,8 +169,6 @@ pub(crate) fn measure(s: &[f32], w: usize, ix: usize, iy: usize, bg: f64, noise:
     let hxy = (z[2][2] - z[2][0] - z[0][2] + z[0][0]) / 4.0;
     let p0 = (5.0 * total - 3.0 * (col(0) + col(2) + row(0) + row(2))) / 9.0;
 
-    // Eigenvalues of the Hessian: lo ≤ hi. For a maximum both are negative; the variance along
-    // an axis is −1 / eigenvalue, so `hi` (the weaker curvature) belongs to the major axis.
     let mean = 0.5 * (hxx + hyy);
     let diff = 0.5 * (hxx - hyy);
     let root = diff.phypot(hxy);
@@ -231,14 +179,11 @@ pub(crate) fn measure(s: &[f32], w: usize, ix: usize, iy: usize, bg: f64, noise:
     peak.fitted = true;
     peak.minor2 = -1.0 / lo;
     peak.major2 = if hi < 0.0 { -1.0 / hi } else { f64::INFINITY };
-    // Direction of the eigenvector of the larger eigenvalue.
     peak.theta = 0.5 * (2.0 * hxy).patan2(hxx - hyy);
     let det = hxx * hyy - hxy * hxy;
     if hi < 0.0 && det > 0.0 {
         let dx = -(hyy * gx - hxy * gy) / det;
         let dy = -(hxx * gy - hxy * gx) / det;
-        // The maximum pixel holds the peak, so the true offset is within half a pixel; a fit
-        // that says otherwise (noise on a nearly flat top) is not used for the position.
         if dx.abs() <= 1.0 && dy.abs() <= 1.0 {
             peak.x += dx;
             peak.y += dy;
@@ -246,7 +191,6 @@ pub(crate) fn measure(s: &[f32], w: usize, ix: usize, iy: usize, bg: f64, noise:
             peak.amp = top.pexp().max(height);
         }
     } else {
-        // A ridge: only the offset across it is defined.
         let (sn, cs) = peak.theta.psin_cos();
         let g_across = -gx * sn + gy * cs;
         let d = (-g_across / lo).clamp(-1.0, 1.0);
@@ -256,7 +200,6 @@ pub(crate) fn measure(s: &[f32], w: usize, ix: usize, iy: usize, bg: f64, noise:
     peak
 }
 
-/// The filtered image at a fractional position, bilinearly interpolated; `None` outside.
 pub(crate) fn sample(s: &[f32], w: usize, h: usize, x: f64, y: f64) -> Option<f64> {
     if !(x >= 0.0 && y >= 0.0 && x <= (w - 1) as f64 && y <= (h - 1) as f64) {
         return None;
@@ -273,7 +216,6 @@ pub(crate) fn sample(s: &[f32], w: usize, h: usize, x: f64, y: f64) -> Option<f6
 mod tests {
     use super::*;
 
-    /// An elliptical Gaussian sampled at pixel centres, on a background of 10.
     fn gaussian(w: usize, h: usize, x0: f64, y0: f64, a2: f64, b2: f64, th: f64) -> Vec<f32> {
         let (sn, cs) = th.psin_cos();
         (0..w * h)
@@ -285,14 +227,11 @@ mod tests {
             .collect()
     }
 
-    fn flat_mesh(img: &[f32], w: usize, h: usize) -> Mesh {
-        // A mesh of one tile whose background is the image's (10) and noise small.
+    fn flat_mesh(w: usize, h: usize) -> Mesh {
         let mut corner: Vec<f32> = vec![10.0; w * h];
         for (i, v) in corner.iter_mut().enumerate() {
-            // ±0.5 around 10: lower-side sigma 0.34.
             *v += ((i * 7919) % 1000) as f32 / 1000.0 - 0.5;
         }
-        let _ = img;
         Mesh::build(&corner, w, h, w.max(h), 3, None)
     }
 
@@ -306,7 +245,7 @@ mod tests {
             (20.45, 18.49, 9.0, 3.0, 1.5),
         ] {
             let img = gaussian(w, h, x0, y0, a2, b2, th);
-            let mesh = flat_mesh(&img, w, h);
+            let mesh = flat_mesh(w, h);
             let found = find(&img, w, h, &mesh, 5.0, None);
             assert_eq!(found.len(), 1, "{found:?}");
             let (b, n) = mesh.at(found[0].0 as f64, found[0].1 as f64);
@@ -334,10 +273,9 @@ mod tests {
                 img[y * w + x] = 100.0;
             }
         }
-        img[0] = 500.0; // corner pixel: never a candidate
-        let mesh = flat_mesh(&img, w, h);
+        img[0] = 500.0;
+        let mesh = flat_mesh(w, h);
         assert_eq!(find(&img, w, h, &mesh, 5.0, None), vec![(8, 8)]);
-        // A masked neighbour removes the candidate.
         let mut valid = vec![true; w * h];
         valid[7 * w + 7] = false;
         assert!(find(&img, w, h, &mesh, 5.0, Some(&valid)).is_empty());
@@ -346,8 +284,6 @@ mod tests {
     #[test]
     fn a_ridge_has_an_infinite_major_axis_along_its_direction() {
         let (w, h) = (40, 40);
-        // A line at 30° with a Gaussian cross-section of variance 2, plus a tiny bump so that
-        // one pixel is a strict maximum.
         let th = 30f64.to_radians();
         let (sn, cs) = th.psin_cos();
         let mut img: Vec<f32> = (0..w * h)
@@ -358,7 +294,7 @@ mod tests {
             })
             .collect();
         img[20 * w + 20] += 0.5;
-        let mesh = flat_mesh(&img, w, h);
+        let mesh = flat_mesh(w, h);
         let (b, n) = mesh.at(20.0, 20.0);
         let p = measure(&img, w, 20, 20, f64::from(b), f64::from(n));
         assert!(p.fitted);
@@ -370,8 +306,6 @@ mod tests {
     #[test]
     fn the_ring_median_ignores_a_gradient_a_neighbour_and_a_streak() {
         let (w, h) = (60, 60);
-        // A plane (56 at the centre), a bright neighbour 5 px to the right of (30, 30) and a
-        // line through it.
         let img: Vec<f32> = (0..w * h)
             .map(|i| {
                 let (x, y) = ((i % w) as f64, (i / w) as f64);
@@ -384,7 +318,6 @@ mod tests {
             .collect();
         let m = ring_median(&img, w, h, 30.0, 30.0, 5.0).unwrap();
         assert!((m - 56.0).abs() < 2.5, "{m}");
-        // The plain mean of the ring would be far off.
         assert!(ring_median(&img, w, h, 1.0, 1.0, 5.0).is_none());
     }
 
