@@ -28,7 +28,7 @@ returns a world coordinate system (WCS) solution with its measured accuracy.
 - **Command line and Python.** Prebuilt for Linux, macOS, and Windows. The numerical results are
   the same on every platform.
 
-##Why Fayde?
+## Why Fayde?
 Other plate solvers are slow and cumbersome to use, or old and unmaintained. 
 
 ## Quick start
