@@ -9,6 +9,7 @@
 [![crates.io](https://img.shields.io/crates/v/fayde-cli)](https://crates.io/crates/fayde-cli)
 [![Python](https://img.shields.io/pypi/pyversions/fayde)](https://pypi.org/project/fayde/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24379728.svg)](https://doi.org/10.5281/zenodo.24379728)
 
 [Install](docs/install.md) · [Catalog](docs/catalog.md) · [Command line](docs/usage.md) ·
 [Python](docs/python.md) · [Changelog](CHANGELOG.md)

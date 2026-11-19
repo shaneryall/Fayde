@@ -5,6 +5,11 @@ Versioning rules: `docs/development.md`, "Versioning and releases".
 Versions up to 0.2.1 were development versions and were not published; their notes are kept
 because the index files and their hashes date from 0.1.0.
 
+## Unreleased
+
+- The README and `CITATION.cff` give the DOI of the archived releases,
+  [10.5281/zenodo.24379728](https://doi.org/10.5281/zenodo.24379728).
+
 ## 0.3.2 (2026-11-19)
 
 - Header coordinates whose last field reads exactly 60, such as `RA = '20:29:60.0'` (59.96 s
