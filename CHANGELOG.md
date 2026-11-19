@@ -9,6 +9,9 @@ because the index files and their hashes date from 0.1.0.
 
 - The README and `CITATION.cff` give the DOI of the archived releases,
   [10.5281/zenodo.24379728](https://doi.org/10.5281/zenodo.24379728).
+- `fayde calibrate` takes each frame's header pointing at the centre of the image it solved,
+  using the image's size when the header does not give it, as image and source-list solves
+  have done since 0.3.2.
 
 ## 0.3.2 (2026-11-19)
 

@@ -1,16 +1,5 @@
-//! An instrument profile from solved frames (`fayde calibrate`).
-//!
-//! A profile holds what frames of one instrument share: the pixel scale, the parity, the rule
-//! that gives the roll from a header keyword, and how far the header's pointing is from the
-//! truth. All four can be read off a set of solutions, so a profile needs no other solver: solve
-//! some frames with the pointing and a nominal scale alone, and calibrate from those.
-//!
-//! Every value is a median, and every spread comes from the median absolute deviation (Hampel
-//! 1974; the factor 1.4826 makes it the standard deviation of a Gaussian), so a few wrong or
-//! poor solutions among the frames do not move the result.
-
-use fayde_core::{to_arcsec, PixelPos, Portable};
-use fayde_fits::header_priors;
+use fayde_core::{math::round_decimal, to_arcsec, PixelPos, Portable};
+use fayde_fits::header_priors_for_size;
 use fayde_wcs::{header::Value as Card, Header, Parity, Wcs};
 use serde_json::{json, Value};
 
@@ -64,24 +53,6 @@ fn number(h: &Header, key: &str) -> Option<f64> {
     .filter(|v: &f64| v.is_finite())
 }
 
-/// `v` to `decimals` decimal places: the number that prints with that many and no more.
-fn rounded(v: f64, decimals: usize) -> f64 {
-    format!("{v:.decimals$}").parse().unwrap_or(v)
-}
-
-/// An instrument profile from solved frames, as the JSON `--instrument` reads.
-///
-/// - `scale_arcsec`: the median fitted scale (unbinned when binning keywords are given);
-///   `scale_sigma_arcsec`: 1.5 × its robust spread, at least 0.1% of the scale.
-/// - `parity`: the solutions' parity, when they all agree.
-/// - `roll`: with a roll keyword, the rule `roll = offset + sign × keyword` that fits best
-///   (both signs are tried; the offset is the median), its 1σ twice the robust spread about
-///   the rule (at least 0.05°) and its hard limit ten times that (at least 1°).
-/// - `pointing_sigma_deg`: the per-axis error of the header's pointing, from the median
-///   distance between it and the solved frame centre.
-///
-/// The object also carries a `calibration` member with the numbers behind it (frames used,
-/// spreads, worst deviations), which the profile reader ignores.
 pub fn calibrate_profile(frames: &[SolvedFrame], o: &CalibrateOptions) -> Result<Value, String> {
     if frames.len() < CALIBRATE_MIN_FRAMES {
         return Err(format!(
@@ -165,20 +136,21 @@ pub fn calibrate_profile(frames: &[SolvedFrame], o: &CalibrateOptions) -> Result
         let sigma = (ROLL_SIGMA_FACTOR * spread).max(ROLL_SIGMA_FLOOR_DEG);
         roll = Some(json!({
             "keyword": key,
-            "offset_deg": rounded(offset, 3),
+            "offset_deg": round_decimal(offset, 3),
             "sign": sign,
-            "sigma_deg": rounded(sigma, 3),
-            "max_dev_deg": rounded((ROLL_LIMIT_FACTOR * sigma).max(ROLL_LIMIT_FLOOR_DEG), 3),
+            "sigma_deg": round_decimal(sigma, 3),
+            "max_dev_deg": round_decimal((ROLL_LIMIT_FACTOR * sigma).max(ROLL_LIMIT_FLOOR_DEG), 3),
         }));
         roll_stats = json!({"robust_sigma_deg": spread, "worst_deg": worst});
     }
 
     let mut offsets = Vec::new();
     for f in frames {
+        let size = (Some(f.width), Some(f.height));
         let header = if o.no_header_wcs {
-            header_priors(&f.header.without_wcs())
+            header_priors_for_size(&f.header.without_wcs(), size)
         } else {
-            header_priors(&f.header)
+            header_priors_for_size(&f.header, size)
         };
         if let Some((pointing, _)) = header.pointing {
             let centre = f.wcs.pixel_to_sky(PixelPos::new(
@@ -199,8 +171,7 @@ pub fn calibrate_profile(frames: &[SolvedFrame], o: &CalibrateOptions) -> Result
             "offset_p90_deg": at(0.9),
             "offset_max_deg": at(1.0),
         });
-        // Not below 0.36″: a pointing that good is beyond what the offsets can show.
-        rounded((median(&offsets) / RAYLEIGH_MEDIAN).max(1e-4), 5)
+        round_decimal((median(&offsets) / RAYLEIGH_MEDIAN).max(1e-4), 5)
     });
 
     let mut profile = serde_json::Map::new();
@@ -223,8 +194,8 @@ pub fn calibrate_profile(frames: &[SolvedFrame], o: &CalibrateOptions) -> Result
             frames.len()
         )),
     );
-    put("scale_arcsec", json!(rounded(scale, 5)));
-    put("scale_sigma_arcsec", json!(rounded(scale_sigma, 5)));
+    put("scale_arcsec", json!(round_decimal(scale, 5)));
+    put("scale_sigma_arcsec", json!(round_decimal(scale_sigma, 5)));
     if let Some(p) = parity {
         put("parity", json!(p));
     }
@@ -263,7 +234,7 @@ mod tests {
     use fayde_wcs::TanWcs;
 
     fn frame(k: usize, bin: f64, scale_err: f64, roll_err: f64, off: f64) -> SolvedFrame {
-        let key = -170.0 + 37.0 * k as f64; // crosses ±180° in the offsets
+        let key = -170.0 + 37.0 * k as f64;
         let roll: f64 = (33.0 - key + roll_err).to_radians();
         let s = 2.5 * bin * (1.0 + scale_err) / 3600.0;
         let (sn, cs) = roll.psin_cos();
