@@ -32,6 +32,14 @@ them, it uses a pattern index that you build once.
 Fayde runs from the command line and from Python, prebuilt for Linux, macOS, and Windows. Its
 numerical results are the same on every platform, so a solve can be repeated anywhere.
 
+The following animation, made by `scripts/make_readme_figures.py`, shows `fayde detect` on a
+synthetic frame. Every mark comes from the command's report: green rings for the stars it keeps,
+red crosses for hits too sharp to be stars, orange for detections on a streak or extended, and
+colored lines for the three satellite streaks it traces.
+
+![A synthetic star field. Fayde marks the stars it keeps, the hits it sets aside, and three
+satellite streaks.](docs/images/detect-point-stars.gif)
+
 ## Quick start
 
 > [!IMPORTANT]
