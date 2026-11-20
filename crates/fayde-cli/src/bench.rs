@@ -2,27 +2,13 @@ use fayde_core::Portable;
 use std::time::Instant;
 
 use fayde_catalog::{ucac4::Ucac4Catalog, Catalog, StarQuery};
-use fayde_core::{to_arcsec, Epoch, PixelPos, SkyPos, UnitVector};
+use fayde_core::{to_arcsec, Epoch, PixelPos, UnitVector};
+use fayde_detect::synth::Rng;
 use fayde_index::Index;
 use fayde_solve::{solve_with_index, Frame, Outcome, Policy, Priors, SolveRequest, Source};
 use fayde_wcs::TanWcs;
 
 use crate::{num, options, seconds};
-
-struct Rng(u64);
-impl Rng {
-    fn uniform(&mut self) -> f64 {
-        self.0 = self
-            .0
-            .wrapping_mul(6364136223846793005)
-            .wrapping_add(1442695040888963407);
-        ((self.0 >> 11) as f64 + 0.5) / (1u64 << 53) as f64
-    }
-    fn normal(&mut self) -> f64 {
-        let (u, v) = (self.uniform(), self.uniform());
-        (-2.0 * u.pln()).sqrt() * (2.0 * std::f64::consts::PI * v).pcos()
-    }
-}
 
 pub(crate) fn run(args: &[&str]) -> Result<(), String> {
     let o = options(
@@ -43,8 +29,7 @@ pub(crate) fn run(args: &[&str]) -> Result<(), String> {
     let deadline = Some(seconds(&o, "deadline")?.unwrap_or(std::time::Duration::from_secs(60)));
     let pattern_sources: usize =
         num(&o, "pattern-sources")?.unwrap_or(Policy::default().pattern_sources);
-    let cat = Ucac4Catalog::open(o.get("ucac4").ok_or("--ucac4 is required")?)
-        .map_err(|e| e.to_string())?;
+    let cat = Ucac4Catalog::open(crate::ucac4_dir(&o)?).map_err(|e| e.to_string())?;
     let index =
         Index::read(o.get("index").ok_or("--index is required")?).map_err(|e| e.to_string())?;
     let frames: usize = num(&o, "frames")?.unwrap_or(100);
@@ -243,9 +228,7 @@ pub(crate) fn run(args: &[&str]) -> Result<(), String> {
         "scale_arcsec_px": scale,
         "image_mag_limit": image_mag,
     });
-    crate::out(&serde_json::to_string_pretty(&summary).expect("json"))?;
-    let _ = SkyPos::from_degrees(0.0, 0.0);
-    Ok(())
+    crate::out(&serde_json::to_string_pretty(&summary).expect("json"))
 }
 
 fn diagnose(req: &SolveRequest, ids: &[Option<u64>], index: &Index) -> String {

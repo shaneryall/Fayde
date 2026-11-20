@@ -477,7 +477,7 @@ impl Ucac4Catalog {
             let Some((mut f, path)) = self.open_zone(zone)? else {
                 if query.strict {
                     return Err(CatalogError::NotFound(format!(
-                        "zone file {} (needed for this cone)",
+                        "zone file {} (needed for this cone): download it as in the catalogue instructions",
                         self.zone_path(zone).display()
                     )));
                 }
@@ -814,7 +814,8 @@ fn read_range(
                 return Err(CatalogError::Malformed {
                     path: path.into(),
                     reason: format!(
-                        "index asks for records {start}..{end}, zone has {available}; index and zone disagree"
+                        "index asks for records {start}..{end}, zone has {available}: the zone file is \
+                         incomplete or the index is from another copy; download the zone again"
                     ),
                 });
             }
@@ -825,7 +826,8 @@ fn read_range(
                 .map_err(|e| CatalogError::Malformed {
                     path: path.into(),
                     reason: format!(
-                        "records {start}..{end} not readable ({e}); index and zone disagree"
+                        "records {start}..{end} not readable ({e}): the zone file is incomplete or the \
+                         index is from another copy; download the zone again"
                     ),
                 })?;
         }

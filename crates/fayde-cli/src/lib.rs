@@ -111,7 +111,7 @@ const USAGE: &str = "usage:
   fayde refit  (--sources <frame.sources.fits> | --image <frame.fits>) --ucac4 <dir> --wcs <in.wcs> [request options]
                [-o <out.wcs>]
      detection options (with --image): --fwhm <px> --detect-threshold <sigma> --saturation <adu>
-       --gain <e/adu> --max-sources <n>
+       --gain <e/adu> --max-sources <n> (--trail-angle also guides detection)
      request options: --header <frame.fits> --instrument <profile.json> --width <px> --height <px>
        --ra <deg> --dec <deg> --radius <deg> --pointing-sigma <deg>
        --scale <arcsec/px> --scale-sigma <fraction>
@@ -125,7 +125,9 @@ const USAGE: &str = "usage:
   fayde compare --ucac4 <dir> --index <a.fidx>[,<b.fidx>] --frames <frames.json> [--limit <n>]
                 [--instrument <profile.json>] [--no-header-wcs] [--hinted-only] [--deadline <s>]
   fayde bench --ucac4 <dir> --index <file> [--frames <n>] [--seed <n>] [--size <px>] [--scale <arcsec/px>]
-              [--image-mag <m>] [--deadline <s>] [--pattern-sources <n>]";
+              [--image-mag <m>] [--deadline <s>] [--pattern-sources <n>]
+  --ucac4 <dir> may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.";
 
 const REQUEST_HELP: &str =
     "fayde solve  (--sources <frame.sources.fits> | --image <frame.fits>) --ucac4 <dir> [options] [--index <a.fidx>]...
@@ -217,11 +219,13 @@ used, spreads, worst deviations.";
 
 const DETECT_HELP: &str = "fayde detect --image <frame.fits> [-o <frame.sources.fits>] [options]
 
-Finds stars (point sources: sidereal tracking or stare) in a FITS image and prints a JSON
-report: the settings used, the stars' width, background and noise, every source with its
-position (FITS 1-based), error, flux, star probability and class, the streaks traced (ends,
-angle, width, flux), and what was set aside (hot pixels, cosmic-ray hits, anything on a
-streak). -o also writes the sources as a source list for --sources.
+Finds stars in a FITS image as points, straight trails, or stars smeared along curved
+paths. Prints a JSON report with the settings, mode (points, trails, kernel, refused),
+census, trail or kernel measurements, stars' width, background, noise, and sources with
+position (FITS 1-based), error (along and across the trail too), flux, star probability and
+class, the streaks traced (ends, angle, width, flux), and what was set aside (hot pixels,
+cosmic-ray hits, anything on a streak, point-like objects in a trailed frame). -o also writes
+the sources as a source list for --sources, with the trail.
 The same detection runs inside `fayde solve|verify|refit --image <frame.fits>`, which also
 reads the frame's header from the image unless --header is given.
 
@@ -234,6 +238,10 @@ reads the frame's header from the image unless --header is given.
                               level of flat-topped stars
   --gain <e/adu>              gain, for the stars' own noise   default: GAIN or EGAIN, else none
   --max-sources <n>           brightest sources kept           default 2000
+  --trail-angle <deg>         expected direction of star       default: none; the trail used
+                              trails, from +x towards +y       is measured from the image
+  --no-trails                 measure every star as a point, even when the stars are
+                              trails (skips the trail census)
   -o <frame.sources.fits>     also write the sources as a source list (Fayde's FITS table:
                               X, Y, FLUX, SIGMA, P_STAR, TRUNCATED); name it after the frame";
 
@@ -252,6 +260,16 @@ const INDEX_BUILD_HELP: &str = "fayde index build --ucac4 <dir> --fov <deg> -o <
 
 Recommended set, sizes and memory: docs/index-set.md. `fayde index info <file>` prints the
 content hash.";
+
+pub(crate) fn ucac4_dir(o: &HashMap<String, String>) -> Result<String, String> {
+    if let Some(d) = o.get("ucac4") {
+        return Ok(d.clone());
+    }
+    match std::env::var("FAYDE_UCAC4") {
+        Ok(d) if !d.trim().is_empty() => Ok(d),
+        _ => Err("--ucac4 is required (or set FAYDE_UCAC4 to the UCAC4 directory)".into()),
+    }
+}
 
 pub(crate) fn options(
     args: &[&str],
@@ -349,7 +367,7 @@ fn index_build(args: &[&str]) -> Result<(), String> {
         ],
         &[],
     )?;
-    let dir = o.get("ucac4").ok_or("--ucac4 is required")?;
+    let dir = &crate::ucac4_dir(&o)?;
     if o.contains_key("o") && o.contains_key("output") {
         return Err("-o and --output are the same option: give one".into());
     }

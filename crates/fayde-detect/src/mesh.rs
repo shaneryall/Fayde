@@ -183,6 +183,8 @@ pub(crate) struct Mesh {
     th: f64,
     bg: Vec<f32>,
     noise: Vec<f32>,
+    cols: Vec<(u32, u32, f32)>,
+    rows: Vec<(u32, u32, f32)>,
 }
 
 fn clipped_median(buf: &mut [f32]) -> Option<f32> {
@@ -351,6 +353,14 @@ impl Mesh {
         }
         let bg = despike(&bg, nx, ny, |_| 0.5 * tn);
         let noise = despike(&noise, nx, ny, |p| 0.3 * p);
+        let axes = |n: usize, pitch: f64, tiles: usize| -> Vec<(u32, u32, f32)> {
+            (0..n)
+                .map(|v| {
+                    let (a, b, t) = Self::axis(v as f64, pitch, tiles);
+                    (a as u32, b as u32, t)
+                })
+                .collect()
+        };
         Self {
             bg,
             noise,
@@ -358,6 +368,63 @@ impl Mesh {
             ny,
             tw,
             th,
+            cols: axes(w, tw, nx),
+            rows: axes(h, th, ny),
+        }
+    }
+
+    #[inline]
+    pub fn at_px(&self, x: usize, y: usize) -> (f32, f32) {
+        let (x0, x1, tx) = self.cols[x];
+        let (y0, y1, ty) = self.rows[y];
+        let (x0, x1, y0, y1) = (x0 as usize, x1 as usize, y0 as usize, y1 as usize);
+        let lerp = |v: &[f32], tx: f32, ty: f32| {
+            let a = v[y0 * self.nx + x0] * (1.0 - tx) + v[y0 * self.nx + x1] * tx;
+            let b = v[y1 * self.nx + x0] * (1.0 - tx) + v[y1 * self.nx + x1] * tx;
+            a * (1.0 - ty) + b * ty
+        };
+        (
+            lerp(&self.bg, tx, ty),
+            lerp(&self.noise, tx.clamp(0.0, 1.0), ty.clamp(0.0, 1.0)),
+        )
+    }
+
+    pub fn row(&self, y: usize, bg: &mut [f32], noise: &mut [f32]) {
+        let (y0, y1, ty) = self.rows[y];
+        let (y0, y1) = (y0 as usize, y1 as usize);
+        let tyc = ty.clamp(0.0, 1.0);
+        let w = bg.len();
+        let mut x = 0;
+        while x < w {
+            let (x0, x1, _) = self.cols[x];
+            let mut end = x + 1;
+            while end < w && self.cols[end].0 == x0 {
+                end += 1;
+            }
+            let (x0, x1) = (x0 as usize, x1 as usize);
+            let corners = |v: &[f32]| {
+                (
+                    v[y0 * self.nx + x0],
+                    v[y0 * self.nx + x1],
+                    v[y1 * self.nx + x0],
+                    v[y1 * self.nx + x1],
+                )
+            };
+            let (b00, b01, b10, b11) = corners(&self.bg);
+            for (o, c) in bg[x..end].iter_mut().zip(&self.cols[x..end]) {
+                let tx = c.2;
+                let a = b00 * (1.0 - tx) + b01 * tx;
+                let b = b10 * (1.0 - tx) + b11 * tx;
+                *o = a * (1.0 - ty) + b * ty;
+            }
+            let (n00, n01, n10, n11) = corners(&self.noise);
+            for (o, c) in noise[x..end].iter_mut().zip(&self.cols[x..end]) {
+                let tx = c.2.clamp(0.0, 1.0);
+                let a = n00 * (1.0 - tx) + n01 * tx;
+                let b = n10 * (1.0 - tx) + n11 * tx;
+                *o = a * (1.0 - tyc) + b * tyc;
+            }
+            x = end;
         }
     }
 
@@ -392,10 +459,7 @@ impl Mesh {
 
     pub fn span(&self, t: usize, horizontal: bool, limit: usize) -> (usize, usize) {
         let p = if horizontal { self.tw } else { self.th };
-        (
-            (t as f64 * p) as usize,
-            (((t + 1) as f64 * p) as usize).min(limit),
-        )
+        Self::bounds(t, p, limit)
     }
 
     pub fn floor(&self, tx: usize, ty: usize, k: f32, w: usize, h: usize) -> f32 {
@@ -421,6 +485,17 @@ impl Mesh {
             }
         }
         lo - 1e-3 * noise
+    }
+
+    pub fn raise_noise(&mut self, model: &Self) {
+        for ty in 0..self.ny {
+            for tx in 0..self.nx {
+                let x = (tx as f64 + 0.5) * self.tw - 0.5;
+                let y = (ty as f64 + 0.5) * self.th - 0.5;
+                let i = ty * self.nx + tx;
+                self.noise[i] = self.noise[i].max(model.at(x, y).1);
+            }
+        }
     }
 
     pub fn typical(&self) -> (f32, f32) {

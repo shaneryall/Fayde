@@ -14,7 +14,9 @@ pub use instrument::{parse_parity, InstrumentPriors, InstrumentProfile, RollRule
 pub use priors::{
     header_priors, header_priors_for_size, mjd_from_iso, parse_sexagesimal, HeaderPriors,
 };
-pub use sources::{file_kind, read_sources, write_sources, FileKind, SourceList};
+pub use sources::{
+    file_kind, read_sources, write_sources, write_sources_trailed, FileKind, SourceList,
+};
 
 fn pixel_dimension(value: f64) -> Option<u32> {
     (value.fract() == 0.0 && (1.0..=f64::from(u32::MAX)).contains(&value)).then_some(value as u32)

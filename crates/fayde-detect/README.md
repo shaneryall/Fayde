@@ -7,8 +7,10 @@ returns a position, a position error, a flux, and the probability that the star 
 sets aside hot pixels and cosmic-ray hits, and it traces satellite streaks and reports their
 ends, angle, width, and flux.
 
-The crate handles images of point sources, such as images taken with sidereal tracking. It
-doesn't yet handle trailed stars.
+The crate handles images of point sources, such as images taken with sidereal tracking, and
+images whose stars are straight trails of one length and direction, such as images taken while
+the telescope tracks a satellite. For trailed stars, it reports the trail and each star's
+position error along and across it.
 
 For more information about Fayde and how to install the `fayde` command or Python package, see
 the [Fayde README](https://github.com/shaneryall/Fayde#readme).

@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use fayde_api::{build_request, AtCheck, AtPosition, RequestOptions, Solver};
+use fayde_api::{
+    build_request, AtCheck, AtPosition, ImageRequestError, Operation, PreparedImage,
+    RequestOptions, Solver,
+};
 use fayde_core::{PixelConvention, PixelPos, SkyPos};
 use fayde_fits::{comment_cards, read_sources, write_wcs_file, FitsFile, InstrumentProfile};
 use fayde_solve::{Solution, SolveRequest};
@@ -58,6 +61,7 @@ const FLAGS: &[&str] = &[
     "relax-priors-on-failure",
     "no-pointing",
     "no-header-wcs",
+    "no-trails",
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -121,47 +125,60 @@ fn output_path(o: &HashMap<String, String>, mode: Mode) -> Option<&str> {
     }
 }
 
-/// Whether `a` and `b` name the same existing file (after resolving links and `..`).
-/// One solve, verify or refit; `out_path` has been checked (writable, not an input).
 fn solve_once(
     o: &HashMap<String, String>,
     mode: Mode,
     out_path: Option<&str>,
 ) -> Result<(), String> {
-    let (sources, size, image, detection) = load_sources(o)?;
     let mut opts = request_options(o)?;
-    if opts.header.is_none() {
-        opts.header = image.map(|i| i.header);
-    }
-    let built = build_request(sources, size, &opts)?;
-    for w in &built.warnings {
-        eprintln!("fayde: warning: {w}");
-    }
-    let indexes = match mode {
-        Mode::Solve => index_paths(o),
-        Mode::Verify | Mode::Refit => Vec::new(),
-    };
-    let solver = Solver::open(o.get("ucac4").ok_or("--ucac4 is required")?, &indexes)?;
-    let given = match mode {
-        Mode::Solve => None,
-        Mode::Verify | Mode::Refit => {
-            let path = o.get("wcs").ok_or("--wcs is required")?;
-            let f = FitsFile::open(path).map_err(|e| format!("{path}: {e}"))?;
-            Some(Wcs::from_header(&f.primary().header).map_err(|e| format!("{path}: {e}"))?)
+    let start = |warnings: &[String]| -> Result<(Solver, Operation), String> {
+        for w in warnings {
+            eprintln!("fayde: warning: {w}");
         }
+        let indexes = match mode {
+            Mode::Solve => index_paths(o),
+            Mode::Verify | Mode::Refit => Vec::new(),
+        };
+        let solver = Solver::open(&crate::ucac4_dir(o)?, &indexes)?;
+        let operation = match mode {
+            Mode::Solve => Operation::Solve,
+            Mode::Verify | Mode::Refit => {
+                let path = o.get("wcs").ok_or("--wcs is required")?;
+                let f = FitsFile::open(path).map_err(|e| format!("{path}: {e}"))?;
+                let wcs =
+                    Wcs::from_header(&f.primary().header).map_err(|e| format!("{path}: {e}"))?;
+                if mode == Mode::Verify {
+                    Operation::Verify(wcs)
+                } else {
+                    Operation::Refit(wcs)
+                }
+            }
+        };
+        Ok((solver, operation))
     };
-    let report = match (mode, &given) {
-        (Mode::Verify, Some(wcs)) => solver.verify(&built, wcs),
-        (Mode::Refit, Some(wcs)) => solver.refit(&built, wcs),
-        _ => solver.solve(&built),
+    let (built, report) = if let Some(path) = o.get("image") {
+        let image = fayde_fits::read_image(path).map_err(|e| wrong_kind(path, "--image", e))?;
+        let mut detect = detect_options(o)?;
+        detect.points_only = o.contains_key("no-trails");
+        let input_error = |e| match e {
+            ImageRequestError::Detect(e) => format!("{path}: {e}"),
+            ImageRequestError::Request(e) => e,
+        };
+        let prepared = PreparedImage::new(image, opts, detect).map_err(input_error)?;
+        let (solver, operation) = start(prepared.warnings())?;
+        prepared.run(&solver, &operation).map_err(input_error)?
+    } else {
+        for k in DETECT_OPTIONS.iter().filter(|k| o.contains_key(**k)) {
+            eprintln!("fayde: warning: --{k} applies to --image: ignored");
+        }
+        let path = &o["sources"];
+        let list = read_sources(path).map_err(|e| wrong_kind(path, "--sources", e))?;
+        fayde_api::use_trail(&mut opts, list.trail);
+        let built = build_request(list.sources, (list.width, list.height), &opts)?;
+        let (solver, operation) = start(&built.warnings)?;
+        let report = solver.run(&built, &operation);
+        (built, report)
     };
-    let mut report = report;
-    if let Some(d) = detection {
-        report.json["detection"] = d;
-    }
-    // Every outcome, a solver error included, is a JSON report on stdout, so callers parse
-    // them the same way; an error also exits non-zero. The report goes out before the output
-    // file is touched: whatever happens to the file, the caller has the result.
     crate::out(&serde_json::to_string_pretty(&report.json).expect("json"))?;
     if let Some(path) = out_path {
         match &report.solution {
@@ -224,7 +241,7 @@ fn run_at(o: &HashMap<String, String>) -> Result<(), String> {
         }
     }
     let opts = request_options(o)?;
-    let solver = Solver::open(o.get("ucac4").ok_or("--ucac4 is required")?, &[])?;
+    let solver = Solver::open(&crate::ucac4_dir(o)?, &[])?;
     let path = o.get("wcs").ok_or("--wcs is required")?;
     let f = FitsFile::open(path).map_err(|e| format!("{path}: {e}"))?;
     let wcs = Wcs::from_header(&f.primary().header).map_err(|e| format!("{path}: {e}"))?;
@@ -244,53 +261,6 @@ fn run_at(o: &HashMap<String, String>) -> Result<(), String> {
     Ok(())
 }
 
-/// The request options from the command line; the header and profile are read from their files.
-/// The sources: from `--sources` (a source list), or detected in `--image` (exactly one of
-/// them). With an image, also the image (for its header) and the detection summary.
-#[allow(clippy::type_complexity)]
-fn load_sources(
-    o: &HashMap<String, String>,
-) -> Result<
-    (
-        Vec<fayde_solve::Source>,
-        (Option<u32>, Option<u32>),
-        Option<fayde_fits::Image>,
-        Option<serde_json::Value>,
-    ),
-    String,
-> {
-    match (o.get("sources"), o.get("image")) {
-        (Some(_), Some(_)) => Err("give --sources or --image, not both".into()),
-        (None, None) => {
-            Err("--sources (a source list) or --image (a FITS image) is required".into())
-        }
-        (Some(path), None) => {
-            for k in DETECT_OPTIONS.iter().filter(|k| o.contains_key(**k)) {
-                eprintln!("fayde: warning: --{k} applies to --image: ignored");
-            }
-            let list = read_sources(path).map_err(|e| wrong_kind(path, "--sources", e))?;
-            Ok((list.sources, (list.width, list.height), None, None))
-        }
-        (None, Some(path)) => {
-            let image = fayde_fits::read_image(path).map_err(|e| wrong_kind(path, "--image", e))?;
-            let (sources, mut report) = fayde_api::detect_sources(&image, &detect_options(o)?)
-                .map_err(|e| format!("{path}: {e}"))?;
-            // The solve report carries the summary; the per-source list is `fayde detect`'s.
-            if let Some(m) = report.as_object_mut() {
-                m.remove("sources");
-                m.remove("rejected");
-            }
-            let size = (
-                u32::try_from(image.width).ok(),
-                u32::try_from(image.height).ok(),
-            );
-            Ok((sources, size, Some(image), Some(report)))
-        }
-    }
-}
-
-/// The error for a file given to `option` that could not be read as such. When the file holds
-/// the other kind (an image given as a source list, or the reverse) the message says so.
 pub(crate) fn wrong_kind(path: &str, option: &str, e: fayde_fits::FitsError) -> String {
     use fayde_fits::FileKind;
     let kind = fayde_fits::FitsFile::open(path)
@@ -342,6 +312,15 @@ pub(crate) fn detect_options(
         saturation: num(o, "saturation")?,
         gain: num(o, "gain")?,
         max_sources: num(o, "max-sources")?,
+        trail_angle: match (
+            num::<f64>(o, "trail-length")?,
+            num::<f64>(o, "trail-angle")?,
+        ) {
+            (_, Some(a)) => Some(a),
+            (Some(_), None) => return Err("--trail-length needs --trail-angle".into()),
+            (None, None) => None,
+        },
+        points_only: false,
     })
 }
 

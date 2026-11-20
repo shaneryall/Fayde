@@ -66,7 +66,7 @@ To compare your index with the expected hash, follow these steps:
    fayde index info allsky-1.0.fidx
    ```
 
-2. Compare the `content_hash` field in the output with the table below.
+2. Compare the `content_hash` field in the output with the following table.
 
 An index's bytes and hash don't depend on the platform or build profile. Fayde uses
 `fayde_core::Portable` for all its math. Builds from the full UCAC4 catalog with the commands

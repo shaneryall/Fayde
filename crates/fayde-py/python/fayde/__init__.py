@@ -141,10 +141,6 @@ def _json_scalar(v: Any) -> Any:
     return v
 
 
-# Options of source detection (images only).
-_DETECT_OPTIONS = ("fwhm", "detect_threshold", "saturation", "gain", "max_sources")
-
-
 def _image_args(image: Any) -> "tuple[Optional[str], Optional[bytes], int, int, Any]":
     """(path, float32 bytes, width, height, header) for the native calls.
 
@@ -173,13 +169,20 @@ def _image_args(image: Any) -> "tuple[Optional[str], Optional[bytes], int, int, 
 def detect(image: Any, **options: Any) -> DetectReport:
     """Find stars in an image: a FITS path, a 2-D array (row 0 = FITS row 1) or an Astropy HDU.
 
-    Options: ``fwhm`` (px; default measured), ``detect_threshold`` (σ of a peak; default: the
-    level that lets one noise peak through per frame, about 5), ``saturation`` and ``gain``
-    (default: the header's ``SATURATE``, ``GAIN``/``EGAIN``), ``max_sources`` (default 2000),
-    ``header`` (dict or cards, for an array). Returns the report ``fayde detect`` prints:
-    settings, background, noise, ``sources`` (the stars, with FITS 1-based ``x``, ``y``,
-    ``sigma_px``, ``flux``, ``p_star`` and ``class``), ``streaks`` (ends, angle, width, flux)
-    and ``rejected`` (hot pixels, cosmic-ray hits, anything on a streak).
+    Options: ``fwhm`` (px; default measured), ``detect_threshold`` (σ of a peak, at least 1.5;
+    default: the level that lets one noise peak through per frame, about 5), ``saturation`` and
+    ``gain`` (default: the header's ``SATURATE``, ``GAIN``/``EGAIN``), ``max_sources`` (default
+    2000), ``trail_angle`` (degrees from +x towards +y: the expected direction of star trails,
+    to choose among directions), ``no_trails`` (measure every star as a point, even when the
+    stars are trails) and ``header`` (dict or cards, for an array). Returns the report
+    ``fayde detect`` prints: settings, background, noise, ``mode`` (``"points"``, ``"trails"``,
+    ``"kernel"``, or ``"refused"``) with ``census``, ``trail``, and ``kernel``, ``sources`` (the stars, with FITS 1-based
+    ``x``, ``y``, ``sigma_px``, ``flux``, ``p_star`` and ``class``), ``streaks`` (ends, angle,
+    width, flux) and ``rejected`` (hot pixels, cosmic-ray hits, anything on a streak, point-like
+    objects in a trailed frame).
+
+    To solve the sources, pass the report to :meth:`Solver.solve_detection`; its positions are
+    1-based, which :meth:`Solver.solve` takes only with ``origin=1``.
     """
     path, data, w, h, header = _image_args(image)
     if header is not None and options.get("header") is None:
@@ -211,17 +214,55 @@ def _options(options: Dict[str, Any]) -> Dict[str, Any]:
 class Solver:
     """A UCAC4 catalogue and pattern indexes, opened once and reused.
 
-    ``ucac4`` is the UCAC4 directory (holding ``u4b/``, optionally ``u4i/``); ``indexes`` the
-    ``.fidx`` files used by :meth:`solve`. Thread-safe: the GIL is released while solving.
+    ``ucac4`` is the UCAC4 directory (holding ``u4b/``, optionally ``u4i/``); by default the
+    ``FAYDE_UCAC4`` environment variable. ``indexes`` are the ``.fidx`` files used by
+    :meth:`solve`. Thread-safe: the GIL is released while solving.
     """
 
-    def __init__(self, ucac4: "str | os.PathLike[str]", indexes: Iterable["str | os.PathLike[str]"] = ()):
+    def __init__(
+        self,
+        ucac4: "str | os.PathLike[str] | None" = None,
+        indexes: Iterable["str | os.PathLike[str]"] = (),
+    ):
+        if ucac4 is None:
+            ucac4 = os.environ.get("FAYDE_UCAC4") or None
+            if ucac4 is None:
+                raise ValueError("give the UCAC4 directory, or set FAYDE_UCAC4 to it")
         self._native = _native.Solver(os.fspath(ucac4), [os.fspath(p) for p in indexes])
 
     def solve(self, x: Sequence[float], y: Sequence[float], **options: Any) -> Report:
         """Solve a source list. Returns the report; ``report["solved"]`` says whether it solved
         (an abstention has ``reason``, ``best_log_odds``, ``hypotheses_tested``, ``search``)."""
         return self._run("solve", x, y, options)
+
+    def solve_detection(self, detection: DetectReport, **options: Any) -> Report:
+        """Solve the sources of a :func:`detect` report: their 1-based positions, fluxes,
+        errors, star probabilities and truncation, and the stars' trail when the report found
+        one (unless ``trail_length`` and ``trail_angle`` are given). Takes :meth:`solve`'s
+        options; pass the image's ``header`` for its priors."""
+        sources = detection["sources"]
+        trail = detection.get("trail")
+        if trail is not None and "trail_length" not in options and "trail_angle" not in options:
+            options = dict(
+                options, trail_length=trail["length_px"], trail_angle=trail["angle_deg"]
+            )
+        image = detection.get("image")
+        if image is not None:
+            options.setdefault("width", image["width"])
+            options.setdefault("height", image["height"])
+        return self._run(
+            "solve",
+            [s["x"] for s in sources],
+            [s["y"] for s in sources],
+            dict(
+                options,
+                origin=1,
+                flux=[s["flux"] for s in sources],
+                sigma_px=[s["sigma_px"] for s in sources],
+                p_star=[s["p_star"] for s in sources],
+                truncated=[s["truncated"] for s in sources],
+            ),
+        )
 
     def solve_image(self, image: Any, **options: Any) -> Report:
         """Find the stars in an image and solve: ``image`` is a FITS path, a 2-D array or an
@@ -236,7 +277,7 @@ class Solver:
             data,
             w,
             h,
-            json.dumps(self._options(options), allow_nan=False, default=_json_scalar),
+            json.dumps(_options(options), allow_nan=False, default=_json_scalar),
         )
         report = cast(Report, json.loads(text))
         if error:
@@ -275,7 +316,7 @@ class Solver:
         """
         if (x is None) != (y is None) or (ra is None) != (dec is None):
             raise ValueError("give x with y, and ra with dec")
-        opts = self._options(dict(options, wcs=wcs))
+        opts = _options(dict(options, wcs=wcs))
         text, error = self._native.at(
             _required("x", x),
             _required("y", y),
@@ -290,15 +331,12 @@ class Solver:
             raise FaydeError(cast(Dict[str, Any], at))
         return at
 
-    def _options(self, options: Dict[str, Any]) -> Dict[str, Any]:
-        return _options(options)
-
     def _run(self, mode: str, x: Any, y: Any, options: Dict[str, Any]) -> Report:
         flux = _floats("flux", options.pop("flux", None))
         sigma_px = _floats("sigma_px", options.pop("sigma_px", None))
         p_star = _floats("p_star", options.pop("p_star", None))
         truncated = _bools("truncated", options.pop("truncated", None))
-        opts = self._options(options)
+        opts = _options(options)
         text, error = self._native.run(
             mode,
             _required("x", x),

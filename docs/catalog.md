@@ -87,3 +87,7 @@ UCAC4/
 When a Fayde command has a `--ucac4` option, give it the path to the `UCAC4` directory, which
 is the directory that contains `u4b`. Download all 900 zone files, because Fayde reports an
 error when a zone that it needs is missing.
+
+To leave out `--ucac4`, set the `FAYDE_UCAC4` environment variable to the path to the `UCAC4`
+directory. For more information about this variable, see
+[Set the catalog directory once](usage.md#set-the-catalog-directory-once).

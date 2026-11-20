@@ -1,14 +1,16 @@
-use fayde_api::{build_request, detect_sources, DetectOptions, RequestOptions};
+use fayde_api::{
+    build_request, detect_sources, detected_trail, retry_as_points, DetectOptions, RequestOptions,
+};
 use fayde_catalog::{memory::MemoryCatalog, Star};
 use fayde_core::{to_arcsec, PixelPos, Portable, SkyPos, UnitVector};
-use fayde_detect::synth::{Psf, Rng, Scene, Star as Point, Streak};
+use fayde_detect::synth::{Psf, Rng, Scene, Star as Point, Streak, Trail};
 use fayde_fits::Image;
 use fayde_solve::{solve, Outcome};
 use fayde_wcs::Header;
 use fayde_wcs::TanWcs;
 
 const SIZE: usize = 1024;
-const SCALE: f64 = 3.0; // arcsec per pixel
+const SCALE: f64 = 3.0;
 
 fn sky(centre: SkyPos, radius_deg: f64, rng: &mut Rng) -> Vec<Star> {
     let r = radius_deg.to_radians();
@@ -241,4 +243,126 @@ fn undersampled_stars_solve_too() {
     let f = frame(310.0, 60.0, 270.0, Psf::Gaussian(0.6), 13);
     let worst = solve_frame(&f, 310.0, 60.0, "gaussian 0.6 px");
     assert!(worst < 0.3, "{worst}″");
+}
+
+#[test]
+fn a_trailed_frame_solves_from_its_pixels() {
+    let mut f = frame(140.0, -20.0, 70.0, Psf::Gaussian(1.3), 14);
+    f.scene.trail = Some(Trail {
+        length: 30.0,
+        angle: 0.6,
+    });
+    f.scene.movers.push(Point {
+        x: 512.3,
+        y: 511.8,
+        flux: 50_000.0,
+    });
+    let pixels = f.scene.render(14 ^ 0x5eed);
+    let image = Image {
+        width: SIZE,
+        height: SIZE,
+        data: pixels,
+        header: Header::default(),
+        hdu: 0,
+    };
+    let (sources, report) = detect_sources(&image, &DetectOptions::default()).unwrap();
+    assert_eq!(report["mode"], "trails", "{}", report["census"]);
+    let (len, angle) = detected_trail(&report).expect("a trail");
+    assert!((len / 30.0 - 1.0).abs() < 0.03, "{len}");
+    assert!((angle - 0.6f64.to_degrees()).abs() < 0.3, "{angle}");
+    assert!(report["classes"]["point"].as_u64().unwrap() >= 1);
+    assert!(sources
+        .iter()
+        .all(|s| (s.x - 512.3).phypot(s.y - 511.8) > 3.0));
+    let opts = RequestOptions {
+        ra: Some(140.2),
+        dec: Some(-20.2),
+        radius: Some(1.0),
+        scale: Some(SCALE * 1.004),
+        scale_sigma: Some(0.01),
+        trail_length: Some(len),
+        trail_angle: Some(angle),
+        ..RequestOptions::default()
+    };
+    let built = build_request(sources, (Some(SIZE as u32), Some(SIZE as u32)), &opts).unwrap();
+    let out = solve(&built.request, &f.catalog).unwrap();
+    let Outcome::Solved(sol) = out else {
+        panic!("{out:?}");
+    };
+    let edge = SIZE as f64 - 1.0;
+    let worst = [
+        (0.0, 0.0),
+        (edge, 0.0),
+        (0.0, edge),
+        (edge, edge),
+        (edge / 2.0, edge / 2.0),
+    ]
+    .iter()
+    .map(|&(x, y)| {
+        let p = PixelPos::new(x, y);
+        to_arcsec(sol.wcs.pixel_to_sky(p).separation(f.truth.pixel_to_sky(p)))
+    })
+    .fold(0.0f64, f64::max);
+    eprintln!(
+        "trailed: {} matches, rms {:.3} px, worst sky error {worst:.3}″",
+        sol.matches.len(),
+        sol.rms_px
+    );
+    assert!(worst < 1.0, "{worst}″");
+}
+#[test]
+fn a_curved_frame_solves_from_exposure_averaged_positions() {
+    let mut f = frame(140.0, -20.0, 70.0, Psf::Gaussian(0.9), 14);
+    let (sin, cos) = 0.40_f64.psin_cos();
+    for star in std::mem::take(&mut f.scene.stars) {
+        for i in 0..40 {
+            let t = (i as f64 + 0.5) / 40.0;
+            let u = 40.0 * t.min(0.5) - 15.0;
+            let v = 40.0 * (t - 0.5).max(0.0) - 5.0;
+            f.scene.stars.push(Point {
+                x: star.x + cos * u - sin * v,
+                y: star.y + sin * u + cos * v,
+                flux: 3.0 * star.flux / 40.0,
+            });
+        }
+    }
+    let image = Image {
+        width: SIZE,
+        height: SIZE,
+        data: f.scene.render(42),
+        header: Header::default(),
+        hdu: 0,
+    };
+    let (sources, report) = detect_sources(&image, &DetectOptions::default()).unwrap();
+    assert_eq!(report["mode"], "kernel", "{}", report["census"]);
+    assert_eq!(report["kernel"]["regions"], 1);
+    assert!(report["kernel"]["bend_px"].as_f64().unwrap() > 3.0);
+    assert!(detected_trail(&report).is_none());
+    assert!(retry_as_points(&report));
+
+    let opts = RequestOptions {
+        ra: Some(140.2),
+        dec: Some(-20.2),
+        radius: Some(1.0),
+        scale: Some(SCALE),
+        scale_sigma: Some(0.01),
+        ..RequestOptions::default()
+    };
+    let built = build_request(sources, (Some(SIZE as u32), Some(SIZE as u32)), &opts).unwrap();
+    let out = solve(&built.request, &f.catalog).unwrap();
+    let Outcome::Solved(sol) = out else {
+        panic!("{out:?}");
+    };
+    let edge = SIZE as f64 - 1.0;
+    for (x, y) in [
+        (0.0, 0.0),
+        (edge, 0.0),
+        (0.0, edge),
+        (edge, edge),
+        (edge / 2.0, edge / 2.0),
+    ] {
+        let p = PixelPos::new(x, y);
+        let error = to_arcsec(sol.wcs.pixel_to_sky(p).separation(f.truth.pixel_to_sky(p)));
+        assert!(error < 0.3 * SCALE, "{error} arcsec at ({x}, {y})");
+    }
 }

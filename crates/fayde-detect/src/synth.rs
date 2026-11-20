@@ -35,6 +35,12 @@ pub struct Streak {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Trail {
+    pub length: f64,
+    pub angle: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Stray {
     pub x: f64,
     pub y: f64,
@@ -54,14 +60,7 @@ pub struct Cosmic {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Psf {
     Gaussian(f64),
-    /// A Moffat profile `(1 + r²/α²)^−β` with this full width at half maximum, pixels, and β
-    /// (atmospheric seeing is close to β = 2.5 to 4), sampled on a 5 × 5 grid per pixel.
-    Moffat {
-        /// Full width at half maximum, pixels.
-        fwhm: f64,
-        /// Wing exponent.
-        beta: f64,
-    },
+    Moffat { fwhm: f64, beta: f64 },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -75,6 +74,8 @@ pub struct Scene {
     pub saturation: Option<f64>,
     pub psf: Psf,
     pub stars: Vec<Star>,
+    pub trail: Option<Trail>,
+    pub movers: Vec<Star>,
     pub streaks: Vec<Streak>,
     pub hot: Vec<(usize, usize, f64)>,
     pub stray: Option<Stray>,
@@ -94,6 +95,8 @@ impl Scene {
             saturation: None,
             psf: Psf::Gaussian(1.5),
             stars: Vec::new(),
+            trail: None,
+            movers: Vec::new(),
             streaks: Vec::new(),
             hot: Vec::new(),
             stray: None,
@@ -127,13 +130,33 @@ impl Scene {
             })
             .collect();
         let floor = 0.02 * self.sky_noise();
+        let sigma = self.psf_sigma();
+        let trailed = self.trail.filter(|t| t.length > 0.0);
         for s in &self.stars {
+            if let Some(t) = trailed {
+                let (sn, cs) = t.angle.psin_cos();
+                let (hx, hy) = (0.5 * t.length * cs, 0.5 * t.length * sn);
+                let seg = Streak {
+                    x0: s.x - hx,
+                    y0: s.y - hy,
+                    x1: s.x + hx,
+                    y1: s.y + hy,
+                    flux_per_px: s.flux / t.length,
+                };
+                add_streak(&mut img, w, h, &seg, sigma);
+                continue;
+            }
             match self.psf {
                 Psf::Gaussian(sigma) => add_gaussian(&mut img, w, h, s, sigma, floor),
                 Psf::Moffat { fwhm, beta } => add_moffat(&mut img, w, h, s, fwhm, beta, floor),
             }
         }
-        let sigma = self.psf_sigma();
+        for s in &self.movers {
+            match self.psf {
+                Psf::Gaussian(sigma) => add_gaussian(&mut img, w, h, s, sigma, floor),
+                Psf::Moffat { fwhm, beta } => add_moffat(&mut img, w, h, s, fwhm, beta, floor),
+            }
+        }
         for t in &self.streaks {
             add_streak(&mut img, w, h, t, sigma);
         }
@@ -300,6 +323,26 @@ mod tests {
         });
         let sum: f64 = sc.model().iter().sum();
         assert!((sum / 5000.0 - 1.0).abs() < 1e-3, "{sum}");
+        sc.streaks.clear();
+        sc.psf = Psf::Gaussian(1.3);
+        sc.trail = Some(Trail {
+            length: 20.0,
+            angle: 0.7,
+        });
+        sc.stars.push(Star {
+            x: 31.2,
+            y: 30.6,
+            flux: 1e4,
+        });
+        let model = sc.model();
+        let sum: f64 = model.iter().sum();
+        assert!((sum / 1e4 - 1.0).abs() < 1e-3, "{sum}");
+        let (mut mx, mut my) = (0.0, 0.0);
+        for (i, v) in model.iter().enumerate() {
+            mx += v * (i % 64) as f64;
+            my += v * (i / 64) as f64;
+        }
+        assert!((mx / sum - 31.2).abs() < 0.01 && (my / sum - 30.6).abs() < 0.01);
     }
 
     #[test]

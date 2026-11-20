@@ -24,8 +24,8 @@ pytestmark = pytest.mark.skipif(
 )
 
 CRVAL = (150.0, 2.0)
-SCALE = 1.5  # arcsec/px
-ROLL = 20.0  # deg
+SCALE = 1.5
+ROLL = 20.0
 SIZE = 700
 
 
@@ -264,7 +264,7 @@ def test_stars_at(solver, frame):
     assert len(at["positions"]) == 10
     assert at["consistent"] == 10, [p["stars"][:1] for p in at["positions"]]
     p0 = at["positions"][0]
-    assert abs(p0["pixel"][0] - 1 - x[0]) < 1e-6  # FITS 1-based out, 0-based in
+    assert abs(p0["pixel"][0] - 1 - x[0]) < 1e-6
     assert p0["stars"][0]["p_consistent"] > 0.0027
     ra, dec = p0["ra_deg"], p0["dec_deg"] + 40 / 3600
     off = solver.stars_at(cards, ra=[ra], dec=[dec], epoch=2000.0, search_radius_arcsec=120)
@@ -275,7 +275,8 @@ def test_stars_at(solver, frame):
         solver.solve(x, y, max_stars=2, **PRIORS)
 
 
-def test_solve_image(solver, frame):
+@pytest.mark.parametrize("with_trails", [False, True], ids=["points", "point-retry"])
+def test_solve_image(solver, frame, with_trails):
     np = pytest.importorskip("numpy")
     x, y, flux = frame
     rng = np.random.default_rng(3)
@@ -285,9 +286,32 @@ def test_solve_image(solver, frame):
     for sx, sy, f in zip(x, y, flux):
         amp = 4e5 * f / max(flux)
         img += amp / (2 * math.pi * sig**2) * np.exp(-((xx - sx) ** 2 + (yy - sy) ** 2) / (2 * sig**2))
+    if with_trails:
+        spots = list(zip(x, y))
+        for _ in range(80):
+            for _ in range(100):
+                sx, sy = rng.uniform(30, SIZE - 30, 2)
+                if all(abs(sx - px) > 30 or abs(sy - py) > 10 for px, py in spots):
+                    break
+            else:
+                pytest.fail("could not place a trail clear of the stars")
+            spots.append((sx, sy))
+            along = np.maximum(np.abs(xx - sx) - 12, 0)
+            img += 2000 * np.exp(-((yy - sy) ** 2 + along**2) / (2 * 1.3**2))
     r = solver.solve_image(img, **PRIORS)
     assert r["solved"], r.get("reason")
     assert abs(r["pixel_scale_arcsec"] - SCALE) / SCALE < 1e-3
     assert r["detection"]["count"] >= 20
     assert "sources" not in r["detection"] and "rejected" not in r["detection"]
-    assert r["detection"]["streaks"] == []
+    assert r["detection"]["mode"] == "points"
+    if with_trails:
+        assert r["retried_as_points"]["solved"] is True
+        assert any(stage["stage"].startswith("trails detection: ") for stage in r["search"])
+        assert sum(stage["hypotheses"] for stage in r["search"]) == r["hypotheses_tested"]
+        exhausted = solver.solve_image(img, **dict(PRIORS, max_hypotheses=1))
+        assert exhausted["hypotheses_tested"] == 1
+        assert "retried_as_points" not in exhausted
+        assert r["retried_as_points"]["trails_census"]["mode_votes"] > 0
+    else:
+        assert "retried_as_points" not in r
+        assert r["detection"]["streaks"] == []

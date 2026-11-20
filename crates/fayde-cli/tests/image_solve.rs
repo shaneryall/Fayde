@@ -7,8 +7,8 @@ use fayde_wcs::TanWcs;
 use serde_json::Value;
 
 const W: usize = 512;
-const SCALE: f64 = 3.0; // arcsec/px
-const ROLL: f64 = 23.0; // deg
+const SCALE: f64 = 3.0;
+const ROLL: f64 = 23.0;
 const CENTRE: (f64, f64) = (150.05, 1.98);
 
 fn ucac4_dir() -> PathBuf {
@@ -181,14 +181,44 @@ fn solves_a_raw_image_from_its_own_header_and_detect_writes_a_usable_list() {
         &[
             "CTYPE1  = 'RA---TAN'".into(),
             "CTYPE2  = 'DEC--TAN'".into(),
-            format!("CRVAL1  = {:>20}", CENTRE.0 + 0.05),
+            format!("CRVAL1  = {:>20}", CENTRE.0 + 0.4),
             format!("CRVAL2  = {:>20}", CENTRE.1 + 0.03),
-            format!("CRPIX1  = {:>20}", 256.5),
+            format!("CRPIX1  = {:>20}", 256.5 - 0.4 / s),
             format!("CRPIX2  = {:>20}", 256.5),
             format!("CDELT1  = {:>20}", -s),
             format!("CDELT2  = {:>20}", s),
         ],
     );
+    let original = std::fs::read(&img).unwrap();
+    let block = |cards: &[&str]| {
+        let mut bytes: Vec<u8> = cards
+            .iter()
+            .flat_map(|card| format!("{card:<80}").into_bytes())
+            .collect();
+        bytes.resize(2880, b' ');
+        bytes
+    };
+    let mut file = block(&[
+        "SIMPLE  = T",
+        "BITPIX  = 8",
+        "NAXIS   = 0",
+        "EXTEND  = T",
+        "DATE-OBS= '2025-01-01T00:00:00'",
+        "CRVAL1  = 12.",
+        "END",
+    ]);
+    let mut cards: Vec<_> = original[..2880]
+        .chunks_exact(80)
+        .map(|c| std::str::from_utf8(c).unwrap().trim_end())
+        .take_while(|&c| c != "END")
+        .filter(|c| !c.starts_with("DATE-OBS"))
+        .collect();
+    cards[0] = "XTENSION= 'IMAGE   '";
+    cards.splice(5..5, ["PCOUNT  = 0", "GCOUNT  = 1"]);
+    cards.push("END");
+    file.extend(block(&cards));
+    file.extend_from_slice(&original[2880..]);
+    std::fs::write(&img, file).unwrap();
     let u = ucac4_dir();
     let (r, status, err) = fayde(&[
         "solve",
@@ -203,10 +233,8 @@ fn solves_a_raw_image_from_its_own_header_and_detect_writes_a_usable_list() {
     ]);
     assert!(status.success(), "{err}");
     check_solution(&r);
-    assert!(r["priors"]["pointing"]["origin"]
-        .as_str()
-        .unwrap()
-        .contains("CRVAL"));
+    assert_eq!(r["priors"]["pointing"]["origin"], "WCS image centre");
+    assert_eq!(r["detection"]["image"]["hdu"], 1);
 
     let xy = d.join("frame.sources.fits");
     let (det, status, err) = fayde(&[
@@ -235,6 +263,17 @@ fn solves_a_raw_image_from_its_own_header_and_detect_writes_a_usable_list() {
     assert!(status.success(), "{err}");
     check_solution(&r2);
     assert_eq!(r2["crval_deg"], r["crval_deg"]);
+    let solution = d.join("reference.wcs");
+    fayde_fits::write_wcs_file(&solution, &truth().to_cards()).unwrap();
+    let frames = d.join("frames.tsv");
+    std::fs::write(
+        &frames,
+        format!("{}\t{}\n", img.display(), solution.display()).repeat(5),
+    )
+    .unwrap();
+    let (profile, status, err) = fayde(&["calibrate", "--solved", frames.to_str().unwrap()]);
+    assert!(status.success(), "{err}");
+    assert_eq!(profile["calibration"]["frames"], 5);
     let _ = std::fs::remove_dir_all(&d);
 }
 

@@ -20,8 +20,8 @@ saturated stars, stray light. Output: what the solver's input contract asks of a
 | `truncated` | The fit window reaches the frame edge |
 
 Streaks are traced and reported (ends, angle, width, flux), and every detection on one is kept
-out of the star list. Frames whose stars are trailed (tracking a satellite) are out of scope:
-their star list still comes from the host's own detector, as before.
+out of the star list. Frames whose stars are trailed (tracking a satellite) are handled by a
+second pass, designed in [`streak-detection.md`](streak-detection.md).
 
 Design targets, in order: no parameter the user must know (star width, noise and threshold
 are measured or derived; gain is read from the header when it is there); robust to cosmic rays
@@ -87,25 +87,26 @@ noise correlation.
 - Between tile centres the values are bilinear; beyond the outermost centres the background is
   extrapolated in a straight line, so a gradient running off the frame is followed to the edge.
 
-**Clipped sky.** If at least a quarter of the valid raw pixels equal the frame minimum, Fayde
-checks the distribution of those pixels in each tile. A tile is padding if at least 99% of its
-valid pixels equal the floor, or if transitions between floor and above-floor pixels occur at
-most a quarter as often as in a random mix. The detector checks the transition rate in tiles
+If at least a quarter of the valid raw pixels equal the frame minimum, Fayde checks the
+distribution of those pixels in each tile. A tile is padding if at least 99% of its valid
+pixels equal the floor, or if transitions between floor and above-floor pixels occur at most
+a quarter as often as in a random mix. The detector checks the transition rate in tiles
 with at least eight floor pixels.
 
-Fayde uses the clipped-sky model when more than half of the sky tiles with at least 24 valid
-pixels yield a fit. To fit a tile, at least a quarter of its valid pixels must be at the floor
-and at least 16 must be above it. The singly left-censored normal fit uses the floor fraction
-and an empirical quantile near the middle of the surviving values. Tiles without a fit use the
-frame's typical fit. When the model applies, floor pixels in padding tiles are undefined for
-detection. Otherwise, Fayde uses the standard filtered mesh.
+Fayde uses the clipped-sky model when more than half of the sky tiles with at least 24
+valid pixels yield a fit. To fit a tile, at least a quarter of its valid pixels must be
+at the floor and at least 16 must be above it. The singly left-censored normal fit uses
+the floor fraction and an empirical quantile near the middle of the surviving values.
+Tiles without a fit use the frame's typical fit. When the model applies, floor pixels in
+padding tiles are undefined for detection. Otherwise, Fayde uses the standard filtered
+mesh.
 
-The fit estimates the sky before clipping. Its clipped moments give the background and noise of
-the recorded pixels. Fayde propagates these through the point filter and accounts for the skew
-of the filtered noise when setting the peak threshold. On a simulated frame of 100 stars with
-90% of the sky clipped at zero, 95 of 579 detections were stars before; with the model, 100 of
-100, and every star is found. On 35 real frames with 25–36% of their pixels at zero, every frame
-still solves and the fit residual fell on 31 of them (median 0.40 to 0.35 px).
+The fit estimates the sky before clipping. Its clipped moments give the background and noise
+of the recorded pixels. Fayde propagates these through the point filter and accounts for the
+skew of the filtered noise when setting peak and census thresholds. The trail pass uses the
+same sky model for raw-pixel fits and to set a minimum noise scale for the aimed filter. On a
+clipped frame, the automatic trail threshold is at least 5σ, and a trail center must be on the
+frame and have an along-trail uncertainty within one FWHM across the trail.
 
 ### 3.3 Star width
 
@@ -155,6 +156,7 @@ one σ. Saturated stars are exempt.
 | `saturated` | Top at the saturation level (given, from the header, or the level of flat tops at the frame's brightest) | yes, `p` × 0.9 |
 | `extended` | Elongated over 1.5 times the stars' own axis ratio, or over twice the stars' variance, beyond the fit's noise | yes, `p` × 0.5 |
 | `streak` | On a traced streak | no |
+| `point` | Point-like in a frame whose stars are trails (the tracked object): [`streak-detection.md`](streak-detection.md) | no |
 | `star` | The rest | yes |
 
 A saturated star's centre is the mean position of the *core* of its saturated region: the
@@ -265,7 +267,7 @@ header pointing (2° radius) and a scale prior:
 | | |
 |---|---|
 | Solved | 109 of 109 |
-| Detection time | 2.0 ms per frame (median) |
+| Detection time | 2.0 ms per frame (median). A later run measured 2.2 ms, and 3.0 ms with the trail census ([`streak-detection.md`](streak-detection.md) §7) |
 | Matched stars | 181 (median) |
 | Residual | 0.40 px RMS (median) |
 | Error scale fitted by the solver | 1.58 (median): on these frames the claimed errors are too small by that factor, with or without the gain |
@@ -300,5 +302,5 @@ where they differ by 10″, this detector's solution has a residual of 1.5 px an
 4. Undersampled stars (σ under 0.7 px): errors about 1.3 times the claim.
 5. One thread. The filter and the scan split into strips without changing the result.
 6. FITS images only (8 to 64-bit integers and floats); tile-compressed images are not read.
-7. Trailed stars (tracking a satellite) are out of scope here. The streak tracer does find star
-   trails, and turning them into sources with `Frame::trail` is a possible extension.
+7. Trailed stars (from a telescope tracking a satellite) are handled by a second pass:
+   [`streak-detection.md`](streak-detection.md) §7.

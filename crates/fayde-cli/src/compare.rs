@@ -133,8 +133,7 @@ pub(crate) fn run(args: &[&str]) -> Result<(), String> {
         .map(|p| InstrumentProfile::load(p).map_err(|e| format!("{p}: {e}")))
         .transpose()?;
     let deadline = Some(seconds(&o, "deadline")?.unwrap_or(std::time::Duration::from_secs(60)));
-    let cat = Ucac4Catalog::open(o.get("ucac4").ok_or("--ucac4 is required")?)
-        .map_err(|e| e.to_string())?;
+    let cat = Ucac4Catalog::open(crate::ucac4_dir(&o)?).map_err(|e| e.to_string())?;
     let paths = index_paths(&o);
     if paths.is_empty() && !hinted_only {
         return Err("--index is required (the blind run needs one; or give --hinted-only)".into());

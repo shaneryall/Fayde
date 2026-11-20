@@ -39,8 +39,16 @@ The command prints a JSON report to standard output.
 To list the commands, run `fayde --help`. To list a command's options and default values, run
 the command with `--help`, for example `fayde solve --help`.
 
-For more information about source lists, pattern indexes, and versioning, see the
-[Fayde README](https://github.com/shaneryall/Fayde#readme).
+For more information, see the following pages:
+
+- Priors and the report:
+  [Use the command line](https://github.com/shaneryall/Fayde/blob/main/docs/usage.md)
+- Source lists:
+  [Source list format](https://github.com/shaneryall/Fayde/blob/main/docs/source-list.md)
+- Pattern indexes:
+  [Pattern indexes for sub-degree fields](https://github.com/shaneryall/Fayde/blob/main/docs/index-set.md)
+- Versioning:
+  [Versioning](https://github.com/shaneryall/Fayde/blob/main/docs/versioning.md)
 
 ## License
 

@@ -79,8 +79,9 @@ following actions:
 
 1. Runs the same checks as continuous integration.
 2. Builds the `fayde` command for Linux (x86_64 and 64-bit Arm, glibc 2.17 or later), macOS
-   (Apple silicon and Intel), and Windows (x86_64). Each archive also contains the license files,
-   the index guide, and the example instrument profile.
+   (Apple silicon and Intel), and Windows (x86_64). Each archive also contains `README.md`,
+   `CHANGELOG.md`, `LICENSE`, `NOTICE`, `THIRD-PARTY-LICENSES.md`, `CITATION.cff`, the Markdown
+   pages at the top level of `docs`, and the `profiles` directory.
 3. Builds one Python wheel for each platform and one source distribution.
 4. Runs each binary and installs and tests each wheel on its own platform. It also builds a
    wheel from the source distribution and tests it.

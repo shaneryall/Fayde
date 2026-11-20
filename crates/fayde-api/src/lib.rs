@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use fayde_catalog::{ucac4::Ucac4Catalog, Catalog};
 use fayde_core::{Epoch, PixelConvention, PixelPos, Portable, SkyPos};
+use fayde_detect::FrameMode;
 use fayde_fits::{header_priors, parse_parity, InstrumentProfile};
 use fayde_index::Index;
 use fayde_solve::{
@@ -15,9 +16,11 @@ use fayde_wcs::{Header, Wcs};
 use serde_json::{json, Value};
 
 mod calibrate;
+mod image;
 
 pub use calibrate::{calibrate_profile, CalibrateOptions, SolvedFrame, CALIBRATE_MIN_FRAMES};
 pub use fayde_solve::AtPosition;
+pub use image::{ImageRequestError, PreparedImage};
 pub use serde_json;
 
 /// CLI and Python request conventions. Angles are in degrees, pixel scale in arcseconds per pixel,
@@ -257,6 +260,12 @@ pub struct Report {
     pub error: bool,
 }
 
+pub enum Operation {
+    Solve,
+    Verify(Wcs),
+    Refit(Wcs),
+}
+
 impl Solver {
     pub fn open(ucac4_dir: &str, index_paths: &[String]) -> Result<Self, String> {
         let absolute = |p: &str| {
@@ -284,7 +293,14 @@ impl Solver {
         &self.catalog
     }
 
-    /// Solve with the indexes (and the pointing / blind search the planner chooses).
+    pub fn run(&self, b: &Built, operation: &Operation) -> Report {
+        match operation {
+            Operation::Solve => self.solve(b),
+            Operation::Verify(wcs) => self.verify(b, wcs),
+            Operation::Refit(wcs) => self.refit(b, wcs),
+        }
+    }
+
     pub fn solve(&self, b: &Built) -> Report {
         let out = solve_auto(&b.request, &self.catalog, &self.indexes);
         self.outcome(out, b, true)
@@ -312,7 +328,7 @@ impl Solver {
             }),
             Err(e) => return self.failed(&e.to_string(), b, false),
         };
-        json["identity"] = self.identity(req, false);
+        json["identity"] = self.identity(req.policy.epoch, false);
         Report {
             json: with_warnings(json, b),
             solution: None,
@@ -393,7 +409,7 @@ impl Solver {
                 "search_radius_arcsec": opt.search_radius_arcsec,
                 "max_stars": opt.max_stars,
             },
-            "identity": self.identity_at(epoch),
+            "identity": self.identity(epoch, false),
         });
         Report {
             json,
@@ -404,25 +420,10 @@ impl Solver {
 
     fn at_failed(&self, reason: &str) -> Report {
         Report {
-            json: json!({"error": true, "reason": reason, "identity": self.identity_at(None)}),
+            json: json!({"error": true, "reason": reason, "identity": self.identity(None, false)}),
             solution: None,
             error: true,
         }
-    }
-
-    fn identity_at(&self, epoch: Option<Epoch>) -> Value {
-        let mut req_for_id = SolveRequest {
-            frame: Frame {
-                width: 1,
-                height: 1,
-                trail: None,
-            },
-            sources: Vec::new(),
-            priors: Priors::default(),
-            policy: Policy::default(),
-        };
-        req_for_id.policy.epoch = epoch;
-        self.identity(&req_for_id, false)
     }
 
     fn failed(&self, reason: &str, b: &Built, with_indexes: bool) -> Report {
@@ -433,7 +434,7 @@ impl Solver {
                     "error": true,
                     "reason": reason,
                     "priors": b.priors,
-                    "identity": self.identity(&b.request, with_indexes),
+                    "identity": self.identity(b.request.policy.epoch, with_indexes),
                 }),
                 b,
             ),
@@ -504,7 +505,7 @@ impl Solver {
                 None,
             ),
         };
-        json["identity"] = self.identity(req, with_indexes);
+        json["identity"] = self.identity(req.policy.epoch, with_indexes);
         Report {
             json: with_warnings(json, b),
             solution,
@@ -512,8 +513,7 @@ impl Solver {
         }
     }
 
-    /// What produced a report: Fayde version and commit, catalogue, epochs, indexes.
-    fn identity(&self, req: &SolveRequest, with_indexes: bool) -> Value {
+    fn identity(&self, epoch: Option<Epoch>, with_indexes: bool) -> Value {
         let id = self.catalog.id();
         let n = if with_indexes { self.indexes.len() } else { 0 };
         json!({
@@ -523,7 +523,7 @@ impl Solver {
                 "release": id.release,
                 "location": id.location,
                 "reference_epoch": "J2000.0",
-                "solve_epoch_julian_year": req.policy.epoch.map(|e| e.year()),
+                "solve_epoch_julian_year": epoch.map(Epoch::year),
             },
             "indexes": self.index_paths.iter().zip(&self.indexes).take(n).map(|(path, i)| {
                 let m = i.meta();
@@ -554,6 +554,8 @@ pub struct DetectOptions {
     pub saturation: Option<f64>,
     pub gain: Option<f64>,
     pub max_sources: Option<usize>,
+    pub trail_angle: Option<f64>,
+    pub points_only: bool,
 }
 
 pub const DEFAULT_MAX_SOURCES: usize = 2000;
@@ -565,6 +567,29 @@ pub fn detect_sources(
     image: &fayde_fits::Image,
     o: &DetectOptions,
 ) -> Result<(Vec<Source>, Value), String> {
+    let result = detect_image(image, o, DetectionReport::Full)?;
+    Ok((result.sources, result.report))
+}
+
+struct ImageDetection {
+    sources: Vec<Source>,
+    mode: FrameMode,
+    trail: Option<(f64, f64)>,
+    report: Value,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum DetectionReport {
+    None,
+    Summary,
+    Full,
+}
+
+fn detect_image(
+    image: &fayde_fits::Image,
+    o: &DetectOptions,
+    detail: DetectionReport,
+) -> Result<ImageDetection, String> {
     use fayde_detect::Class;
     let hdr = |keys: &[&str]| {
         keys.iter().find_map(|k| {
@@ -579,8 +604,16 @@ pub fn detect_sources(
     if o.fwhm.is_some_and(|f| !(0.5..=50.0).contains(&f)) {
         return Err("fwhm must be in [0.5, 50] px".into());
     }
-    if !positive(o.threshold) {
-        return Err("the detection threshold must be > 0".into());
+    if o.threshold
+        .is_some_and(|t| !(t.is_finite() && t >= fayde_detect::MIN_THRESHOLD))
+    {
+        return Err(format!(
+            "the detection threshold must be at least {}",
+            fayde_detect::MIN_THRESHOLD
+        ));
+    }
+    if o.trail_angle.is_some_and(|a| !a.is_finite()) {
+        return Err("the trail angle must be a number of degrees".into());
     }
     if !positive(o.saturation) || !positive(o.gain) {
         return Err("saturation and gain must be > 0".into());
@@ -593,6 +626,8 @@ pub fn detect_sources(
         saturation: saturation.map(|s| s as f32),
         gain,
         max_sources: o.max_sources.unwrap_or(DEFAULT_MAX_SOURCES),
+        trail_angle: o.trail_angle.map(f64::to_radians),
+        trails: !o.points_only,
         ..fayde_detect::DetectOptions::default()
     };
     let started = std::time::Instant::now();
@@ -610,6 +645,19 @@ pub fn detect_sources(
             s
         })
         .collect();
+    let mode = r.census.mode;
+    let trail = r.trail.and_then(|t| {
+        let angle = t.angle.to_degrees();
+        (t.length.is_finite() && angle.is_finite()).then_some((t.length, angle))
+    });
+    if detail == DetectionReport::None {
+        return Ok(ImageDetection {
+            sources,
+            mode,
+            trail,
+            report: Value::Null,
+        });
+    }
     let fits = |x: f64, y: f64| PixelConvention::Fits.from_internal(PixelPos::new(x, y));
     let finite = |v: f64| v.is_finite().then_some(v);
     let row = |d: &fayde_detect::Detected| -> Value {
@@ -617,7 +665,9 @@ pub fn detect_sources(
         let major = d.sigma_major.min(10.0 * d.sigma_minor.max(0.1));
         let mean2 = 0.5 * (d.sigma_minor * d.sigma_minor + major * major);
         json!({
-            "x": x, "y": y, "sigma_px": d.sigma_px, "flux": d.flux, "snr": d.snr,
+            "x": x, "y": y, "sigma_px": d.sigma_px,
+            "sigma_along_px": d.sigma_along, "sigma_across_px": d.sigma_across,
+            "flux": d.flux, "snr": d.snr,
             "p_star": d.p_star, "class": d.class.name(),
             "fwhm": FWHM_PER_SIGMA * mean2.sqrt(),
             "sigma_major_px": finite(d.sigma_major), "sigma_minor_px": d.sigma_minor,
@@ -625,15 +675,6 @@ pub fn detect_sources(
             "truncated": d.truncated, "saturated": d.class == Class::Saturated,
         })
     };
-    // `sources` is the list handed to the solver, in its order: `pairs[].source` of a solve
-    // report indexes it. What was set aside is listed apart.
-    let list: Vec<Value> = r.stars().map(row).collect();
-    let rejected: Vec<Value> = r
-        .sources
-        .iter()
-        .filter(|d| !d.class.is_stellar())
-        .map(row)
-        .collect();
     let count = |c: Class| r.sources.iter().filter(|s| s.class == c).count();
     let s = &r.stats;
     let mut warnings: Vec<String> = Vec::new();
@@ -646,7 +687,7 @@ pub fn detect_sources(
              saturation option)"
         ));
     }
-    let report = json!({
+    let mut report = json!({
         "image": {"width": image.width, "height": image.height, "hdu": image.hdu},
         "fwhm_px": s.psf_sigma * FWHM_PER_SIGMA,
         "fwhm_estimated": s.psf_measured,
@@ -662,7 +703,38 @@ pub fn detect_sources(
             "extended": count(Class::Extended),
             "sharp": count(Class::Sharp),
             "streak": count(Class::Streak),
+            "point": count(Class::Point),
         },
+        "mode": mode.name(),
+        "census": {
+            "reason": r.census.reason,
+            "votes": r.census.votes,
+            "mode_votes": r.census.mode_votes,
+            "mode_share": r.census.mode_share,
+            "second_share": r.census.second_share,
+            "elongated_share": r.census.elongated_share,
+            "shapes": r.census.shapes.map(|(a, l)| json!({"angle_deg": a.to_degrees(), "length_px": l})),
+            "autocovariance": r.census.autocov.map(|(a, l)| json!({"angle_deg": a.to_degrees(), "length_px": l})),
+            "regions": r.census.regions.0,
+            "region_angle_deviation_deg": r.census.regions.1.to_degrees(),
+            "region_length_deviation": r.census.regions.2,
+        },
+        "trail": r.trail.map(|t| json!({
+            "length_px": t.length,
+            "angle_deg": t.angle.to_degrees(),
+            "width_sigma_px": t.width,
+            "sigma_length_px": t.sigma_length,
+            "sigma_angle_deg": t.sigma_angle.to_degrees(),
+            "fitted": t.fitted,
+        })),
+        "kernel": r.kernel.map(|k| json!({
+            "width_px": k.width,
+            "height_px": k.height,
+            "stacked": k.stacked,
+            "path_length_px": k.path_length,
+            "bend_px": k.bend,
+            "regions": k.regions,
+        })),
         "rejected_narrow": count(Class::Sharp),
         "bin": s.bin,
         "kernel_sigma_px": s.kernel_sigma,
@@ -686,10 +758,42 @@ pub fn detect_sources(
             })
         }).collect::<Vec<_>>(),
         "warnings": warnings,
-        "sources": list,
-        "rejected": rejected,
     });
-    Ok((sources, report))
+    if detail == DetectionReport::Full {
+        report["sources"] = Value::Array(r.stars().map(row).collect());
+        report["rejected"] = Value::Array(
+            r.sources
+                .iter()
+                .filter(|d| !d.class.is_stellar())
+                .map(row)
+                .collect(),
+        );
+    }
+    Ok(ImageDetection {
+        sources,
+        mode,
+        trail,
+        report,
+    })
+}
+
+pub fn retry_as_points(detection: &Value) -> bool {
+    FrameMode::POINT_RETRY_MODES
+        .iter()
+        .any(|m| Some(m.name()) == detection["mode"].as_str())
+}
+
+pub fn use_trail(opts: &mut RequestOptions, trail: Option<(f64, f64)>) {
+    if opts.trail_length.is_none() && opts.trail_angle.is_none() {
+        if let Some((l, a)) = trail {
+            (opts.trail_length, opts.trail_angle) = (Some(l), Some(a));
+        }
+    }
+}
+
+pub fn detected_trail(report: &Value) -> Option<(f64, f64)> {
+    let t = report.get("trail")?;
+    Some((t.get("length_px")?.as_f64()?, t.get("angle_deg")?.as_f64()?))
 }
 
 pub fn header_from_json(m: &serde_json::Map<String, Value>) -> Result<Header, String> {

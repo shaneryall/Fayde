@@ -46,10 +46,27 @@ the `IMAGEW` and `IMAGEH` keywords to the dimensions in pixels. If the source li
 these keywords, Fayde takes the size from the frame header (`--header`) or from the `--width`
 and `--height` options.
 
+## Trail keywords
+
+When every star in the image is a trail of one length and direction, a source list can record
+the trail with two keywords in the table header:
+
+| Keyword | Content |
+|---|---|
+| `TRAILLEN` | The full length of the trail, in pixels |
+| `TRAILANG` | The direction of the trail, in degrees from +x toward +y |
+
+The `fayde detect` command writes both keywords when it measures the stars as trails. When you
+pass a source list that has both keywords with `--sources`, Fayde gives that trail to the
+solver, unless you give `--trail-length` and `--trail-angle`. If one of the keywords is
+missing, Fayde ignores the other.
+
 ## Write a source list
 
 In this example, `x`, `y`, and `flux` are sequences with one value for each source, and the
-image is 4,096 by 4,096 pixels. To write and solve a source list, follow these steps:
+image is 4,096 by 4,096 pixels. The `x` and `y` positions must be 1-based. If your detector
+gives 0-based positions, add 1 to each position. To write and solve a source list, follow
+these steps:
 
 1. In Python, with the `astropy` package installed, write the source list with an Astropy table:
 

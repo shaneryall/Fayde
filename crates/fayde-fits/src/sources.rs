@@ -10,6 +10,7 @@ pub struct SourceList {
     pub sources: Vec<Source>,
     pub width: Option<u32>,
     pub height: Option<u32>,
+    pub trail: Option<(f64, f64)>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -135,6 +136,16 @@ pub fn write_sources(
     width: u32,
     height: u32,
 ) -> Result<(), FitsError> {
+    write_sources_trailed(path, sources, width, height, None)
+}
+
+pub fn write_sources_trailed(
+    path: impl AsRef<Path>,
+    sources: &[Source],
+    width: u32,
+    height: u32,
+    trail: Option<(f64, f64)>,
+) -> Result<(), FitsError> {
     const ROW: usize = 8 * 5 + 1;
     let mut out = Vec::new();
     let block = |out: &mut Vec<u8>, fill: u8| {
@@ -184,6 +195,12 @@ pub fn write_sources(
         .push("COMMENT Fayde source list: X, Y in FITS pixels (first pixel centre at 1, 1)".into());
     cards.push(format!("IMAGEW  = {width:>20}"));
     cards.push(format!("IMAGEH  = {height:>20}"));
+    if let Some((len, angle)) = trail.filter(|t| t.0.is_finite() && t.1.is_finite()) {
+        cards.push(format!("TRAILLEN= {len:>20.6} / star trail length, px"));
+        cards.push(format!(
+            "TRAILANG= {angle:>20.6} / star trail angle, deg from +x towards +y"
+        ));
+    }
     cards.push("END".into());
     for c in &cards {
         out.extend(pad_card(c).bytes());
@@ -308,15 +325,40 @@ pub fn read_sources(path: impl AsRef<Path>) -> Result<SourceList, FitsError> {
             .into_iter()
             .find_map(|h| h.get(k)?.as_f64().and_then(crate::pixel_dimension))
     };
+    let num = |k: &str| {
+        hdu.header
+            .get(k)
+            .and_then(|v| v.as_f64())
+            .filter(|v| v.is_finite())
+    };
+    let trail = match (num("TRAILLEN"), num("TRAILANG")) {
+        (Some(l), Some(a)) if l >= 0.0 => Some((l, a)),
+        _ => None,
+    };
     Ok(SourceList {
         sources,
         width: dim("IMAGEW"),
         height: dim("IMAGEH"),
+        trail,
     })
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn trail_round_trip() {
+        let dir = std::env::temp_dir().join(format!("fayde-trail-rt-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("t.sources.fits");
+        let src = vec![Source::at(10.0, 20.0)];
+        super::write_sources_trailed(&path, &src, 100, 80, Some((31.5, -42.25))).unwrap();
+        let back = super::read_sources(&path).unwrap();
+        assert_eq!(back.trail, Some((31.5, -42.25)));
+        super::write_sources(&path, &src, 100, 80).unwrap();
+        assert_eq!(super::read_sources(&path).unwrap().trail, None);
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
     use super::*;
 
     fn fits(tables: &[(&[&str], Vec<u8>)]) -> Vec<u8> {

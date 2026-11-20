@@ -708,6 +708,13 @@ fn hostile_settings_and_frames_end_quickly() {
         ..DetectOptions::default()
     };
     assert!(detect(&Scene::new(512, 512).render(5), 512, 512, &too_low).is_err());
+    let noisy = DetectOptions {
+        threshold: Some(fayde_detect::MIN_THRESHOLD),
+        ..DetectOptions::default()
+    };
+    let det = detect(&Scene::new(512, 512).render(5), 512, 512, &noisy).unwrap();
+    assert!(det.sources.len() > 1000);
+    assert!(det.sources.iter().all(|d| d.flux > 0.0));
     assert!(started.elapsed().as_secs() < 60, "{:?}", started.elapsed());
 }
 
@@ -796,6 +803,7 @@ fn results_are_pinned_to_the_bit() {
         detect(&img, 512, 384, &DetectOptions::default()).unwrap()
     );
     assert_eq!(a.streaks.len(), 1);
+    assert!(a.streaks[0].photometry_masked);
     let got = fingerprint(&a);
     assert_eq!(
         got,

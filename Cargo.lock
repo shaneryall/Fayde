@@ -32,6 +32,7 @@ dependencies = [
  "fayde-api",
  "fayde-catalog",
  "fayde-core",
+ "fayde-detect",
  "fayde-fits",
  "fayde-index",
  "fayde-solve",

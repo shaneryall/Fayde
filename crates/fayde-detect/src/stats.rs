@@ -22,12 +22,30 @@ pub(crate) fn normal_quantile_upper(p: f64) -> f64 {
 }
 
 pub(crate) fn noise_peaks_above(u: f64, sigma_k: f64) -> f64 {
+    if u < 1.0 {
+        return normal_tail(u);
+    }
     let phi = normal_density(u);
     let peaks = u.max(0.0) * phi / (4.0 * std::f64::consts::PI * sigma_k * sigma_k);
     normal_tail(u).min(peaks.max(0.0))
 }
 
-/// The threshold above which `count` noise peaks are expected among `pixels` pixels.
+pub(crate) fn local_false_discovery_rate(
+    height: f64,
+    threshold: f64,
+    sigma_k: f64,
+    pixels: f64,
+    sorted_heights: &[f64],
+) -> f64 {
+    const WINDOW: f64 = 0.25;
+    let lo = (height - WINDOW).max(threshold - 1.0);
+    let hi = height + WINDOW;
+    let seen =
+        sorted_heights.partition_point(|&h| h <= hi) - sorted_heights.partition_point(|&h| h < lo);
+    let expected = pixels * (noise_peaks_above(lo, sigma_k) - noise_peaks_above(hi, sigma_k));
+    expected / seen.max(1) as f64
+}
+
 pub(crate) fn threshold_for(count: f64, pixels: f64, sigma_k: f64) -> f64 {
     let (mut lo, mut hi) = (1.0f64, 40.0f64);
     for _ in 0..80 {

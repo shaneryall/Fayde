@@ -67,6 +67,7 @@ change locally, run these commands:
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 python3 scripts/check_release.py
 python3 scripts/gen_third_party_licenses.py --check
 ```
@@ -88,8 +89,39 @@ cargo +nightly fuzz run fits_image
 The other targets are `wcs_header`, `pattern_index`, `source_list`, and
 `instrument_profile`.
 
-The test vectors in `tests/fixtures/` are synthetic. The scripts in `scripts/` generate them
-with Astropy.
+Continuous integration also checks the Python package against an installed wheel. To run the
+same checks, follow these steps:
+
+1. In the virtual environment where you installed the Python package, reinstall it to include
+   your change:
+
+   ```bash
+   python -m pip install ./crates/fayde-py
+   ```
+
+2. Install the test tools:
+
+   ```bash
+   python -m pip install pytest numpy mypy
+   ```
+
+3. Check the package's types:
+
+   ```bash
+   (cd crates/fayde-py/python && python -m mypy --strict fayde)
+   ```
+
+4. Run the Python tests:
+
+   ```bash
+   python -m pytest -q crates/fayde-py/tests
+   ```
+
+   The tests skip the catalog cases when the oracle file is missing. For these cases, use the
+   catalog and oracle setup described in the steps below.
+
+Astropy generates the synthetic FITS fixtures in `tests/fixtures/fits/` and the TAN vectors
+in `crates/fayde-wcs/tests/fixtures/`. The vector fixture ships with the WCS crate.
 
 Some tests compare Fayde with the real catalog. These tests use `#[ignore]` because the catalog
 isn't in the repository. To include them, follow these steps:
@@ -98,17 +130,14 @@ isn't in the repository. To include them, follow these steps:
    the path to a copy.
 
 2. Put `ucac4_oracle.json` in the same directory. This file holds cone-search results from an
-   independent UCAC4 reader. The top of `crates/fayde-catalog/tests/reader_oracle.rs` describes
-   its format.
+   independent UCAC4 reader. The `Oracle`, `Cone`, and `OracleStar` structures in
+   `crates/fayde-catalog/tests/reader_oracle.rs` define the JSON fields.
 
 3. Run every test:
 
    ```bash
    cargo test -- --include-ignored
    ```
-
-The Python tests in `crates/fayde-py/tests` run with `pytest` against an installed wheel. They
-skip the tests that need the catalog when it's missing.
 
 ## Build the documentation site
 

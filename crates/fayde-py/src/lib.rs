@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use fayde_api::{build_request, AtCheck, AtPosition, RequestOptions, Solver as ApiSolver};
+use fayde_api::{
+    build_request, AtCheck, AtPosition, Operation, PreparedImage, Report, RequestOptions,
+    Solver as ApiSolver,
+};
 use fayde_core::{PixelConvention, SkyPos};
 use fayde_fits::InstrumentProfile;
 use fayde_solve::Source;
@@ -73,6 +76,8 @@ struct Opts {
     saturation: Option<f64>,
     gain: Option<f64>,
     max_sources: Option<usize>,
+    #[serde(default)]
+    no_trails: bool,
 }
 
 impl Opts {
@@ -83,6 +88,8 @@ impl Opts {
             saturation: self.saturation,
             gain: self.gain,
             max_sources: self.max_sources,
+            trail_angle: self.trail_angle,
+            points_only: self.no_trails,
         }
     }
 
@@ -92,6 +99,7 @@ impl Opts {
             || self.saturation.is_some()
             || self.gain.is_some()
             || self.max_sources.is_some()
+            || self.no_trails
     }
 }
 
@@ -154,6 +162,8 @@ fn detect(
         "saturation",
         "gain",
         "max_sources",
+        "trail_angle",
+        "no_trails",
     ];
     if let Some(k) = given.keys().find(|k| !ALLOWED.contains(&k.as_str())) {
         return Err(PyValueError::new_err(format!(
@@ -212,15 +222,19 @@ fn sources(
         .collect())
 }
 
-fn request_options(o: &Opts) -> Result<RequestOptions, String> {
-    let instrument = match (&o.instrument, &o.instrument_path) {
+fn instrument(o: &Opts) -> Result<Option<InstrumentProfile>, String> {
+    Ok(match (&o.instrument, &o.instrument_path) {
         (Some(_), Some(_)) => return Err("give instrument or instrument_path, not both".into()),
         (Some(v), None) => {
             Some(InstrumentProfile::from_json(&v.to_string()).map_err(|e| e.to_string())?)
         }
         (None, Some(p)) => Some(InstrumentProfile::load(p).map_err(|e| e.to_string())?),
         (None, None) => None,
-    };
+    })
+}
+
+fn request_options(o: &Opts) -> Result<RequestOptions, String> {
+    let instrument = instrument(o)?;
     let deadline = o
         .deadline
         .map(|s| {
@@ -298,7 +312,10 @@ impl Solver {
         }
         let src = sources(x, y, flux, sigma_px, p_star, truncated, o.origin)
             .map_err(PyValueError::new_err)?;
-        self.finish(py, mode, src, (None, None), &o, None, None)
+        let opts = request_options(&o).map_err(PyValueError::new_err)?;
+        let operation = operation(mode, &o)?;
+        let built = build_request(src, (None, None), &opts).map_err(PyValueError::new_err)?;
+        encode_report(py.detach(|| self.inner.run(&built, &operation)))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -317,19 +334,16 @@ impl Solver {
             .map_err(|e| PyValueError::new_err(format!("options: {e}")))?;
         let image = load_image(path, data, width, height, o.header.as_ref())
             .map_err(PyValueError::new_err)?;
-        let opts = o.detect_options();
-        let (src, mut detection) = py
-            .detach(|| fayde_api::detect_sources(&image, &opts))
-            .map_err(PyValueError::new_err)?;
-        if let Some(m) = detection.as_object_mut() {
-            m.remove("sources");
-            m.remove("rejected");
-        }
-        let size = (
-            u32::try_from(image.width).ok(),
-            u32::try_from(image.height).ok(),
-        );
-        self.finish(py, mode, src, size, &o, Some(image.header), Some(detection))
+        let opts = request_options(&o).map_err(PyValueError::new_err)?;
+        let detect = o.detect_options();
+        let prepared = py
+            .detach(|| PreparedImage::new(image, opts, detect))
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        let operation = operation(mode, &o)?;
+        let (_, report) = py
+            .detach(|| prepared.run(&self.inner, &operation))
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        encode_report(report)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -393,56 +407,37 @@ impl Solver {
     }
 }
 
-impl Solver {
-    /// Shared tail of `run` and `run_image`.
-    #[allow(clippy::too_many_arguments)]
-    fn finish(
-        &self,
-        py: Python<'_>,
-        mode: &str,
-        src: Vec<Source>,
-        size: (Option<u32>, Option<u32>),
-        o: &Opts,
-        image_header: Option<Header>,
-        detection: Option<Value>,
-    ) -> PyResult<(String, bool)> {
-        let mut opts = request_options(o).map_err(PyValueError::new_err)?;
-        if opts.header.is_none() {
-            opts.header = image_header;
-        }
-        let wcs = match (&o.wcs, mode) {
-            (Some(w), "verify" | "refit") => {
-                let h = w.to_header().map_err(PyValueError::new_err)?;
-                Some(Wcs::from_header(&h).map_err(|e| PyValueError::new_err(format!("wcs: {e}")))?)
+fn operation(mode: &str, o: &Opts) -> PyResult<Operation> {
+    let op = match (&o.wcs, mode) {
+        (Some(w), "verify" | "refit") => {
+            let h = w.to_header().map_err(PyValueError::new_err)?;
+            let wcs =
+                Wcs::from_header(&h).map_err(|e| PyValueError::new_err(format!("wcs: {e}")))?;
+            if mode == "verify" {
+                Operation::Verify(wcs)
+            } else {
+                Operation::Refit(wcs)
             }
-            (None, "verify" | "refit") => {
-                return Err(PyValueError::new_err(format!("{mode} needs wcs")))
-            }
-            (Some(_), _) => return Err(PyValueError::new_err("wcs is for verify and refit")),
-            (None, _) => None,
-        };
-        if !matches!(mode, "solve" | "verify" | "refit") {
-            return Err(PyValueError::new_err(format!("unknown mode {mode}")));
         }
-        if o.wcs_sigma_arcsec.is_some() || o.search_radius_arcsec.is_some() || o.max_stars.is_some()
-        {
-            return Err(PyValueError::new_err(
-                "wcs_sigma_arcsec, search_radius_arcsec and max_stars are stars_at options",
-            ));
+        (None, "verify" | "refit") => {
+            return Err(PyValueError::new_err(format!("{mode} needs wcs")))
         }
-        let built = build_request(src, size, &opts).map_err(PyValueError::new_err)?;
-        let mut report = py.detach(|| match (mode, &wcs) {
-            ("verify", Some(w)) => self.inner.verify(&built, w),
-            ("refit", Some(w)) => self.inner.refit(&built, w),
-            _ => self.inner.solve(&built),
-        });
-        if let Some(d) = detection {
-            report.json["detection"] = d;
-        }
-        let text = serde_json::to_string(&report.json)
-            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
-        Ok((text, report.error))
+        (Some(_), _) => return Err(PyValueError::new_err("wcs is for verify and refit")),
+        (None, "solve") => Operation::Solve,
+        (None, _) => return Err(PyValueError::new_err(format!("unknown mode {mode}"))),
+    };
+    if o.wcs_sigma_arcsec.is_some() || o.search_radius_arcsec.is_some() || o.max_stars.is_some() {
+        return Err(PyValueError::new_err(
+            "wcs_sigma_arcsec, search_radius_arcsec and max_stars are stars_at options",
+        ));
     }
+    Ok(op)
+}
+
+fn encode_report(report: Report) -> PyResult<(String, bool)> {
+    let text =
+        serde_json::to_string(&report.json).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+    Ok((text, report.error))
 }
 
 #[pyfunction]

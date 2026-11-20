@@ -20,8 +20,10 @@ You also need the following:
 To solve a frame, you also need a FITS image from your own observation. The image must meet
 these requirements:
 
-- The stars are point sources, as in an image taken with sidereal tracking. Fayde doesn't yet
-  detect trailed stars.
+- Fayde measures point stars, straight trails that share a length and direction, and some
+  curved trails. A shared curved path or field rotation can use a template learned from the
+  image. See [Detect stars without solving](usage.md#detect-stars-without-solving) for
+  the detection modes and how to read the result.
 - The image isn't compressed with `fpack`. To decompress an image, use the `funpack` program
   from CFITSIO.
 - The header gives the pointing and the pixel scale. If it doesn't, you can
@@ -73,7 +75,10 @@ To install the latest release, follow these steps:
    ```
 
    Extraction creates a directory named `fayde-` followed by your platform value. The
-   directory contains the `fayde` binary, the license files, and an example instrument profile.
+   directory contains the `fayde` binary, `README.md`, `CHANGELOG.md`, the license files
+   (`LICENSE`, `NOTICE`, and `THIRD-PARTY-LICENSES.md`), and `CITATION.cff`. It also contains
+   the documentation pages in its `docs` directory and the example instrument profile in its
+   `profiles` directory.
 
 5. Install the binary in `/usr/local/bin`, which is on your `PATH`:
 
@@ -122,7 +127,9 @@ To install the latest release, follow these steps:
    ```
 
    Extraction creates a directory named `fayde-windows-x86_64`. The directory contains
-   `fayde.exe`, the license files, and an example instrument profile.
+   `fayde.exe`, `README.md`, `CHANGELOG.md`, the license files (`LICENSE`, `NOTICE`, and
+   `THIRD-PARTY-LICENSES.md`), and `CITATION.cff`. It also contains the documentation pages in
+   its `docs` directory and the example instrument profile in its `profiles` directory.
 
 3. In the current PowerShell session, add the extracted directory to `Path`:
 

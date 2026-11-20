@@ -10,6 +10,8 @@ The following changes are breaking:
 - Removing a command-line or Python option, or changing its meaning
 - Removing or renaming a JSON report field
 - Changing the index file format or the bytes of an index, including its `content_hash`
+- Changing a published crate's public Rust API so that existing code no longer compiles
+  (for example, adding a field to a public struct without `#[non_exhaustive]`)
 
 Adding a report field isn't a breaking change. If a release changes indexes, you must rebuild
 your indexes as directed in the release notes.

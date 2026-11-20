@@ -22,6 +22,7 @@ path = "src/main.rs"
 [dependencies]
 fayde-core.workspace = true
 fayde-api.workspace = true
+fayde-detect.workspace = true
 fayde-catalog.workspace = true
 fayde-index.workspace = true
 fayde-solve.workspace = true

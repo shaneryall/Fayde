@@ -20,7 +20,9 @@ Give Fayde a star-field image. It finds the stars, matches them against the UCAC
 returns a world coordinate system (WCS) solution with its measured accuracy.
 
 Fayde detects the stars itself and sets aside hot pixels, cosmic-ray hits, and satellite
-streaks. If you have your own detector, pass a source list instead.
+streaks. The stars can be points, as from sidereal tracking, or trails of one length and
+direction, as when the telescope tracks a satellite. If you have your own detector, pass a source
+list instead.
 
 Fayde accepts a solution only after it tests the match against the catalog. The report gives the
 odds of the match against chance and the residuals of the fit. When the header gives the date of
@@ -72,9 +74,12 @@ To install Fayde and solve a frame, follow these steps:
    with the file to write. Fayde prints a JSON report. When its `solved` field is `true`,
    `frame.wcs` holds the solution as FITS WCS header cards.
 
-The image needs point-like stars, as from sidereal tracking, and a header with the pointing and
-pixel scale. If the header lacks them, [give them on the command
-line](docs/usage.md#specify-the-pointing-and-scale).
+The image needs a header with the pointing and pixel scale. If the header lacks them, [give them
+on the command line](docs/usage.md#specify-the-pointing-and-scale).
+
+To locate streak candidates without a catalog, run
+`fayde detect --image frame.fits > frame.detections.json`. The report gives pixel endpoints
+and flags for each candidate. See [Detect streaks without a catalog](docs/usage.md#detect-streaks-without-a-catalog).
 
 ## Use from Python
 
@@ -96,7 +101,7 @@ if report["solved"]:
 |---|---|
 | [Install Fayde](docs/install.md) | Prerequisites, binaries, checksums, Cargo, and the Python package |
 | [Get the UCAC4 catalog](docs/catalog.md) | Downloading and laying out the catalog |
-| [Use the command line](docs/usage.md) | Solving, detection, source lists, instrument profiles and their calibration, search limits, and checking a WCS |
+| [Use the command line](docs/usage.md) | Solving, detection, source lists, instrument profiles and their calibration, search limits, the report's fields, and checking a WCS |
 | [Use Fayde from Python](docs/python.md) | The `Solver` class, `detect`, and how options map from the command line |
 | [Build pattern indexes](docs/index-set.md) | Indexes for blind solving |
 | [Source list format](docs/source-list.md) | The FITS table that `--sources` reads |

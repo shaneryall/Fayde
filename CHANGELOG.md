@@ -5,6 +5,64 @@ Versioning rules: `docs/versioning.md`.
 Versions up to 0.2.1 were development versions and were not published; their notes are kept
 because the index files and their hashes date from 0.1.0.
 
+## Unreleased
+
+- Trailed stars from an image. When every star is a straight trail of one length and direction
+  (the telescope tracked a satellite or slewed), `fayde detect`, `--image` and
+  `fayde.detect`/`solve_image` measure the stars as trails: a trail census decides `points`,
+  `trails` or `refused` from two independent estimates and a regional check, an aimed filter
+  finds the trails, and one fit per trail gives its position with errors along and across it.
+  The tracked object comes out as class `point`. `fayde solve --image` passes the measured
+  trail to the solver. Report: `mode`, `census`, `trail`, `sigma_along_px`, `sigma_across_px`,
+  class `point`. Trails shorter than 7 FWHM are left to the point detector. On 109 real frames
+  whose stars are points the star lists are unchanged; on 84 real frames tracking satellites, 66
+  solve (9 before). `--trail-angle` (Python `detect(trail_angle=)`) chooses among trail
+  directions; `fayde detect -o` writes the trail into the source list (`TRAILLEN`, `TRAILANG`)
+  and `fayde solve --sources` reads it back. Design and measurements:
+  `docs/design/streak-detection.md`. For Rust users of `fayde-detect`, `fayde-api` and
+  `fayde-fits` the change is breaking: `DetectOptions`, `Detected`, `Detection` and `SourceList`
+  gain fields and `Class` gains `Point`.
+- Detect stars smeared along a curved path using an empirical template. Field rotation uses
+  templates that vary across the image. The detection report adds `kernel` mode and a
+  `kernel` field with template dimensions, star count, path length, bend, and region count.
+  Image solves in this mode retry with point detections if they find no solution. For Rust
+  users, `Detection` gains a field and `FrameMode` gains `Kernel`.
+- `--no-trails` (`fayde detect`, `fayde solve`; Python `no_trails`) measures every star as a
+  point, skipping the trail census.
+- A trailed frame that gives no solution is solved again with its stars measured as points
+  (`fayde solve --image`, Python `solve_image`); the report's `retried_as_points` says so.
+- The trail census holds up against cosmic rays and background structure. On frames crowded
+  with radiation hits, sharp charge deposits are masked and narrow tracks are kept out of the
+  direction vote; the second estimate takes its anchors from bright sources, after a finer local
+  background and any strong periodic pattern are removed. On simulated trailed frames with
+  80–1,000 hits per cm² per second, or a smooth background field of 5–20 ADU on 5 ADU noise,
+  the census went from points or refused to trails on all 30, with the direction within
+  0.09°; frames that passed before give the same source lists byte for byte.
+- The clipped-sky background estimate also applies to frames with trailed stars.
+- On frames whose stars all trail, radiation hits no longer set the stars' width. When the round
+  peaks are as narrow as hits and the elongated peaks along the frame's trail direction are more
+  than twice as wide, detection takes the trails' width across the trail. On an archive of
+  46,215 real trailed frames, 511 more frames solved and 41 fewer.
+- Trailed frames: a tracked object is reported at its position with its flux; radiation hits
+  are flagged by comparing their sharpness with the trails' width across the trail; a hit is no
+  longer reported as a tracked object; and roughly collinear trails are no longer traced as a
+  satellite streak, whose light is even along its length. On simulated track-rate frames, hits
+  flagged went from 0–4 to 120 of 120, false streaks from 5 to 1, and trails found from 212 to
+  224. Frames whose stars are points give the same results to the bit.
+- Detection of trailed stars is about a third faster, with the same results to the bit.
+- Detection does less redundant work, with identical output (every report the same on 46,219
+  real frames and 2,540 simulated ones): the periodic-pattern search takes its spectrum's median
+  by selection instead of a full sort, kernel templates interpolate without the slopes they do
+  not use, and a straight-trail frame skips training a template that cannot override it. 1 to 6%
+  faster by frame type.
+- `Solver.solve_detection(report)` in Python solves a `fayde.detect` report directly. Its
+  positions are FITS 1-based, which `Solver.solve` takes only with `origin=1`; passing them
+  without it moved the solution by a pixel.
+- `FAYDE_UCAC4` names the catalogue directory when `--ucac4` is left out, and for
+  `fayde.Solver()` with no directory.
+- Catalogue errors say to download the zone again.
+- Image solves report point retry errors.
+
 ## 0.3.3 (2026-11-21)
 
 ### Added

@@ -7,7 +7,7 @@ error) and the command. Pixel fields are FITS 1-based.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
+from typing import Any, Dict, List, Literal, Optional, Tuple, TypedDict
 
 
 class Stage(TypedDict):
@@ -115,6 +115,7 @@ class Report(TypedDict, total=False):
     detection: Dict[str, Any]
     priors: Dict[str, Any]
     identity: Identity
+    retried_as_points: Dict[str, Any]
 
 
 class AtStar(TypedDict):
@@ -156,12 +157,15 @@ class DetectedSource(TypedDict):
 
     The detection's class is under the key ``"class"`` (a Python keyword, so not declared
     here): ``"star"``, ``"saturated"`` or ``"extended"`` for sources, ``"sharp"`` (a hot pixel
-    or cosmic-ray hit) or ``"streak"`` for rejected detections.
+    or cosmic-ray hit), ``"streak"`` or ``"point"`` (point-like in a frame whose stars are
+    trails: the tracked object) for rejected detections.
     """
 
     x: float
     y: float
     sigma_px: float
+    sigma_along_px: float
+    sigma_across_px: float
     flux: float
     snr: float
     p_star: float
@@ -192,10 +196,55 @@ class DetectedStreak(TypedDict):
     photometry_masked: bool
 
 
+class DetectShape(TypedDict):
+    """A trail direction and length from one of the census's two estimates."""
+
+    angle_deg: float
+    length_px: float
+
+
+class DetectCensus(TypedDict):
+    """Why a frame's stars were taken as points or trails."""
+
+    reason: str
+    votes: int
+    mode_votes: int
+    mode_share: float
+    second_share: float
+    elongated_share: float
+    shapes: Optional[DetectShape]
+    autocovariance: Optional[DetectShape]
+    regions: int
+    region_angle_deviation_deg: float
+    region_length_deviation: float
+
+
+class DetectTrail(TypedDict):
+    """The trail every star of the frame shares."""
+
+    length_px: float
+    angle_deg: float
+    width_sigma_px: float
+    sigma_length_px: float
+    sigma_angle_deg: float
+    fitted: int
+
+
 class DetectImage(TypedDict):
     width: int
     height: int
     hdu: int
+
+
+class DetectKernel(TypedDict):
+    """Empirical template measurements, in input pixels."""
+
+    width_px: int
+    height_px: int
+    stacked: int
+    path_length_px: float
+    bend_px: float
+    regions: int
 
 
 class DetectReport(TypedDict, total=False):
@@ -218,6 +267,10 @@ class DetectReport(TypedDict, total=False):
     undefined_pixels: int
     seconds: float
     streaks: List[DetectedStreak]
+    mode: Literal["points", "trails", "kernel", "refused"]
+    census: DetectCensus
+    trail: Optional[DetectTrail]
+    kernel: Optional[DetectKernel]
     warnings: List[str]
     sources: List[DetectedSource]
     rejected: List[DetectedSource]

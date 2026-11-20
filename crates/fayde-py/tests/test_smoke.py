@@ -13,7 +13,7 @@ import fayde
 @pytest.fixture()
 def solver(tmp_path):
     (tmp_path / "u4b").mkdir()
-    for z in range(455, 468):  # dec about +0.8 to +3.4: every zone the cones below touch
+    for z in range(455, 468):
         (tmp_path / "u4b" / f"z{z}").write_bytes(b"")
     return fayde.Solver(tmp_path)
 
@@ -87,7 +87,7 @@ def test_detect_finds_stars_in_an_array():
     np = pytest.importorskip("numpy")
     stars = [(70.3, 50.6, 20000.0), (150.8, 120.2, 8000.0), (30.0, 170.5, 5000.0)]
     img = _star_image(stars)
-    img[10, 10] += 5000.0  # a hot pixel
+    img[10, 10] += 5000.0
     r = fayde.detect(img)
     assert r["count"] == 3, r["count"]
     found = sorted((s["x"], s["y"]) for s in r["sources"])
@@ -122,3 +122,45 @@ def test_detect_errors():
 def test_detection_options_need_an_image(solver):
     with pytest.raises(ValueError, match="apply to images"):
         solver.solve(X, Y, fwhm=3.0, **ARGS)
+
+
+@pytest.mark.parametrize("limit", [{"deadline": 0}, {"max_hypotheses": 0}])
+def test_exhausted_pair_search_does_not_read_missing_catalogue_zones(solver, limit):
+    report = solver.solve(X, Y, **dict(ARGS, dec=50), **limit)
+    assert not report["solved"] and report["hypotheses_tested"] == 0
+    assert report["search"][-1]["outcome"] in ("deadline", "hypothesis limit")
+
+
+def test_bright_crossing_star_is_masked_in_streak_photometry():
+    np = pytest.importorskip("numpy")
+    y, x = np.mgrid[:256, :256]
+    sigma = 1.3
+    a = np.deg2rad(28)
+    u = (x - 128) * np.cos(a) + (y - 128) * np.sin(a)
+    v = -(x - 128) * np.sin(a) + (y - 128) * np.cos(a)
+    erf = np.vectorize(math.erf)
+    ends = (erf((u + 90) / (sigma * 2**0.5)) - erf((u - 90) / (sigma * 2**0.5))) / 2
+    signal = 30 * np.exp(-0.5 * (v / sigma)**2) * ends
+    sky = 100 + np.random.default_rng(0).normal(size=x.shape) + signal
+    def trace(image):
+        (streak,) = fayde.detect(image, fwhm=2.35482 * sigma)["streaks"]
+        return streak
+    clean = trace(sky)
+    blended = trace(sky + 3000 * np.exp(-((x - 128)**2 + (y - 128)**2) / (2 * sigma**2)))
+    assert not clean["photometry_masked"] and blended["photometry_masked"]
+    assert blended["flux"] == pytest.approx(signal.sum(), rel=0.04)
+    assert 0.85 < blended["snr"] / clean["snr"] <= 1
+    for key in ("x0", "y0", "x1", "y1"):
+        assert blended[key] == pytest.approx(clean[key], abs=1)
+
+
+def test_cutout_prior_uses_delivered_size_with_header_only_wcs(solver):
+    header = dict(CTYPE1="RA---TAN", CTYPE2="DEC--TAN", CRVAL1=150.4, CRVAL2=2.0,
+                  CRPIX1=50.5 - 960, CRPIX2=50.5, CDELT1=-1.5/3600, CDELT2=1.5/3600)
+    options = dict(header=header, radius=0.1, max_hypotheses=0)
+    image = _star_image([(x, y, 12000) for x, y in zip(X, Y)], size=100)
+    for r in (solver.solve(X, Y, width=100, height=100, **options), solver.solve_image(image, **options)):
+        pointing = r["priors"]["pointing"]
+        assert pointing["origin"] == "WCS image centre"
+        assert pointing["ra_deg"] == pytest.approx(149.99976, abs=1e-5)
+        assert pointing["dec_deg"] == pytest.approx(1.99995, abs=1e-5)
