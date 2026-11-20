@@ -2,7 +2,7 @@
 
 # Fayde
 
-**Fast, verified astrometric plate solving for FITS images.**
+**Verified astrometric plate solving for FITS images.**
 
 [![CI](https://github.com/shaneryall/Fayde/actions/workflows/ci.yml/badge.svg)](https://github.com/shaneryall/Fayde/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/fayde)](https://pypi.org/project/fayde/)
@@ -19,18 +19,18 @@
 Give Fayde a star-field image. It finds the stars, matches them against the UCAC4 catalog, and
 returns a world coordinate system (WCS) solution with its measured accuracy.
 
-- **Finds the stars for you.** Fayde detects stars in the image and sets aside hot pixels,
-  cosmic-ray hits, and satellite trails. If you have your own detector, pass a source list
-  instead.
-- **Checks every answer.** Fayde accepts a solution only after it checks it against the catalog,
-  and the report states how well it fits.
-- **Solves blind or guided.** With a pointing and a precise pixel scale from the header, Fayde
-  needs only the catalog. Without them, it uses a pattern index that you build once.
-- **Command line and Python.** Prebuilt for Linux, macOS, and Windows. The numerical results are
-  the same on every platform.
+Fayde detects the stars itself and sets aside hot pixels, cosmic-ray hits, and satellite
+streaks. If you have your own detector, pass a source list instead.
 
-## Why Fayde?
-Other plate solvers are slow and cumbersome to use, or old and unmaintained. 
+Fayde accepts a solution only after it tests the match against the catalog. The report gives the
+odds of the match against chance and the residuals of the fit. When the header gives the date of
+the image, catalog positions are moved to that date by their proper motions.
+
+With a pointing and a precise pixel scale from the header, Fayde needs only the catalog. Without
+them, it uses a pattern index that you build once.
+
+Fayde runs from the command line and from Python, prebuilt for Linux, macOS, and Windows. Its
+numerical results are the same on every platform, so a solve can be repeated anywhere.
 
 ## Quick start
 
@@ -92,7 +92,8 @@ if report["solved"]:
 | [Use Fayde from Python](docs/python.md) | The `Solver` class, `detect`, and how options map from the command line |
 | [Build pattern indexes](docs/index-set.md) | Indexes for blind solving |
 | [Source list format](docs/source-list.md) | The FITS table that `--sources` reads |
-| [Develop Fayde](docs/development.md) | Building from source, tests, crates, and versioning |
+| [Versioning](docs/versioning.md) | What counts as a breaking change, and how options are deprecated |
+| [Contribute to Fayde](CONTRIBUTING.md) | Reporting bugs, building from source, tests, and the rules for changes |
 
 For the changes in each version, see the [changelog](CHANGELOG.md).
 
