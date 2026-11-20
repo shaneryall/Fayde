@@ -17,8 +17,8 @@ Fayde is built for: about 1° FOV, about 3″/px, 30–60 sources, many false de
 trailed, and usually a pointing prior.
 
 Already covered by the design doc and not repeated here: Lang et al. 2010 (astrometry.net:
-geometric hashing with quads plus Bayesian verification), tetra3 (Brown et al.: 4-star edge-ratio
-hash), cedar-solve (a uniform-database fork of tetra3).
+geometric hashing with quads plus Bayesian verification), tetra3 (ESA's rewrite of Tetra, Brown & Stubis
+2017: 4-star edge-ratio hash), cedar-solve (a uniform-database fork of tetra3).
 
 ---
 
@@ -101,7 +101,7 @@ lesson is simple: **the fewer true stars a hypothesis needs, the more robust the
 - **Citations.** Padgett & Kreutz-Delgado, "A grid algorithm for autonomous star identification",
   *IEEE TAES* 33(1), 1997. Clouse & Padgett, "Small field-of-view star identification using
   Bayesian decision theory", *IEEE TAES* 36(3), 773–783, 2000
-  ([NTRS](https://ntrs.nasa.gov/citations/20110016559)). Lee et al. 2007 (polar grid).
+  (doi:10.1109/7.869495). Lee et al. 2007 (polar grid).
   **[abstract]**
 - **Core idea.** Rotate the field so that a pivot star's nearest neighbour lies on the x-axis,
   rasterize the neighbours onto a coarse grid, and compare bit patterns. Clouse & Padgett add a
@@ -115,14 +115,13 @@ lesson is simple: **the fewer true stars a hypothesis needs, the more robust the
 ### 1.3 Geometric voting
 
 - **Citation.** Kolomenkin, Pollak, Shimshoni & Lindenbaum, "Geometric voting algorithm for star
-  trackers", *IEEE TAES* 44(2), 441–456, 2008, doi:10.1109/TAES.2008.4560198
-  ([PDF](https://is-web.hevra.haifa.ac.il/staff/ishimshoni_files/StarTracker.pdf)). **[abstract]**
+  trackers", *IEEE TAES* 44(2), 441–456, 2008, doi:10.1109/TAES.2008.4560198. **[abstract]**
 - **Core idea.** Every catalogue pair whose angular distance matches an image pair votes for both
   identities. Each image star takes the identity with the most votes, and a second voting round
   checks the result. The method uses geometry only and draws on the whole image rather than a
   chosen subset.
 - **Evidence.** The authors report robustness to non-star objects. The LOST open-source tracker
-  ([docs](https://uwcubesat.github.io/lost/classlost_1_1_geometric_voting_star_id_algorithm.html))
+  ([docs](https://uwcubesat.github.io/lost/classlost_1_1GeometricVotingStarIdAlgorithm.html))
   notes "no statistical guarantees" on the wrong-answer rate.
 - **Verdict: CONSIDER as a hinted fallback (§5.3).** Inside a hint cone with a tight scale prior,
   pair voting is cheap and degrades gracefully when the brightest sources are false. Fayde's
@@ -285,8 +284,9 @@ are narrower; they are listed below.
 
 ### 2.4 Trail fitting for astrometry (producer side)
 
-- **Citation.** Vereš, Jedicke, Denneau & Wainscoat, "Improved asteroid astrometry and photometry
-  with trail fitting", *PASP*, 2012 ([arXiv:1209.6106](https://arxiv.org/abs/1209.6106)).
+- **Citation.** Vereš, Jedicke, Denneau, Wainscoat, Holman & Lin, "Improved asteroid astrometry
+  and photometry with trail fitting", *PASP* 124, 1197, 2012
+  ([arXiv:1209.6106](https://arxiv.org/abs/1209.6106)).
   **[abstract]**
 - **Core idea.** Model a trail as a Gaussian PSF convolved with a line segment, and fit its
   centre, length, angle and flux.
@@ -438,8 +438,9 @@ are narrower; they are listed below.
 - **Citations.** Shuster & Oh, "Three-axis attitude determination from vector observations",
   *J. Guid. Control* 4(1), 1981 (QUEST). Mortari, "ESOQ: a closed-form solution to the Wahba
   problem", *J. Astronaut. Sci.* 45(2), 1997. Markley & Mortari, "Quaternion attitude estimation
-  using vector observations", *J. Astronaut. Sci.* 48, 2000
-  ([NTRS preprint](https://ntrs.nasa.gov/citations/20000034107)). **[abstract]** Umeyama,
+  using vector observations", *J. Astronaut. Sci.* 48(2–3), 359, 2000, doi:10.1007/BF03546284 (preprint, under the title "New
+  developments in quaternion estimation from vector observations":
+  [NTRS](https://ntrs.nasa.gov/citations/20000034107)). **[abstract]** Umeyama,
   "Least-squares estimation of transformation parameters between two point patterns", *IEEE
   TPAMI* 13(4), 1991. **[secondary; standard]**
 - **Core finding.** Davenport's q-method and SVD are the most robust; QUEST, ESOQ and ESOQ2 are
@@ -521,8 +522,8 @@ are narrower; they are listed below.
   ([arXiv:0912.4540](https://arxiv.org/abs/0912.4540), **[abstract]**). Bauer, "Distribution of
   points on a sphere with application to star catalogs", *J. Guid. Control Dyn.* 23(1), 2000
   (**[secondary]**; the spherical spiral method). Variants: charged particles, k-means clustering
-  ([GWKM](https://www.bohrium.com/paper-details/uniform-star-catalogue-using-gwkm-clustering-for-application-in-star-sensors/812808563150815233-4429),
-  **[abstract]**).
+  (GWKM: Somayehee, Nikkhah & Roshanian 2019, *J. Navig.* 72(4), 948,
+  doi:10.1017/S0373463318001029, **[abstract]**).
 - **Finding.** Fibonacci lattices give near-equal-area cells for any point count, with at least
   40% lower RMS error in area estimates than latitude–longitude grids. Spherical-spiral catalogues
   are the star-tracker standard for uniform onboard catalogues.
@@ -592,7 +593,7 @@ are narrower; they are listed below.
 ## 6. Learned / ML star identification
 
 - **Citations.**
-  - Hepburn-Dickins, Edwards et al., "SIGNN – star identification using graph neural networks",
+  - Hepburn-Dickins, Jones, Edwards, Morgan & Bell, "SIGNN – star identification using graph neural networks",
     WACV 2025
     ([CVF page](https://openaccess.thecvf.com/content/WACV2025/html/Hepburn-Dickins_SIGNN_-_Star_Identification_using_Graph_Neural_Networks_WACV_2025_paper.html),
     **[abstract]**). A graph-attention network over a Hipparcos star graph with edges below 3°.
@@ -650,9 +651,8 @@ sharpness; find the centre of a saturated star with a bleed trail; trace streaks
 - A matched filter followed by a 3 × 3 quadratic fit reaches the bound for FWHM 2.8 to 5.6 px at
   SNR 5 to 100; a fixed kernel does not at the extremes; a 7 × 7 centre of light is several times
   worse (Vakili & Hogg 2016 **[full]**).
-- A parabola through three samples of a Gaussian peak is biased towards the pixel centre by up to
-  0.05 px at σ = 1 px, 0.01 px at σ = 2 px; the same fit on the logarithms has no bias (Naidu &
-  Fisher 1991 **[full]**).
+- A parabola through three samples of a Gaussian peak is biased towards the pixel centre; the
+  same fit on the logarithms has no bias (Naidu & Fisher 1991 **[full]**).
 - Undersampled stars (σ 0.66 px): moment methods have pixel-phase floors of 0.02 to 0.04 px; only
   a pixel-integrated profile fit goes lower (Fialho 2025, arXiv:2507.17560 **[full]**, preprint).
 

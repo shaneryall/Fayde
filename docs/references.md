@@ -45,10 +45,10 @@ Wider survey and verdicts: [`docs/research/literature-review.md`](research/liter
 | Lattice fields with a fixed pattern budget, breadth-first brightest-first combinations, prime-sized table, linear probing, 16-bit key check, largest-edge prune, nearest-bin-first lookup | cedar-solve (github.com/smroid/cedar-solve, fork of tetra3); no paper | Index construction and lookup | `crates/fayde-index/src/build.rs`, `pattern.rs`, `lib.rs` (`lookup`) |
 | Multiplicative hashing (constant 2654435761 ≈ 2³²/φ) and linear probing | Knuth 1998, *The Art of Computer Programming* vol. 3, 2nd ed., §6.4 | Pattern table addressing | `crates/fayde-index/src/pattern.rs` |
 | k-d tree | Bentley 1975, *Commun. ACM* 18(9), 509 | Radius searches over star vectors | `crates/fayde-index/src/kdtree.rs` |
-| Radius search on a uniform grid of cells (the cell method for fixed-radius near neighbours) | Bentley & Friedman 1979, *ACM Comput. Surv.* 11(4), 397, a survey of range searching in which cells are one of the structures. Not re-read for this work: check the section before citing | Matching sources to the reference stars of one hypothesis (the points change with every refit, so a structure filled in one pass beats one that is sorted) | `crates/fayde-solve/src/grid.rs` |
+| Radius search on a uniform grid of cells (the cell method for fixed-radius near neighbours) | Bentley & Friedman 1979, *ACM Comput. Surv.* 11(4), 397, a survey of range searching in which cells are one of the structures | Matching sources to the reference stars of one hypothesis (the points change with every refit, so a structure filled in one pass beats one that is sorted) | `crates/fayde-solve/src/grid.rs` |
 | Multiply-rotate hash for keys that are already numbers ("Fx hash") | Firefox, and the Rust compiler's `rustc-hash` crate; no paper | Hash maps keyed by grid cells and star identities, in place of SipHash | `crates/fayde-solve/src/hash.rs` |
-| Bayesian log-odds verification (true star vs distractor mixture, unique reference claims, ranked sources) | Lang et al. 2010, AJ 139, 1782, §2.3 | Accepting or rejecting a hypothesis | `crates/fayde-solve/src/verify.rs` |
-| Score = largest cumulative log-odds over prefixes of the ranked list; the stars a hypothesis was built from are matched but not scored | astrometry.net `solver/verify.c` (keeps the best index; takes the quad's stars out of its lists), recalled from the source: confirm the lines before citing. The false-alarm bound is unchanged by the maximum: Ville 1939, *Étude critique de la notion de collectif* (maximal inequality for non-negative supermartingales) | Source lists with many faint false detections; no evidence from matches that hold by construction | `crates/fayde-solve/src/verify.rs` |
+| Bayesian log-odds verification (true star vs distractor mixture, unique reference claims, ranked sources) | Lang et al. 2010, AJ 139, 1782, §2.4 | Accepting or rejecting a hypothesis | `crates/fayde-solve/src/verify.rs` |
+| Score = largest cumulative log-odds over prefixes of the ranked list; the stars a hypothesis was built from are matched but not scored | astrometry.net `solver/verify.c` (keeps the best index; takes the quad's stars out of its lists), the `bestlogodds` loop, and the quad's stars moved out of the test list. The prefix maximum is the quantity Ville's maximal inequality bounds for a non-negative supermartingale: Ville 1939, *Étude critique de la notion de collectif* | Source lists with many faint false detections; no evidence from matches that hold by construction | `crates/fayde-solve/src/verify.rs` |
 | Pair-separation list with range lookup (k-vector idea; binary search instead of the k-vector's linear interpolation). The pairs are put in bins by squared chord length, and a bin's separations are worked out and sorted when a lookup first reaches it: a lookup returns what the fully sorted list would | Mortari 1997, *J. Astronaut. Sci.* 45(2); Mortari & Neta 2000, AAS 00-128; the bins and the deferred sort are Fayde's | Pair seeds for hinted solving | `crates/fayde-solve/src/solve.rs` (`PairTable`) |
 | Progressive sampling: seeds from the best-ranked sources first, ranking by `p_star` × flux | Chum & Matas 2005, CVPR (PROSAC); the scale-prior ordering below is a Fayde extension | Source ordering, seed order | `crates/fayde-solve/src/solve.rs` |
 | Local optimization: re-match and refit each promising hypothesis before scoring | Chum, Matas & Kittler 2003, DAGM, LNCS 2781 (LO-RANSAC) | `local_refit` | `crates/fayde-solve/src/solve.rs` |
@@ -66,13 +66,10 @@ Wider survey and verdicts: [`docs/research/literature-review.md`](research/liter
 | FITS file structure, binary tables (`TFORMn`, big-endian), header-only WCS files | Pence et al. 2010, A&A 524, A42 (FITS 3.0); IAU FITS Working Group 2016, FITS Standard 4.0 | Reading source lists, images and headers, writing source lists and `.wcs` | `crates/fayde-fits/src/lib.rs`, `sources.rs`, `image.rs` |
 | Source-list format (`frame.sources.fits`): a FITS binary table with `X`/`Y` in FITS pixels, optional `FLUX`, `SIGMA`/`SIGMA_PX`, `P_STAR`, `TRUNCATED`, and `IMAGEW`/`IMAGEH` | Fayde's own (`docs/source-list.md`). The `X`/`Y` columns and `IMAGEW`/`IMAGEH` match the tables astrometry.net reads and writes (Lang et al. 2010), so those files read unchanged | Input from any detector; output of `fayde detect` | `crates/fayde-fits/src/sources.rs` |
 | Civil date → day number | Hinnant, "chrono-compatible low-level date algorithms" (2013, howardhinnant.github.io/date_algorithms.html) | `DATE-OBS` → MJD | `crates/fayde-fits/src/priors.rs` (`mjd_from_iso`) |
-| FNV-1a 64-bit hash | Fowler, Noll & Vo; Eastlake et al., IETF draft-eastlake-fnv | Index content hash for provenance and corruption checks | `crates/fayde-index/src/file.rs` |
+| FNV-1a 64-bit hash | Fowler, Noll & Vo; [Noll, Vo, Eastlake & Hansen 2026, RFC 9923](https://www.rfc-editor.org/rfc/rfc9923) | Index content hash for provenance and corruption checks | `crates/fayde-index/src/file.rs` |
 
-The detection entries (`fayde-detect`) come from the survey in the literature review,
-§7, which says what was read in full. Not re-read for this work, and to be checked before citing
-in a publication: Stetson 1987, Bertin & Arnouts 1996, Hampel 1974, Caruana et al. 1986,
-Anthony & Granick 2009, Haralick 1984, Moffat 1969, Steger 1998 (read through a later paper by
-the same author), and the page numbers of Vereš et al. 2012.
+The detection entries (`fayde-detect`) come from the survey in the literature review, §7, which
+says how much of each source was read.
 
 ### Fayde's own choices (no published source)
 
@@ -148,7 +145,7 @@ the same author), and the page numbers of Vereš et al. 2012.
 | Benchmarks | ESA Kelvins "Star Trackers: First Contact" (2017); Rijlaarsdam et al. 2020, *Sensors* 20(9), 2579; LOST (github.com/uwcubesat/lost) | §9 |
 
 Citation details for the second table were collected by the literature review; several were read
-only as abstracts (marked there). Verify page numbers before citing in a publication.
+only as abstracts (marked there).
 
 ## Considered and not adopted
 
