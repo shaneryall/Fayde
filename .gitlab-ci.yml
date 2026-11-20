@@ -36,6 +36,14 @@ check:msrv:
   script:
     - cargo check --workspace --all-targets
 
+check:deny:
+  stage: check
+  image: rust:1.95-bookworm
+  <<: *rust-cache
+  script:
+    - cargo install --locked cargo-deny@0.22.0
+    - cargo deny check
+
 wheels:linux:
   stage: wheels
   image: rust:1.95-bookworm

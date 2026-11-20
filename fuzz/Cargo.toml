@@ -1,0 +1,54 @@
+[package]
+name = "fayde-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+fayde-fits = { path = "../crates/fayde-fits" }
+fayde-wcs = { path = "../crates/fayde-wcs" }
+fayde-index = { path = "../crates/fayde-index" }
+fayde-catalog = { path = "../crates/fayde-catalog" }
+
+# Its own workspace, so the fuzz targets stay out of the published crates.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "fits_image"
+path = "fuzz_targets/fits_image.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "wcs_header"
+path = "fuzz_targets/wcs_header.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "pattern_index"
+path = "fuzz_targets/pattern_index.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "source_list"
+path = "fuzz_targets/source_list.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "instrument_profile"
+path = "fuzz_targets/instrument_profile.rs"
+test = false
+doc = false
+bench = false

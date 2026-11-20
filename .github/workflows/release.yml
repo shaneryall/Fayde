@@ -22,6 +22,17 @@ jobs:
       - name: The tag is the workspace version
         run: python3 scripts/check_release.py --tag "$GITHUB_REF_NAME"
 
+  semver:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Python headers
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq python3-dev
+      - name: The version number matches the API changes since the last crates.io release
+        uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2.9
+        with:
+          exclude: fayde-py
+
   binaries:
     name: fayde (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
@@ -161,10 +172,12 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: [checks, version, binaries, wheels, sdist]
+    needs: [checks, version, semver, binaries, wheels, sdist]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -175,6 +188,10 @@ jobs:
         run: |
           (cd dist && sha256sum -- * > ../SHA256SUMS && mv ../SHA256SUMS . && cat SHA256SUMS)
           python3 scripts/check_release.py --notes > notes.md
+      - name: Attest that these files were built here, from this tag
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
       - name: Publish the GitHub release
         run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "Fayde $GITHUB_REF_NAME" --notes-file notes.md
         env:

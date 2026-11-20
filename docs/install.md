@@ -204,6 +204,18 @@ To check the archive on Windows, follow these steps:
 4. Compare the checksums from the two outputs. The archive is intact when they match.
    Uppercase and lowercase letters are equivalent.
 
+A checksum shows that the archive is intact. Releases from 0.3.3 on also have a build
+attestation, which shows that a GitHub Actions workflow of the Fayde repository built the
+archive. Optional: To check it, run this [GitHub CLI](https://cli.github.com/) command in the
+directory that contains the archive:
+
+```bash
+gh attestation verify ARCHIVE --repo shaneryall/Fayde
+```
+
+Replace `ARCHIVE` with the archive's filename, for example `fayde-linux-x86_64.tar.gz`. The
+command fails if no attestation from the Fayde repository matches the archive.
+
 ### Install with Cargo
 
 You need [Rust](https://www.rust-lang.org/tools/install) 1.85 or later to build the `fayde`

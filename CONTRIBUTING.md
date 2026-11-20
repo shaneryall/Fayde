@@ -72,7 +72,21 @@ python3 scripts/gen_third_party_licenses.py --check
 ```
 
 After a change to `Cargo.lock`, run `python3 scripts/gen_third_party_licenses.py` without
-`--check` to update the third-party license file.
+`--check` to update the third-party license file. Continuous integration also checks the
+licenses, advisories, and sources of every dependency against `deny.toml` with
+[cargo-deny](https://github.com/EmbarkStudios/cargo-deny), and measures test coverage.
+
+The `fuzz` directory holds fuzz targets for the readers of files that may come from other
+people. Continuous integration runs each target every night. To run one locally, install nightly
+Rust and [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz), and then run this command in the
+`fuzz` directory:
+
+```bash
+cargo +nightly fuzz run fits_image
+```
+
+The other targets are `wcs_header`, `pattern_index`, `source_list`, and
+`instrument_profile`.
 
 The test vectors in `tests/fixtures/` are synthetic. The scripts in `scripts/` generate them
 with Astropy.

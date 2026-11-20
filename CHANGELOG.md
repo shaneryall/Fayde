@@ -12,6 +12,9 @@ because the index files and their hashes date from 0.1.0.
 - `fayde calibrate` takes each frame's header pointing at the centre of the image it solved,
   using the image's size when the header does not give it, as image and source-list solves
   have done since 0.3.2.
+- Each release file has a build attestation from GitHub. To check that a download was built
+  from the tagged source by Fayde's release workflow, run `gh attestation verify` (see
+  `docs/install.md`).
 
 ## 0.3.2 (2026-11-19)
 
