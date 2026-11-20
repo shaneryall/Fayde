@@ -769,11 +769,12 @@ Integration path:
 
 ## 8. Licensing
 
-Fayde is Apache-2.0 (since 0.1.1; `LICENSE`, `NOTICE`).
+Fayde is GPL-3.0-or-later from 0.3.3 (`LICENSE`, `NOTICE`); 0.3.0 to 0.3.2 were Apache-2.0.
 
 - tetra3 and cedar-solve (Apache-2.0): code may be ported with notices kept.
-- astrometry.net: mostly BSD-3, which is compatible with notices kept. Some components are GPL;
-  porting from those would make Fayde GPL. Rule: port from papers (Lang et al. 2010) and BSD files
+- astrometry.net: mostly BSD-3, which is compatible with notices kept. Some components are GPL.
+  Fayde takes no code from them: code under another author's copyleft licence would stop the
+  copyright holder from relicensing Fayde. Rule: port from papers (Lang et al. 2010) and BSD files
   only; check the licence header of every file before porting from it.
 - Catalogue data: Fayde's releases contain no catalogue data and no built indexes.
 
@@ -796,4 +797,5 @@ Fayde's results haven't been compared with other solvers on shared public frames
 
 1. **Catalogue epoch.** The index is built at a fixed epoch, high-proper-motion stars are
    excluded from patterns, and positions are propagated rigorously at query time (§5.2).
-2. **Licence.** Apache-2.0 only.
+2. **Licence.** GPL-3.0-or-later from 0.3.3, with every dependency under a permissive license, so
+   the copyright holder can relicense. Versions 0.3.0 to 0.3.2 were Apache-2.0.

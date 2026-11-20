@@ -8,7 +8,7 @@
 [![PyPI](https://img.shields.io/pypi/v/fayde)](https://pypi.org/project/fayde/)
 [![crates.io](https://img.shields.io/crates/v/fayde-cli)](https://crates.io/crates/fayde-cli)
 [![Python](https://img.shields.io/pypi/pyversions/fayde)](https://pypi.org/project/fayde/)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![License](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24379728.svg)](https://doi.org/10.5281/zenodo.24379728)
 
 [Install](docs/install.md) · [Catalog](docs/catalog.md) · [Command line](docs/usage.md) ·
@@ -113,6 +113,7 @@ version, and the commit when it's known, in its comment cards.
 
 ## License
 
-Apache License 2.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). If you redistribute Fayde,
-include both files. Licenses of the bundled Rust crates are in
+GNU General Public License, version 3 or later. See [`LICENSE`](LICENSE) and
+[`NOTICE`](NOTICE). Versions 0.3.0 to 0.3.2 were released under the Apache License 2.0 and stay
+under it. If you redistribute Fayde, include both files. Licenses of the bundled Rust crates are in
 [`THIRD-PARTY-LICENSES.md`](THIRD-PARTY-LICENSES.md).

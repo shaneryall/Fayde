@@ -7,14 +7,26 @@ because the index files and their hashes date from 0.1.0.
 
 ## Unreleased
 
+### Added
+
 - The README and `CITATION.cff` give the DOI of the archived releases,
   [10.5281/zenodo.24379728](https://doi.org/10.5281/zenodo.24379728).
-- `fayde calibrate` takes each frame's header pointing at the centre of the image it solved,
-  using the image's size when the header does not give it, as image and source-list solves
-  have done since 0.3.2.
 - Each release file has a build attestation from GitHub. To check that a download was built
   from the tagged source by Fayde's release workflow, run `gh attestation verify` (see
   `docs/install.md`).
+
+### Changed
+
+- Fayde 0.3.3 and later are licensed under the GNU General Public License, version 3 or later
+  (`GPL-3.0-or-later`). Versions 0.3.0 to 0.3.2 stay under the Apache License 2.0. Using Fayde
+  is unchanged; distributing a modified Fayde, or software that includes it, now requires the
+  GPL's terms. Contributions are accepted under the terms in `CONTRIBUTING.md`.
+
+### Fixed
+
+- `fayde calibrate` takes each frame's header pointing at the centre of the image it solved,
+  using the image's size when the header does not give it, as image and source-list solves
+  have done since 0.3.2.
 
 ## 0.3.2 (2026-11-19)
 

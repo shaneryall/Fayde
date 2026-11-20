@@ -10,3 +10,4 @@
 - [ ] Reports and index bytes are unchanged, or the description says which change and why
 - [ ] User-visible changes are in the `Unreleased` section of `CHANGELOG.md`
 - [ ] New algorithms have their source in `docs/references.md`
+- [ ] I agree to the license terms for contributions in `CONTRIBUTING.md`

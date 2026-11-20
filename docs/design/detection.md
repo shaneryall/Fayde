@@ -41,8 +41,8 @@ From the survey (literature review §7), what is in use today:
 - Hot pixels and cosmic rays are handled by minimum-area or sharpness heuristics that conflict
   with undersampled stars.
 - Licences: SExtractor GPL, SEP LGPL, astrometry.net GPL as distributed, cedar-detect
-  source-available but not open source. Fayde is Apache-2.0, so everything here is written from
-  the papers.
+  source-available but not open source. Everything here is written from the papers, so no other
+  project's code, and none of its licence terms, enters Fayde.
 
 ## 3. Method
 

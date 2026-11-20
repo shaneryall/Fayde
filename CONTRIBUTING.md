@@ -143,6 +143,21 @@ computer, follow these steps:
    The output gives the local address of the site. Continuous integration builds the site with
    `mkdocs build --strict`, so a broken link or a warning fails the build.
 
+## License of contributions
+
+Fayde is licensed under the GNU General Public License, version 3 or later. When you submit a
+contribution (a pull request, a patch, or any other change), you agree to the following terms:
+
+1. You wrote the contribution, or you have the right to submit it under these terms.
+2. Your contribution is licensed under the same license as Fayde.
+3. You grant Shane Ryall, Fayde's copyright holder, a perpetual, worldwide, non-exclusive,
+   royalty-free, irrevocable license to use, modify, and distribute your contribution under any
+   license, including permissive and commercial ones. You keep the copyright in your
+   contribution.
+
+In your pull request, say that you agree to these terms. Pull requests without that statement
+can't be merged.
+
 ## Rules for changes
 
 A change is easier to review and merge when it follows these rules:

@@ -9,7 +9,8 @@ unmaintained = "workspace"
 yanked = "deny"
 
 [licenses]
-# Licences compatible with distributing Fayde under Apache-2.0.
+# Permissive licenses only: compatible with distributing Fayde under GPL-3.0-or-later, and no
+# copyleft dependency, so the copyright holder stays free to relicense Fayde.
 allow = [
     "Apache-2.0",
     "Apache-2.0 WITH LLVM-exception",
@@ -22,6 +23,19 @@ allow = [
     "Unicode-3.0",
 ]
 confidence-threshold = 0.9
+# Fayde's own crates are GPL-3.0-or-later; every dependency must still be permissive.
+exceptions = [
+    { allow = ["GPL-3.0-or-later"], crate = "fayde-core" },
+    { allow = ["GPL-3.0-or-later"], crate = "fayde-wcs" },
+    { allow = ["GPL-3.0-or-later"], crate = "fayde-catalog" },
+    { allow = ["GPL-3.0-or-later"], crate = "fayde-index" },
+    { allow = ["GPL-3.0-or-later"], crate = "fayde-solve" },
+    { allow = ["GPL-3.0-or-later"], crate = "fayde-fits" },
+    { allow = ["GPL-3.0-or-later"], crate = "fayde-detect" },
+    { allow = ["GPL-3.0-or-later"], crate = "fayde-api" },
+    { allow = ["GPL-3.0-or-later"], crate = "fayde-cli" },
+    { allow = ["GPL-3.0-or-later"], crate = "fayde-py" },
+]
 unused-allowed-license = "allow"
 
 [bans]

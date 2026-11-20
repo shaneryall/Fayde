@@ -1,7 +1,9 @@
 Fayde astrometric plate solver
 Copyright 2026 Shane Ryall
 
-This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+Fayde 0.3.3 and later are licensed under the GNU General Public License, version 3 or (at your
+option) any later version (see LICENSE). Versions 0.3.0 to 0.3.2 were released under the Apache
+License, Version 2.0, and stay under it.
 
 If you use Fayde in work that leads to a publication, please cite it as given in CITATION.cff
 (Ryall, S. 2026, Fayde, version and repository as used).

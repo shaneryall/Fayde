@@ -11,7 +11,7 @@ authors:
     given-names: Shane
 version: 0.3.2
 date-released: 2026-11-19
-license: Apache-2.0
+license: GPL-3.0-or-later
 doi: 10.5281/zenodo.24379728
 repository-code: "https://github.com/shaneryall/Fayde"
 keywords:

@@ -44,6 +44,6 @@ For more information about source lists, pattern indexes, and versioning, see th
 
 ## License
 
-Fayde uses the Apache License 2.0. For license terms and attribution, see the `LICENSE` and
-`NOTICE` files in this crate. If you use Fayde in a publication, cite it as described in
+Fayde uses the GNU General Public License, version 3 or later. For license terms and
+attribution, see the `LICENSE` and `NOTICE` files in this crate. If you use Fayde in a publication, cite it as described in
 [`CITATION.cff`](https://github.com/shaneryall/Fayde/blob/main/CITATION.cff).

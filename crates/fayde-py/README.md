@@ -100,7 +100,8 @@ For more information about priors, pattern indexes, and versioning, see the
 
 ## License
 
-Fayde uses the Apache License 2.0. The wheel includes `LICENSE`, `NOTICE`, and
+Fayde uses the GNU General Public License, version 3 or later. The wheel includes `LICENSE`,
+`NOTICE`, and
 `THIRD-PARTY-LICENSES.md`. The latter lists the licenses of the Rust crates compiled into the
 wheel. If you use Fayde in a publication, cite it as described in
 [`CITATION.cff`](https://github.com/shaneryall/Fayde/blob/main/CITATION.cff).

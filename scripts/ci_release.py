@@ -22,7 +22,7 @@ body = {
         "Linux binaries (glibc 2.17+, x86_64 and aarch64) and Python wheels (abi3, CPython 3.10+"
         "; manylinux2014). Windows and macOS wheels are built by hand until those CI runners "
         "exist. Index set, build commands and content hashes: `docs/index-set.md`. Versioning "
-        "rules: `docs/versioning.md`. Changes: `CHANGELOG.md`. Licence: Apache-2.0 (`LICENSE`, `NOTICE`); "
+        "rules: `docs/versioning.md`. Changes: `CHANGELOG.md`. Licence: GPL-3.0-or-later (`LICENSE`, `NOTICE`); "
         "please cite as in `CITATION.cff`."
     ),
     "assets": {"links": [{"name": f, "url": f"{job_url}/{f}", "link_type": "package"} for f in files]},
