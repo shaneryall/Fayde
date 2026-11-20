@@ -6,11 +6,16 @@ r"""Animated README figures: `fayde detect` on a synthetic frame, its report dra
 
     uv run scripts/make_readme_figures.py points --fayde FAYDE \
         -o docs/images/detect-point-stars.gif
+    uv run scripts/make_readme_figures.py trailed --fayde FAYDE \
+        -o docs/images/detect-trailed-stars.gif
 
 FAYDE is the `fayde` command to run, for example `target/release/fayde`. The frame is synthetic,
-generated from random seed 7: 1024 × 1024 pixels, 700 Gaussian stars (σ 1.6 px), three satellite
-streaks, 120 cosmic-ray hits, a sloped sky of 200 counts, Poisson noise and 6 counts of read
-noise.
+generated from random seed 7:
+
+- points: 1024 × 1024 pixels, 700 Gaussian stars (σ 1.6 px), three satellite streaks, 120
+  cosmic-ray hits, a sloped sky of 200 counts, Poisson noise and 6 counts of read noise;
+- trailed: the same sky and noise, 350 stars trailed 48 px at 32° as when the telescope tracks a
+  satellite, the satellite itself as a point source, and 120 cosmic-ray hits.
 
 Every marker, count and measurement drawn over the image comes from the JSON report that FAYDE
 prints; none comes from the simulation. The captions also describe the simulated scene, and the
@@ -46,6 +51,24 @@ def frame_points() -> np.ndarray:
         (210, 820, 470, 905, 14),
     ):
         line(img, xx, yy, x0, y0, x1, y1, snr * noise, 1.8, 1.5, window=False)
+    img = rng.poisson(np.clip(img, 0, None)).astype(np.float64) + rng.normal(
+        0, READ_NOISE, img.shape
+    )
+    cosmic_rays(img, rng)
+    return img
+
+
+def frame_trailed() -> np.ndarray:
+    rng = np.random.default_rng(7)
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    img = SKY + 0.03 * xx - 0.02 * yy
+    length, angle = 48.0, np.deg2rad(32.0)
+    hx, hy = 0.5 * length * np.cos(angle), 0.5 * length * np.sin(angle)
+    for _ in range(350):
+        flux = 900 * 300 ** rng.uniform() ** 1.6
+        x, y = rng.uniform(-20, N + 20), rng.uniform(-20, N + 20)
+        line(img, xx, yy, x - hx, y - hy, x + hx, y + hy, flux / length, 1.6, 1.2, window=True)
+    spot(img, xx, yy, 540.0, 470.0, 60000.0, 1.6)
     img = rng.poisson(np.clip(img, 0, None)).astype(np.float64) + rng.normal(
         0, READ_NOISE, img.shape
     )
@@ -191,6 +214,7 @@ def label(d, canvas, at, text, color):
 
 STREAK_COLORS = [(255, 196, 0), (0, 220, 255), (255, 90, 200), (160, 255, 90)]
 SHARP, OTHER, STAR = (255, 60, 60), (255, 140, 0), (80, 255, 140)
+CANDIDATE = (160, 255, 90)
 ORANGE_LABELS = {"streak": "on a streak", "extended": "extended"}
 WORDS = ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")
 
@@ -314,16 +338,104 @@ def figure_points(report, img, out, subtitle):
     canvas.save(out)
 
 
+def figure_trailed(report, img, out, subtitle):
+    canvas = Canvas(img, subtitle)
+    trail = report["trail"]
+    length, ang = trail["length_px"], np.deg2rad(trail["angle_deg"])
+    u = np.array((np.cos(ang), -np.sin(ang))) * PANEL / N
+    stars = sorted((s for s in report["sources"] if s["class"] == "star"), key=lambda s: -s["flux"])
+    others = [s for s in report["sources"] if s["class"] != "star"]
+    sharp = [r for r in report["rejected"] if r["class"] == "sharp"]
+    points = [r for r in report["rejected"] if r["class"] == "point"]
+    on_streak = [r for r in report["rejected"] if r["class"] == "streak"]
+    rest = [r for r in report["rejected"] if r["class"] not in ("sharp", "point", "streak")]
+    streaks = report["streaks"]
+
+    def marks(d, a=255):
+        for r in sharp:
+            cross(d, pos(r["x"], r["y"]), SHARP + (a,))
+        for r in on_streak + rest + others:
+            ring(d, pos(r["x"], r["y"]), 7, OTHER + (a,), 2)
+
+    def trails(d, n, a=255):
+        for s in stars[:n]:
+            c = pos(s["x"], s["y"])
+            p, q = c - 0.5 * length * u, c + 0.5 * length * u
+            d.line([tuple(p), tuple(q)], fill=(0, 220, 255, a // 6), width=6)
+            d.line([tuple(p), tuple(q)], fill=(0, 220, 255, a), width=1)
+
+    def point_sources(d):
+        for r in points:
+            p = pos(r["x"], r["y"])
+            ring(d, p, 12, (255, 196, 0), 3)
+            label(d, canvas, p + np.array((0, -26)), f"point  SNR {r['snr']:.0f}", (255, 196, 0))
+
+    def candidates(d):
+        for i, st in enumerate(streaks):
+            draw_streak(d, canvas, i, st, color=CANDIDATE)
+
+    canvas.add(
+        lambda d: None, "The telescope tracks a satellite, so every star is a short trail.", 2000
+    )
+    canvas.add(marks, set_aside(sharp, on_streak), 2000)
+    for k in range(1, 13):
+        n = round(len(stars) * (k / 12) ** 1.5)
+        canvas.add(
+            lambda d, n=n: (marks(d, 70), trails(d, n)),
+            f"Trails, brightest first: {n} of {len(stars)}",
+            70,
+        )
+    canvas.add(
+        lambda d: (marks(d, 70), trails(d, len(stars))),
+        f"Fayde measures a position for each of the {num(len(stars))} trails it finds.",
+        1600,
+    )
+    canvas.add(
+        lambda d: (marks(d, 70), trails(d, len(stars))),
+        f"A fit to {num(trail['fitted'])} trails gives the whole frame one length and angle: "
+        f"{length:.1f} px at {trail['angle_deg']:.1f}°.",
+        2400,
+    )
+    canvas.add(
+        lambda d: (trails(d, len(stars), 90), point_sources(d)),
+        f"Fayde reports {plural(len(points), 'detection')} that "
+        f"{'doesn' if len(points) == 1 else 'don'}'t trail as "
+        f"{'a point source' if len(points) == 1 else 'point sources'} (yellow).",
+        2200,
+    )
+    if streaks:
+        canvas.add(
+            lambda d: (trails(d, len(stars), 90), point_sources(d), candidates(d)),
+            f"Fayde also reports {plural(len(streaks), 'streak candidate')} (green).",
+            2200,
+        )
+    canvas.add(
+        lambda d: (marks(d, 110), trails(d, len(stars), 160), point_sources(d), candidates(d)),
+        key(
+            ("Cyan", "trails"),
+            ("Yellow", "point sources" if points else ""),
+            (
+                "Green",
+                "" if not streaks else "streak candidates" if streaks[1:] else "streak candidate",
+            ),
+            ("Red", "too sharp" if sharp else ""),
+            ("Orange", orange(on_streak, rest, others)),
+        ),
+        3500,
+    )
+    canvas.save(out)
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    ap.add_argument("kind", choices=["points"])
+    ap.add_argument("kind", choices=["points", "trailed"])
     ap.add_argument("--fayde", required=True, help="the fayde command to run")
     ap.add_argument("-o", "--output", required=True, help="GIF to write")
     ap.add_argument("--report", help="also keep the JSON report here")
     a = ap.parse_args()
-    img = frame_points()
+    img = frame_points() if a.kind == "points" else frame_trailed()
     with tempfile.TemporaryDirectory() as tmp:
         fits = os.path.join(tmp, "frame.fits")
         write_fits(fits, img)
@@ -340,7 +452,7 @@ def main():
     if a.report:
         with open(a.report, "w") as f:
             f.write(text)
-    figure_points(report, img, a.output, subtitle)
+    (figure_points if a.kind == "points" else figure_trailed)(report, img, a.output, subtitle)
 
 
 if __name__ == "__main__":

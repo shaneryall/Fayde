@@ -42,6 +42,14 @@ colored lines for the three satellite streaks it traces.
 ![A synthetic star field. Fayde marks the stars it keeps, the hits it sets aside, and three
 satellite streaks.](docs/images/detect-point-stars.gif)
 
+On a frame where every star trails, Fayde fits one trail length and direction for the whole frame
+and reports a position for each trail it finds. In the next animation, cyan lines mark those
+trails, yellow rings mark the two detections it reports as point sources, and a green line marks a
+streak candidate:
+
+![A synthetic frame in which every star is a short parallel trail, with the trails, point sources
+and streak candidate that Fayde reports.](docs/images/detect-trailed-stars.gif)
+
 ## Quick start
 
 > [!IMPORTANT]
