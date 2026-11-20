@@ -13,8 +13,8 @@ pipeline can retire `solve-field` and the solving-related code around it.
 **Input is an xylist, as with `solve-field`, or an image of point-like stars.** The user runs
 whatever source detector suits their sensor, then gives Fayde the resulting list of sources (§6)
 along with any header or metadata they have. That remains the contract for frames whose stars
-are trailed. Since 2026-11-16 Fayde also takes the image itself when its stars are points (a
-frame tracked at the sidereal rate, a spacecraft in fine pointing), detects the stars, keeps
+are trailed. Fayde also takes the image itself when its stars are points (a
+frame tracked at the sidereal rate, a spacecraft holding its attitude), detects the stars, keeps
 streaks and artefacts out of the list, and fills the same contract:
 [`detection.md`](detection.md).
 
@@ -429,7 +429,7 @@ Built offline from a `Catalog`, stored as one mmap-able file per scale band:
 - Header records catalogue ID, epoch, magnitude limit, cell level, build parameters and a content
   hash. The hash goes into every solution's provenance.
 
-### 5.2a Adaptive search plan (implemented 2026-11-15)
+### 5.2a Adaptive search plan
 
 Fayde's default entry point, `solve_auto`, plans the search from the metadata the request carries
 instead of defaulting to a blind search. Stages run in order and share one hypothesis count, so
@@ -487,11 +487,12 @@ implemented.
 - **Hinted fallback → geometric voting** (Kolomenkin et al. 2008): each image pair votes for
   catalogue pairs of matching separation; the stars with the most consistent votes seed
   hypotheses. Used when seeds and hash fail, e.g. many bright false sources.
-- **Blind (implemented 2026-11-15):** pattern-hash lookups across a series of indexes in √2
-  field-size bands (astrometry.net's index series), best-matched band first, hypotheses counted
-  across all bands. astrometry.net's 4-D quad codes were considered and not adopted: the 5-ratio
-  edge pattern carries more shape information and the hash lookup already gives
-  continuous-tolerance matching (`docs/references.md`, "Considered and not adopted").
+- **Blind:** pattern-hash lookups across a series of indexes in √2 field-size bands
+  (astrometry.net's index series), best-matched band first (the widest when the scale is
+  unknown), hypotheses counted across all bands. astrometry.net's 4-D quad codes were considered
+  and not adopted: the 5-ratio edge pattern carries more shape information and the hash lookup
+  already gives continuous-tolerance matching (`docs/references.md`, "Considered and not
+  adopted").
 - All matchers emit hypotheses `(image stars ↔ catalogue stars, similarity transform)` into a
   verifier queue, ordered by prior probability and seed quality. The first hypothesis over the
   acceptance threshold wins; ties are broken deterministically.
@@ -666,8 +667,8 @@ The detector also learns things about the whole frame. Fayde wants those too:
 
 Reusable across frames. Stored as a separate `InstrumentProfile` (JSON, `fayde-fits::instrument`;
 CLI `--instrument`) so standalone users set it up once. Precedence for every prior: command line,
-then instrument profile, then frame header. **Implemented 2026-11-15**:
-scale with σ, parity, and a roll rule `roll = offset + sign × header[keyword]`. An example
+then instrument profile, then frame header. A profile gives the
+scale with σ, the parity, and a roll rule `roll = offset + sign × header[keyword]`. An example
 profile is in `profiles/example.json`. On a real frame whose header carries the roll angle, a
 calibrated profile cut pair-seed hypotheses from 172 to 2 with an identical solution.
 
@@ -796,8 +797,9 @@ Fayde is planned as Apache-2.0 or MIT/Apache dual.
 
 ## 11. Open questions
 
-1. Instrument classes to index for: sub-degree space-telescope fields only, or also ground
-   sensors?
+1. ~~Instrument classes to index for~~ **Decided:** both. `fayde index build` takes any field
+   width below 90°; UCAC4 suits narrow fields and Tycho-2 wide ones
+   ([`index-set.md`](../index-set.md)).
 2. ~~Catalogue epoch policy~~ **Decided:** fixed-epoch index, high-proper-motion stars excluded
    from patterns, rigorous propagation at query time (§5.2).
 3. Licence choice: Apache-2.0 only, or MIT/Apache dual?

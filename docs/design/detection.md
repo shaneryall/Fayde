@@ -7,7 +7,7 @@ algorithm: [`docs/references.md`](../references.md).
 ## 1. Scope
 
 Input: one image whose stars are points (a frame tracked at the sidereal rate, or a spacecraft
-in fine pointing), with possibly a satellite streak or two, hot pixels, cosmic-ray hits,
+holding its attitude), with possibly a satellite streak or two, hot pixels, cosmic-ray hits,
 saturated stars, stray light. Output: what the solver's input contract asks of a source list
 (`plate-solver.md` §6.3), filled honestly:
 
@@ -23,10 +23,10 @@ Streaks are traced and reported (ends, angle, width, flux), and every detection 
 out of the star list. Frames whose stars are trailed (tracking a satellite) are out of scope:
 their star list still comes from the host's own detector, as before.
 
-Design targets, in order: no parameter the user must know (star width, noise, gain, threshold
-are measured or derived); robust to what space-based sensors show (cosmic rays by the hundred,
-stray light); position errors that the solver's verification and fit can trust; speed; and the
-same bits on every machine (`fayde_core::Portable`, no platform maths).
+Design targets, in order: no parameter the user must know (star width, noise and threshold
+are measured or derived; gain is read from the header when it is there); robust to cosmic rays
+by the hundred and to stray light; position errors that the solver's verification and fit can
+trust; speed; and the same bits on every machine (`fayde_core::Portable`, no platform maths).
 
 ## 2. Why not an existing detector
 
@@ -233,8 +233,8 @@ of the saturated core (measured on synthetic frames).
 ## 5. Measured
 
 Synthetic frames (`fayde_detect::synth`: pixel-integrated Gaussian or Moffat stars, sky and read
-noise, photon noise, streaks, hot pixels, cosmic rays, stray light, saturation). One core of an
-Apple M-series laptop.
+noise, photon noise, streaks, hot pixels, cosmic rays, stray light, saturation). One laptop
+core.
 
 | Quantity | Result |
 |---|---|
@@ -258,11 +258,10 @@ well-sampled stars (0.035 px), 0.08″ undersampled, 0.49″ for seeing-limited 
 solver's fitted error scale is 1.01 on the well-sampled frame: the claimed errors are the real
 ones.
 
-Real frames: 109 frames from a space telescope in fine pointing (0.85° field; 94 of 768 × 768 px
-at 3″/px and 15 of 505 × 513 px at 6″/px; 3 to 10 s exposures, stars of FWHM 2.2 to 3.3 px, 4 to
-540 hot pixels and radiation hits per frame, up to 4 streaks or cosmic-ray tracks in most
-frames), solved from the image file alone against UCAC4 with the header pointing (2° radius) and
-a scale prior:
+Real frames: 109 frames whose stars are points (two pixel scales; 3 to 10 s exposures, stars of
+FWHM 2.2 to 3.3 px, 4 to 540 hot pixels and radiation hits per frame, up to 4 streaks or
+cosmic-ray tracks in most frames), solved from the image file alone against UCAC4 with the
+header pointing (2° radius) and a scale prior:
 
 | | |
 |---|---|
@@ -270,13 +269,13 @@ a scale prior:
 | Detection time | 2.0 ms per frame (median) |
 | Matched stars | 181 (median) |
 | Residual | 0.40 px RMS (median) |
-| Error scale fitted by the solver | 1.58 (median): on this instrument the claimed errors are too small by that factor, with or without the gain |
+| Error scale fitted by the solver | 1.58 (median): on these frames the claimed errors are too small by that factor, with or without the gain |
 
 Two of those frames shaped the method:
 
 - One, taken with a warm detector, has 300 radiation hits to 36 stars among its bright compact
   sources. It is what the widest-mode rule (§3.3) was made for.
-- One is a crowded field at 6″/px whose stars are smeared two to one by a drift. With
+- One is a crowded field whose stars are smeared two to one by a drift. With
   narrowness judged against the stars' mean width, its 36 brightest stars were classed as
   cosmic rays (117 "sharp" sources; 7 once judged against the stars' narrow axis), and with the
   brightest stars missing the solver's search, which starts from them, found nothing although

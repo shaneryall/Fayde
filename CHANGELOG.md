@@ -57,7 +57,7 @@ because the index files and their hashes date from 0.1.0.
 - Python: an image passed with `header=None` uses the header of its HDU, and arrays are
   converted to 32-bit floats once instead of through a 64-bit copy.
 - Comments that restated the code are removed from the source, scripts and workflows.
-- All 109 real fine-pointing frames of the test set solve with 0.3.1 and with 0.3.2.
+- All 109 real point-source frames of the test set solve with 0.3.1 and with 0.3.2.
 
 ## 0.3.1 (2026-11-17)
 
@@ -133,7 +133,7 @@ The first public release: on GitHub, PyPI and crates.io.
   1σ position error and a star probability from one closed-form fit at its peak. Hot pixels
   and cosmic-ray hits are set aside, saturated stars are centred from their clipped region, and
   streaks are traced and reported with their ends, angle, width and flux; nothing on a streak
-  is handed to the solver. It is built for space-based frames: the star width is the widest
+  is handed to the solver. It is built for difficult frames: the star width is the widest
   distinct size among compact sources (radiation hits can outnumber stars), each peak is tested
   against a ring around it (stray light), and narrowness is judged against the stars' own
   narrow axis (frames smeared by a drift). 2 to 7 ms per megapixel on one core, the same bits

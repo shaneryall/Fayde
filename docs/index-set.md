@@ -18,7 +18,7 @@ with all 900 zone files, and at least 32 GB of free memory.
 Replace `UCAC4_DIR` with the path to the directory that contains `u4b`. To cover both field
 sizes, build both indexes:
 
-1. Build the index for fields of about 0.85°:
+1. Build the index for fields of about 1°:
 
    ```bash
    fayde index build --ucac4 UCAC4_DIR --fov 1.0 --stars-per-fov 23.7 --pattern-stars-per-fov 23.7 --mag-limit 15.5 --min-edge 0.04 --epoch 2025 -o allsky-1.0.fidx
