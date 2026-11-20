@@ -28,8 +28,8 @@ capabilities that pipelines otherwise build around a solver, generalized for pub
 | Match acceptance | astrometry.net | Bayesian log-odds verification against the catalogue |
 | Final fit | astrometry.net, extended | TAN + SIP fit, upgraded to weighted iterative refit with outlier rejection |
 | Source detection | new, for point-like stars; otherwise the user supplies the xylist | One fixed extractor cannot fit every sensor; astrometry.net's built-in `simplexy` solved about 12% of one host pipeline's frames. Fayde defines a rich xylist contract (§6) that any detector can fill, and fills it itself from an image of point-like stars with a detector that measures the star width, noise and position errors instead of asking for them ([`detection.md`](detection.md)). |
-| Catalogue | new | UCAC4 read natively behind a catalogue trait; Gaia later |
-| Header priors, sequences, observer state | new | Scale and pointing resolution, neighbour hints and astrometric place, which a pipeline otherwise builds around the solver |
+| Catalogue | new | UCAC4 and Tycho-2 read natively behind a catalogue trait |
+| Header priors, neighbour hints | new | Scale and pointing resolution and a prediction from a solved neighbour, which a pipeline otherwise builds around the solver |
 
 ### Standalone first, host pipelines first-class
 
@@ -95,7 +95,7 @@ General rules:
 ### Must
 
 1. Define an input contract optimized for solution quality (§6). Only the sources and image size
-   are required. Every other field (uncertainties, flux, `p_star`, exposure time, observer state,
+   are required. Every other field (uncertainties, flux, `p_star`, exposure time,
    priors with σ) improves the result when present. **Internal pixel convention:** `(x, y)` = (column, row), with the
    centre of the first pixel at `(0, 0)` (NumPy/Astropy). Conversions happen only at the edges:
    +1 for FITS/astrometry.net xylists, +0.5 and an `(x, y)`→`(y, x)` swap for tetra3/cedar.
@@ -119,18 +119,15 @@ General rules:
 
 ### Should
 
-1. Sequence mode: predict frame N from N−1, verify the prediction, fall back to a search only on
-   failure.
-2. Per-source centroid uncertainty: each source may carry a 2×2 covariance that the verifier and
-   fitter use (§6.3). Sources are treated as point centroids; producers with streaked stars
+1. Sequence mode: when the search finds no solution, verify a WCS predicted from a solved frame
+   of the same pass.
+2. Per-source centroid uncertainty: each source may carry a position error that the verifier
+   and fitter use (§6.3). Sources are treated as point centroids; producers with streaked stars
    supply the streak centroid.
-3. Photometric consistency: fit a zero point from the matches and use magnitude agreement as a
-   second discriminator in the verifier.
-4. Aberration-aware output, given observer state (§6.6).
-5. Solve the target case (sub-degree FOV, ~3″/px, 30–60 sources) in < 100 ms hinted and
+3. Solve the target case (sub-degree FOV, ~3″/px, 30–60 sources) in < 100 ms hinted and
    < 5 s blind on a single core.
 
-### Won't (v1)
+### Won't
 
 - Lens-distortion models beyond SIP (TPV, lookup tables).
 
@@ -236,7 +233,7 @@ A tetra3 fork with the same API and pixel convention. What changed:
 
 The wider literature (star-tracker identification, robust estimation, distortion fitting,
 benchmarks) is reviewed in [`docs/research/literature-review.md`](../research/literature-review.md).
-Its adopted recommendations are folded into §5, §6 and §9.
+Sections 5, 6 and 9 describe what Fayde implements.
 
 1. **Database layout from cedar-solve:**
    - uniform lattice fields with a fixed budget of patterns per field;
@@ -765,7 +762,7 @@ Fayde is Apache-2.0 (since 0.1.1; `LICENSE`, `NOTICE`).
 - astrometry.net: mostly BSD-3, which is compatible with notices kept. Some components are GPL;
   porting from those would make Fayde GPL. Rule: port from papers (Lang et al. 2010) and BSD files
   only; check the licence header of every file before porting from it.
-- UCAC4 data: check redistribution terms before shipping built indexes publicly.
+- Catalogue data: Fayde's releases contain no catalogue data and no built indexes.
 
 ## 9. Validation
 

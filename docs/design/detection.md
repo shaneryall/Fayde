@@ -1,6 +1,6 @@
 # Star and streak detection — design
 
-Status: **implemented** (2026-11-16), crate `fayde-detect`. Survey of existing methods:
+Crate `fayde-detect`. Survey of existing methods:
 [`docs/research/literature-review.md`](../research/literature-review.md) §7. Sources of every
 algorithm: [`docs/references.md`](../references.md).
 
@@ -187,10 +187,9 @@ star beside the streak or another streak crossing it. Then:
   of stars is not a streak);
 - a streak narrower than the stars is flagged `cosmic_ray`.
 
-Only streaks bright enough to raise a peak above the detection threshold are found (about 5σ
-per PSF area). Fainter ones do not disturb the star list. Finding them needs an integration
-along the line (Radon transform; Nir, Zackay & Ofek 2018), 10 to 100 times the cost of
-everything here, and is left for a separate, optional step.
+Only streaks bright enough to raise a peak above the detection threshold are found (about 5σ per PSF
+area). Fainter ones do not disturb the star list. Fayde does not search for them: an integration
+along the line (Radon transform; Nir, Zackay & Ofek 2018) costs 10 to 100 times everything here.
 
 ### 3.8 Threshold and probabilities
 
@@ -287,15 +286,14 @@ solver and priors: 105 solved, median residual 0.79 px, error scale 2.65, about 
 frame. On the 105 frames both solve, the field centres agree to 0.19″ (median); on the one
 where they differ by 10″, this detector's solution has a residual of 1.5 px and the other's 5 px.
 
-## 6. Limits and what is next
+## 6. Limits
 
 1. Faint streaks (under about 5σ per PSF area) are not found (§3.7).
 2. With stars of FWHM under about 2.5 px, multi-pixel cosmic-ray clumps of signal-to-noise ratio
    under about 30 cannot be told from faint stars by a 3 × 3 shape: in the worst synthetic case
    (3000 hits, 200 stars of FWHM 2.4 px, stray light and streaks together) 8% of the hits pass
    as faint stars. They are distractors
-   the solver is built for. A soft class probability using the frame's own artefact rate would
-   lower their `p_star`.
+   the solver is built for.
 3. The claimed position errors assume a Gaussian core and white noise. On real frames the
    solver's error scale shows them 1.5 times too small; the cause (pixel response, PSF shape,
    pointing jitter) has not been separated.

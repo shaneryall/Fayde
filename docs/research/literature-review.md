@@ -1,6 +1,6 @@
 # Fayde plate solver: literature review
 
-Status: **draft** (2026-11-15). Companion to `docs/design/plate-solver.md` (the "design doc"; section
+Companion to `docs/design/plate-solver.md` (the "design doc"; section
 numbers like §5.3 refer to it). The baseline is taken as given: a tetra3/cedar-solve pattern hash for
 hinted solving, astrometry.net quads for blind solving, astrometry.net log-odds verification, a
 weighted TAN+SIP fit, and UCAC4.
@@ -34,12 +34,12 @@ geometric hashing with quads plus Bayesian verification), tetra3 (ESA's rewrite 
 | 1.6 | Multi-Poles Algorithm (Schiattarella et al. 2017, 2020) | CONSIDER: evidence that magnitude filtering helps under heavy false-object load | §5.4 |
 | 1.7 | Non-dimensional star-ID (Leake, Arnas & Mortari 2020) | SKIP (focal-length drift is not a problem here; the scale prior handles it) | — |
 | 1.8 | Reverse-attitude statistics (Dong et al. 2024) | CONSIDER: attitude-space voting as the hinted fallback (same family as 1.3) | §5.3 |
-| 1.9 | Surveys and benchmarks (Spratling & Mortari 2009; Rijlaarsdam et al. 2020; ESA Kelvins 2017) | **ADOPT** the Kelvins dataset and Rijlaarsdam's protocol as public regression tests | §9 |
+| 1.9 | Surveys and benchmarks (Spratling & Mortari 2009; Rijlaarsdam et al. 2020; ESA Kelvins 2017) | CONSIDER the Kelvins dataset and Rijlaarsdam's protocol as public regression tests | §9 |
 | 2.1 | Houtz & Frueh 2021 (polar-grid plate solving of streaked stars) | **ADOPT (idea)**: common trail geometry as a star/non-star classifier and as a prior | §5.0, §6.3a, §6.4 |
 | 2.2 | Sease, Koglin & Flewelling 2013 (attitude plus rate from streak endpoints) | **ADOPT**: confirms the time-dependent WCS plan | §5.5 |
 | 2.3 | AURORAS "dynamic astrometric calibration" (Krantz et al. 2025) | ADOPT (confirms §5.5); CONSIDER a quadratic time term | §5.5 |
 | 2.4 | Vereš et al. 2012 trail fitting | ADOPT as producer guidance (covariance and endpoints) | §6.3, §6.9 |
-| 2.5 | Rolling-shutter streak ID (Schiattarella et al. 2020) | SKIP for v1 (global shutter); `read_order` already reserved | §6.5 |
+| 2.5 | Rolling-shutter streak ID (Schiattarella et al. 2020) | SKIP (global shutter) | — |
 | 2.6 | Astrometry24.NET (Sybilska et al. 2019) | SKIP (closed service; no algorithmic detail to take) | — |
 | 3.1 | RANSAC minimal-sample argument (Fischler & Bolles 1981) | **ADOPT**: the reason to prefer 2-star seeds in hinted mode | §5.3 |
 | 3.2 | PROSAC (Chum & Matas 2005) | **ADOPT**: order hypotheses by `p_star` × brightness | §5.3, §6.3 |
@@ -52,10 +52,10 @@ geometric hashing with quads plus Bayesian verification), tetra3 (ESA's rewrite 
 | 4.2 | SIP vs TPV vs Zernike (Shupe et al. 2005; Calabretta & Greisen 2002; SCAMP) | Keep SIP; SKIP TPV and Zernike | §5.5 |
 | 4.3 | Persistent instrument distortion plus per-exposure terms (Bernstein et al. 2017; SCAMP) | **ADOPT**: fit distortion across many frames, not per frame | §5.5, §6.5, §9 |
 | 4.4 | Model selection (F-test vs BIC vs cross-validation) | ADOPT BIC, or leave-one-out cross-validation, in place of the F-test | §5.5 |
-| 5.1 | HEALPix uniformization (Górski et al. 2005; astrometry.net) | Keep (already planned) | §5.2 |
-| 5.2 | Fibonacci lattice (González 2010) / spherical spiral (Bauer 2000) | Keep for pattern fields (already planned via cedar-solve) | §5.2 |
+| 5.1 | HEALPix uniformization (Górski et al. 2005; astrometry.net) | Keep | §5.2 |
+| 5.2 | Fibonacci lattice (González 2010) / spherical spiral (Bauer 2000) | Keep for pattern fields (via cedar-solve) | §5.2 |
 | 5.3 | Rigorous epoch propagation (Butkevich & Lindegren 2014) | **ADOPT** as the reference formulae, including covariance propagation | §5.1 |
-| 5.4 | UCAC4 error budget (Zacharias et al. 2013) | ADOPT: fixed-epoch index, query-time propagation (answers open question 2) | §5.1, §5.2, §11 |
+| 5.4 | UCAC4 error budget (Zacharias et al. 2013) | ADOPT: fixed-epoch index, query-time propagation | §5.1, §5.2 |
 | 5.5 | Relativistic aberration (Klioner 2003; SOFA/ERFA `ab`) | ADOPT the SOFA/ERFA formulation; aberration moves the field centre and changes the scale, nothing else | §6.6 |
 | 6.1 | Learned star-ID (SIGNN, WACV 2025; ICPRAM 2023; RPNet) | **SKIP** (not credible for production verification) | — |
 
@@ -161,7 +161,7 @@ lesson is simple: **the fewer true stars a hypothesis needs, the more robust the
   The ESA-contest version's main improvement was **magnitude filtering**, which made the
   confirmation phase unnecessary.
 - **Verdict: CONSIDER, as evidence.** The magnitude-filtering result is independent support for
-  Fayde's planned photometric term (§3.7). The algorithm itself adds nothing beyond 1.1 and 1.3.
+  a photometric term in the verifier (§3.7). The algorithm itself adds nothing beyond 1.1 and 1.3.
 
 ### 1.7 Non-dimensional star-ID
 
@@ -205,12 +205,10 @@ lesson is simple: **the fewer true stars a hypothesis needs, the more robust the
   - Final Kelvins accuracy scores out of a perfect 9921: Super k-ID 9708, MPA 9703, **"Tetra"
     (the original hash-table approach behind tetra3) 9672**, then others from 9605 down.
   - So a hash-table matcher is within about 0.4% of the best on a false-star-heavy benchmark.
-- **Verdict: ADOPT for §9.** Add the Kelvins scenes as a public, reproducible regression test for
-  the pattern-hash and seed matchers: it is synthetic, public and false-star heavy, which is exactly
-  what §9 needs. Check redistribution terms before vendoring. Follow Rijlaarsdam's considerations
-  when designing Fayde's own synthetic tests. LOST ([GitHub](https://github.com/uwcubesat/lost))
-  implements Pyramid, geometric voting and tetra-style matchers and can serve as an independent
-  baseline.
+- **Verdict: CONSIDER.** The Kelvins scenes are synthetic, public and false-star heavy, which
+  suits a reproducible regression test of the pattern-hash and seed matchers. LOST
+  ([GitHub](https://github.com/uwcubesat/lost)) implements Pyramid, geometric voting and
+  tetra-style matchers, an independent baseline.
 
 ---
 
@@ -246,8 +244,8 @@ are narrower; they are listed below.
   common star trail vector (`trail_model`) is the sky's apparent motion relative to the tracked
   target, projected onto the detector. Given the commanded tracking rate (from the TLE and observer
   state) and the exposure time, the trail's **direction gives roll** (with its sign, **parity**) and
-  its **length gives scale**. This is Fayde's own inference, not a published method. It should
-  become a derived prior in §6.4 (see Recommendation 3).
+  its **length gives scale**. This is Fayde's own inference, not a published method; Fayde does
+  not derive priors from it.
 
 ### 2.2 Sease et al.: attitude and rate from streak endpoints
 
@@ -280,7 +278,7 @@ are narrower; they are listed below.
 - **Evidence.** Qualitative residual plots; no numbers on astrometric accuracy were given.
 - **Verdict: ADOPT, as confirmation of §5.5.** CONSIDER an optional **quadratic time term**
   (pointing acceleration) when trail `profile` or curvature data show non-linear trails, as in
-  long exposures tracking fast LEO targets. Low priority for v1.
+  long exposures tracking fast LEO targets.
 
 ### 2.4 Trail fitting for astrometry (producer side)
 
@@ -304,8 +302,7 @@ are narrower; they are listed below.
   **[abstract]**).
 - **Finding.** A rolling shutter distorts streak length by about 25% (Curti et al.). A first-order
   compensation gives reliable identification up to 5°/s.
-- **Verdict: SKIP for v1.** Fayde's main target uses a global-shutter CCD. The `read_order` field in
-  §6.5 is the right hook for later.
+- **Verdict: SKIP.** Fayde's main target uses a global-shutter CCD.
 
 ### 2.6 Astrometry24.NET
 
@@ -364,14 +361,12 @@ are narrower; they are listed below.
   support.
 - **Verdict: ADOPT (§5.4/§5.5).** This matters most for trailed stars and for 1- or 2-star seeds.
   A similarity transform from two stars, ignoring trail rate and distortion, can leave a true match
-  just below threshold. Proposed flow:
-  1. Cheap binomial pre-filter.
-  2. If it passes, a weighted refit on its matches (similarity → TAN, and rate terms when there
-     are endpoints).
+  just below threshold. Fayde's flow (§5.4):
+  1. A cheap pre-filter.
+  2. If it passes, a weighted refit on its matches (similarity → TAN).
   3. Re-match, then compute the log-odds on the **refined** model.
 
-  astrometry.net does a version of this ("tweak" during verification). Fayde should make it
-  explicit and bounded (at most N refit iterations, deterministic).
+  astrometry.net does a version of this ("tweak" during verification).
 
 ### 3.4 MAGSAC / MAGSAC++
 
@@ -469,8 +464,7 @@ are narrower; they are listed below.
   coordinates) are interconvertible to good precision. SCAMP writes TPV, and pipelines routinely
   convert it to SIP because most tools read SIP. Zernike is useful only for wide-field optics with
   a circular pupil, and has no FITS convention.
-- **Verdict: keep SIP; SKIP TPV and Zernike (§5.5, "Won't (v1)" confirmed).** Optional later: read
-  TPV in `fayde verify`/`refit` so SCAMP outputs can be checked.
+- **Verdict: keep SIP; SKIP TPV and Zernike (§5.5, "Won't" confirmed).**
 
 ### 4.3 Persistent instrument distortion with per-exposure terms
 
@@ -513,7 +507,7 @@ are narrower; they are listed below.
 
 - **Citations.** Górski et al., "HEALPix", *ApJ* 622, 2005. Lang et al. 2010
   (`uniformize-catalog`).
-- **Verdict: keep (§5.2).** Already planned; nothing better found.
+- **Verdict: keep (§5.2).** Nothing better found.
 
 ### 5.2 Fibonacci lattice and spherical-spiral catalogues
 
@@ -543,7 +537,7 @@ are narrower; they are listed below.
   zero-parallax case. With Gaia DR3 they are exact. Use the covariance transformation to produce
   `pos_err` at the epoch, which feeds the fit weights in §5.5.
 
-### 5.4 UCAC4 error budget and epoch policy (open question 2)
+### 5.4 UCAC4 error budget and epoch policy
 
 - **Citation.** Zacharias et al., "The fourth US Naval Observatory CCD Astrograph Catalog
   (UCAC4)", *AJ* 145:44, 2013 ([arXiv:1212.6182](https://arxiv.org/abs/1212.6182)). **[abstract]**
@@ -554,7 +548,7 @@ are narrower; they are listed below.
     position errors are therefore about 0.05–0.3″. At 3″/px that is **0.02–0.1 px**: irrelevant
     for matching and small for the fit.
   - Gaia DR3 is about 100× better and would only matter for sub-0.1 px accuracy claims.
-- **Verdict: ADOPT a two-level policy (§5.1, §5.2, §11 question 2).**
+- **Verdict: ADOPT a two-level policy (§5.1, §5.2).**
   1. **Build the index at a fixed epoch** (for example 2025.0). For 99.9% or more of stars,
      |µ| < 100 mas/yr, so ±10 yr moves them less than 1″ (0.3 px), well within the code
      tolerance.
@@ -562,8 +556,8 @@ are narrower; they are listed below.
      keep them in the star table.
   3. **Propagate at query time**, to the mid-exposure epoch, for verification and fitting.
 
-  Rebuilding the index for each campaign is then unnecessary. Gaia DR3 stays a later catalogue,
-  with a clear trigger: accuracy requirements below about 0.1″.
+  Rebuilding the index for each campaign is then unnecessary. Gaia DR3 matters only for
+  accuracy requirements below about 0.1″.
 
 ### 5.5 Aberration for spacecraft observers
 
@@ -688,7 +682,7 @@ No published pipeline combines a per-peak ridge test with a trace from that peak
 solver runs a streak detector before solving.
 
 **Verdict: ADOPT** ridge-like peaks as seeds and trace from them (Fayde's own tracer); **SKIP**
-Radon and Hough for now (cost; they find streaks too faint to disturb the star list).
+Radon and Hough (cost; they find streaks too faint to disturb the star list).
 
 ## Recommended changes to the design doc (ranked)
 
