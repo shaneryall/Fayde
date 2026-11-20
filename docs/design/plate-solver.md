@@ -1,8 +1,9 @@
 # Fayde plate solver — design
 
-Status: the design that versions 0.x implement (written 2026-11-15); where it and the code
-differ, the code and `CHANGELOG.md` are right. Prior art (§3) comes from a source-level read of astrometry.net,
-tetra3, cedar-solve and cedar-detect. File:line references there are to their upstream repos.
+This document describes the solver design. For the crate layout and integration contract, see
+§4 and §6. For commands and report fields, see the [CLI guide](../usage.md) and
+[Python guide](../python.md). Source references in the
+prior-art survey (§3) point to the upstream repositories.
 
 ## 1. Purpose
 
@@ -23,8 +24,8 @@ capabilities that pipelines otherwise build around a solver, generalized for pub
 
 | Concern | Taken from | Reason |
 |---|---|---|
-| Fast hinted match | tetra3 / cedar-solve | 4-star edge-ratio pattern hash, O(1) lookup, millisecond solves |
-| Blind / wide fallback | astrometry.net, adapted | Its √2 scale-band index series, searched with Fayde's 5-ratio pattern hash (quad codes considered, not adopted) |
+| Fast hinted match | tetra3 / cedar-solve; Mortari's pair lists | Pair seeds when the scale is tight, otherwise a 4-star edge-ratio pattern hash; millisecond solves |
+| Blind / wide fallback | astrometry.net, adapted | Its series of indexes for different field widths, searched with Fayde's 5-ratio pattern hash (quad codes considered, not adopted) |
 | Match acceptance | astrometry.net | Bayesian log-odds verification against the catalogue |
 | Final fit | astrometry.net, extended | TAN + SIP fit, upgraded to weighted iterative refit with outlier rejection |
 | Source detection | new, for point-like stars; otherwise the user supplies the xylist | One fixed extractor cannot fit every sensor; astrometry.net's built-in `simplexy` solved about 12% of one host pipeline's frames. Fayde defines a rich xylist contract (§6) that any detector can fill, and fills it itself from an image of point-like stars with a detector that measures the star width, noise and position errors instead of asking for them ([`detection.md`](detection.md)). |
@@ -239,18 +240,23 @@ Sections 5, 6 and 9 describe what Fayde implements.
    - uniform lattice fields with a fixed budget of patterns per field;
    - brightest-first breadth-first combinations;
    - a prime-sized table with linear probing;
-   - a 16-bit key hash and float16 longest edge in each slot;
-   - nearest-bin-first lookup.
+   - a 16-bit key check and the longest edge (as `f32`) in each slot.
 
-   Stored as a versioned, memory-mappable flat binary rather than npz.
-2. **Verification from astrometry.net** (Bayesian log-odds with distractors). The binomial test is
-   kept only as a cheap pre-filter.
-3. **A real WCS output** (TAN, with SIP of order 2–3), plus RA/Dec/roll/FOV. The SVD determinant is
-   checked so the parity is right, which tetra3 does not do.
-4. **Scale bands like astrometry.net's** (√2 steps) for the blind path, with RA/Dec hints used to
-   prune lattice cells before probing the hash.
-5. **Pluggable catalogues with proper motion done properly.** Applying proper motion with the full
-   3-D space-motion vector fixes the shortcuts all three take near the poles or by dropping stars.
+      A lookup probes every key in the tolerance window (or scans the table when the window holds
+      more keys than the table has slots) and ranks the hits by their exact shape error. The index
+      is a versioned flat binary, read into memory, rather than npz.
+2. **Verification from astrometry.net** (Bayesian log-odds with distractors), behind a cheap
+   pre-filter that counts sources landing near catalogue stars (§5.4).
+3. **A real WCS output** (TAN, with SIP of order 2–3), plus RA, Dec, pixel scale and roll. Fayde
+   fits each seed with an explicit parity and, when the parity is unknown, tries both and verifies
+   each, so the parity is right, which tetra3 does not check.
+4. **Several indexes for different field widths, like astrometry.net's series**, tried in order
+   of closeness to the frame's diagonal (the widest first when the scale is unknown). A pointing
+   hint rejects a matched pattern with a star farther from the pointing than the search radius
+   plus the frame's half-diagonal.
+5. **Pluggable catalogues with proper motion applied to every star.** Each position moves along
+   its proper motion on the sphere, which holds at the poles, and stars without proper motion are
+   kept with a larger error: all three take shortcuts near the poles or drop such stars.
 
 ## 4. Architecture
 
@@ -335,7 +341,7 @@ UCAC4 reader:
   layout matches `catalogs/ucac4.c:51-119` in astrometry.net):
   - `ra` u32 (mas) and `spd` u32 (mas from the south pole, so Dec = spd − 90°);
   - `magm`/`maga` i16 (mmag), `sigra`/`sigdc` i8 (+128 mas);
-  - `pmrac`/`pmdc` i16 (0.1 mas/yr, where pmRA already includes cos δ), `sigpmr`/`sigpmd` u8;
+  - `pmrac`/`pmdc` i16 (0.1 mas/yr, where pmRA already includes cos δ), `sigpmr`/`sigpmd` i8 (+128);
   - 2MASS J/H/K, APASS B/V/g/r/i, and `rnm` u32 (the unique star ID).
 - **Sentinels:** a magnitude of 20000 means missing. A proper motion of 32767 means the real value
   is in `u4i/u4hpm.dat`, which is loaded once.
@@ -343,13 +349,15 @@ UCAC4 reader:
   a count, so a cone search seeks straight to the rows it needs. The file is optional: a zone
   file is in RA order, so without it the same rows are found by binary search of the zone file.
 - **Epoch:** positions are ICRS mean positions at epoch 2000.0. `cepra`/`cepdc` are central epochs,
-  not the reference epoch, and are not used for propagation. Proper motion is applied to the query
-  epoch with the rigorous formulae of Butkevich & Lindegren (2014), including propagation of the
-  position covariance; this is correct at the poles. Stars without valid
+  not the reference epoch: positions do not move from them, but position errors grow from them.
+  Proper motion moves each position to the query epoch as a unit vector on the sphere, the
+  zero-parallax, zero-radial-velocity case of Butkevich & Lindegren (2014), which holds at the
+  poles. The error on each axis grows as `√(σ₀² + (t − t_c)²·σμ²)` from the central epoch
+  `t_c`. Stars without valid
   proper motion keep their 2000.0 position with an inflated position error, rather than being
   dropped as tetra3 does.
 - **Magnitude band:** `magm` (579–642 nm, close to unfiltered silicon) by default, falling back to
-  `maga`; APASS V or r can be selected per index. This is the same default rule as the
+  `maga`. This is the same default rule as the
   independent reader behind the test oracle, so results can be compared row for row.
 - **Bright stars:** UCAC4 is saturated or incomplete brighter than about mag 7–8. Indexes merge
   Tycho-2 (or Hipparcos) for bright stars and remove duplicates within about 1″.
@@ -368,30 +376,32 @@ Built offline from a `Catalog`, stored as one mmap-able file per scale band:
   replaces all its fainter neighbours. Rejected stars are not buffered for reconsideration,
   so results are deterministic for a given catalogue stream. This follows astrometry.net's
   `uniformize-catalog` approach. It keeps the density even, so the galactic plane does not swamp
-  the hash table and the poles are not empty. The magnitude limit can be set automatically from the
-  density needed, as cedar-solve does.
-- **Scale bands:** √2 steps in pattern size, as astrometry.net uses. Bands are built only for the
-  instrument classes we actually run, not for every scale over the whole sky.
+  the hash table and the poles are not empty. The magnitude limit is optional
+  (`--mag-limit`); stars without a magnitude are left out.
+- **Field widths:** each index is built for one field width (`--fov`). A solve can load several,
+  tried in order of closeness to the frame's diagonal (the widest first when the scale is
+  unknown, §5.3); [`index-set.md`](../index-set.md)
+  lists a recommended set.
 - **Pattern hash table** (cedar-solve design):
   - lattice fields with a fixed number of patterns per field, chosen brightest first in
     breadth-first combination order;
   - the key is 5 sorted edge ratios, binned;
   - the table size is a prime above 3× the pattern count, with linear probing;
   - each slot holds a 16-bit key check and a float16 longest edge, plus 4 star IDs.
-- **Coverage vs size (measured 2026-11-15, regional UCAC4 index, 0.4° FOV):** with 2× lattice
+- **Coverage vs size (measured on a regional UCAC4 index, 0.4° FOV):** with 2× lattice
   oversampling 0 of 70 image 4-sets were in the index; 30× found 11, 100× (cedar-solve's value)
   found 35, and the true match always ranked first. Patterns grow roughly linearly with
   oversampling (431 → 11,645 for the region), so an all-sky index for a sub-degree FOV at 100× is
   large (rough estimate: tens of millions of patterns, gigabytes). This is a reason hinted solves
   should start from pair seeds built at solve time (§5.3), with the stored pattern index reserved
   for loose priors and blind solving.
-- **Two tiers (fixed 2026-11-15):** the first all-sky benchmark solved 89/100 frames blind with
+- **Two tiers:** the first all-sky benchmark solved 89/100 frames blind with
   no wrong solutions, but every failure was a dense field whose true patterns were absent from
   the table (0 of 126–1001 true 4-star sets of the frame's top index stars). Cause: about 40 index
   stars per field of view, but patterns built from each field's 10 brightest, so a frame's
   brightest stars rarely formed a stored pattern. The fix is tetra3/cedar-solve's two densities:
-  the dense tier (~40 per field of view) stays for verification and fitting, and patterns come
-  only from a sparse pattern tier.
+  the dense tier (20 stars per field of view by default) feeds the pattern-seed pre-filter, and
+  patterns come only from a sparse pattern tier.
   First attempt (v2): one star per cell of side fov/√10 rounded *down* to a HEALPix level put
   both tiers on nside 256, so half the index became pattern stars and fields were truncated
   again (6 failures in 149 frames, from 8). The v3 selection kept k brightest stars per
@@ -405,10 +415,10 @@ Built offline from a `Catalog`, stored as one mmap-able file per scale band:
   depends on the available dense stars, and sparse catalogues can undershoot the target.
   An incremental Cartesian unit-vector grid checks 27 neighbouring buckets with exact chord
   distances, avoiding cell-boundary and polar artifacts; the existing static k-d tree then
-  supplies lattice-field neighbours. Progress reports the actual pattern count per fov² over
+  supplies lattice-field neighbours. Progress reports the number of pattern stars per fov² over
   the requested region (or all sky). Pattern membership remains stored per star, with index
   **file format v2 unchanged**; v4 names the selection method, not the file format.
-  Validation (2026-11-15): a synthetic uniform all-sky input of 1.6 million dense stars at
+  Validation: a synthetic uniform all-sky input of 1.6 million dense stars at
   fov = 1° retained 751,083 pattern stars, **18.207 per fov²** (−9.0% from target 20), in
   about **1.8–1.9 s** for sorting and thinning in release mode. An independent k-d-tree check
   verifies separation for every retained star. The coarse-boundary and 3″-double regressions
@@ -417,14 +427,16 @@ Built offline from a `Catalog`, stored as one mmap-able file per scale band:
   are separate from the earlier oversampling measurements above.
 - **Quad kd-tree** (astrometry.net design) — *considered, not adopted* (§5.3): 4-D quad codes for blind solving, code tolerance about
   0.01.
-- **Epoch policy** (see §10): the index is built at a fixed epoch (e.g. 2025.0). Stars
-  whose proper motion would move them more than a fraction of the pattern tolerance over ±25 years
-  are excluded from patterns, so the index stays valid for decades. Verification and fitting do
-  not use index positions: they fetch catalogue stars propagated to the observation epoch at
-  query time (§5.1). UCAC4 propagation errors at 2026 are about 0.02–0.1 px at 3″/px, so Gaia is
-  needed only for accuracy goals below about 0.1″.
-- Header records catalogue ID, epoch, magnitude limit, cell level, build parameters and a content
-  hash. The hash goes into every solution's provenance.
+- **Epoch policy** (see §10): the index is built at a fixed epoch (2025.0 by default). Stars whose
+  proper motion would move them more than half the pattern tolerance at half the field width in 25
+  years (about 180 mas/yr per degree of field) are left out of the index, so it stays valid for
+  decades; a star with no proper motion counts as still. Pair seeds, verification and fitting do not
+  use index positions: they read catalogue stars propagated to the observation epoch at query time
+  (§5.1), so they still see those stars. UCAC4 propagation errors at 2026 are about 0.06–0.3″
+  (0.02–0.1 px at 3″/px); Gaia matters only for accuracy goals finer than that.
+- The header records catalogue ID, epoch, magnitude limit, cell level and build parameters, and
+  a trailer holds a content hash. A pattern-hash solution names its index's hash, and the report
+  lists the hash of every index loaded.
 
 ### 5.2a Adaptive search plan
 
@@ -441,9 +453,9 @@ executed plan (`search`: stage, hypotheses, seconds).
 | Nothing | Blind: pattern hash over every index band |
 | `search_outside_pointing` (opt-in) | After the above, pattern hash outside the pointing limit; the solution is flagged `prior_violated` |
 
-The pair seeds look close to the pointing first when its σ is small (added 2026-11-16). The
-work of a pair-seed stage grows with the area of its cone, and a spacecraft's pointing is
-usually far better than the hard limit a pipeline is willing to set: measured on 146 real
+The pair seeds look close to the pointing first when its σ is small. The work of a pair-seed
+stage grows with the area of its cone, and a pipeline's pointing is often far better than the
+hard limit it is willing to set: measured on 146 real
 source lists, the pointing was within 2.7′ while the limit was 2°, and a solve cost 8.7 ms at
 the 2° limit against 1.1 ms at 0.25°. The first look is skipped when 3σ is more than half the
 hard radius, which includes the default σ of a quarter of it: a first look nearly as wide as
@@ -452,7 +464,7 @@ the limit costs almost as much as the search it would spare. The σ comes from t
 frames.
 
 With a pointing and a tight scale the pair seeds go first even when an index is loaded. The
-reverse was tried (2026-11-16): one hash stage ahead of the pair seeds halves the median solve
+reverse was tried: one hash stage ahead of the pair seeds halves the median solve
 on real source lists, but with an all-sky index a stage that finds nothing costs 37 to 395 ms,
 against 3 ms for the pair-seed solve it delays, and the mean went from 4.5 ms to 24 ms
 (`docs/references.md`, "Considered and not adopted").
@@ -484,11 +496,11 @@ implemented.
 - **Hinted fallback → geometric voting** (Kolomenkin et al. 2008): each image pair votes for
   catalogue pairs of matching separation; the stars with the most consistent votes seed
   hypotheses. Used when seeds and hash fail, e.g. many bright false sources.
-- **Blind:** pattern-hash lookups across a series of indexes in √2 field-size bands
-  (astrometry.net's index series), best-matched band first (the widest when the scale is
-  unknown), hypotheses counted across all bands. astrometry.net's 4-D quad codes were considered
-  and not adopted: the 5-ratio edge pattern carries more shape information and the hash lookup
-  already gives continuous-tolerance matching (`docs/references.md`, "Considered and not
+- **Blind:** pattern-hash lookups across the indexes loaded, each built for one field width (as
+  astrometry.net's index series), the closest to the frame's diagonal first (the widest when the
+  scale is unknown), hypotheses counted across all of them. astrometry.net's 4-D quad codes were
+  considered and not adopted: the 5 edge ratios describe the same four-point shape, and the hash
+  lookup already gives continuous-tolerance matching (`docs/references.md`, "Considered and not
   adopted").
 - All matchers emit hypotheses `(image stars ↔ catalogue stars, similarity transform)` into a
   verifier queue, ordered by prior probability and seed quality. The first hypothesis over the
@@ -504,7 +516,7 @@ stars is rough. The hypothesis is refitted on its provisional inliers (weighted,
 and only then scored. This rescues correct hypotheses whose seed transform was slightly off.
 
 Bayesian log-odds as in astrometry.net (`solver/verify.c:448-620`, distractor ratio 0.25 by
-default): for each image source in brightness order, the probability
+default): for each image source in rank order (§5.0), the probability
 it matches a projected catalogue star (Gaussian with the source's covariance) versus being a
 distractor (uniform over the field). Accept at log-odds ≥ ln(10⁹), reject at ≤ −ln(10⁹)
 (tunable). Upgrades over the original, all driven by the input contract (§6):
@@ -752,7 +764,8 @@ Integration path:
 - No solution is a valid result, returned as `Solution::Abstained { reason, best_log_odds, timings }`,
   never an error.
 - Errors are for bad input (non-finite hints, zero image size) and unreadable index/catalogue.
-- Budget expiry returns the best hypothesis seen and its score, marked not accepted.
+- A hypothesis limit or deadline that runs out also returns `Outcome::Abstained`, with that
+  reason, the best log-odds seen (no WCS), the hypothesis count and the trace.
 
 ## 8. Licensing
 
@@ -773,7 +786,7 @@ Fayde is Apache-2.0 (since 0.1.1; `LICENSE`, `NOTICE`).
    Every other list holds only random positions, to count false solutions.
 3. **Real frames:** `fayde compare` checks each solution against a stored reference WCS on a
    5 × 5 grid of image points.
-4. **False-positive guard:** `fayde bench` counts the random lists that solve, and none may.
+4. **False-positive guard:** `fayde bench` counts and reports the random lists that solve.
    Whether the false-accept rate stays within what the reported NFA predicts (§5.4) isn't
    measured.
 
