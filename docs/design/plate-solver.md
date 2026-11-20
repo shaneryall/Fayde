@@ -54,7 +54,7 @@ the host and writes the xylist. Frames with point-like stars can be given as ima
 | WCS interpolation across a sequence (borrowing) | `fayde-seq`, always labelled `Interpolated` and never as solved |
 | UCAC4 cone search; "is there a catalogue star here?" check | `fayde-catalog` (cone search) + `fayde verify --at` |
 | Verifying or repairing existing WCS headers | `fayde verify`, `fayde refit` |
-| Writing a FITS WCS atomically while keeping the original header cards | `fayde-fits` (generic provenance cards) |
+| Writing the solution atomically as a separate FITS WCS file, leaving the image untouched | `fayde-fits` (WCS file), `fayde-cli` (provenance cards) |
 
 **Stays in the host pipeline** (pipeline policy, not astrometry):
 
@@ -420,7 +420,7 @@ Built offline from a `Catalog`, stored as one mmap-able file per scale band:
   are separate from the earlier oversampling measurements above.
 - **Quad kd-tree** (astrometry.net design) — *considered, not adopted* (§5.3): 4-D quad codes for blind solving, code tolerance about
   0.01.
-- **Epoch policy** (decided, see §11): the index is built at a fixed epoch (e.g. 2025.0). Stars
+- **Epoch policy** (see §10): the index is built at a fixed epoch (e.g. 2025.0). Stars
   whose proper motion would move them more than a fraction of the pattern tolerance over ±25 years
   are excluded from patterns, so the index stays valid for decades. Verification and fitting do
   not use index positions: they fetch catalogue stars propagated to the observation epoch at
@@ -759,7 +759,7 @@ Integration path:
 
 ## 8. Licensing
 
-Fayde is planned as Apache-2.0 or MIT/Apache dual.
+Fayde is Apache-2.0 (since 0.1.1; `LICENSE`, `NOTICE`).
 
 - tetra3 and cedar-solve (Apache-2.0): code may be ported with notices kept.
 - astrometry.net: mostly BSD-3, which is compatible with notices kept. Some components are GPL;
@@ -771,42 +771,19 @@ Fayde is planned as Apache-2.0 or MIT/Apache dual.
 
 1. **Unit:** projection round trips, edge-ratio codes, UCAC4 record decode against an
    independent reader on the same zones.
-2. **Synthetic:** catalogue-projected fields with known WCS, added noise, false sources and
-   missing stars; measure recovery error and false-accept rate.
-3. **Corpus A/B:** run Fayde and `solve-field` on the same real frames; compare solve rate,
-   residual RMS against UCAC4, latency, and agreement between the two WCS.
-4. **False-positive guard:** shuffled or random source lists must never be accepted, and the
-   measured false-accept rate must not exceed what the reported NFA predicts (§5.4).
-5. **Public benchmarks:** the ESA Kelvins star-tracker scenes (10,000 scenes, up to 80 false
-   objects each), scored with the Rijlaarsdam et al. (2020) protocol, as a reproducible regression
-   test anyone can run. The open-source LOST star tracker serves as an independent baseline.
+2. **Synthetic:** `fayde bench` solves source lists projected from the catalogue with a known
+   WCS, with position noise, false sources and missing stars, and measures the recovery error.
+   Every other list holds only random positions, to count false solutions.
+3. **Real frames:** `fayde compare` checks each solution against a stored reference WCS on a
+   5 × 5 grid of image points.
+4. **False-positive guard:** `fayde bench` counts the random lists that solve, and none may.
+   Whether the false-accept rate stays within what the reported NFA predicts (§5.4) isn't
+   measured.
 
-## 10. Milestones
+Fayde's results haven't been compared with other solvers on shared public frames.
 
-| # | Deliverable | Rough size |
-|---|---|---|
-| 1 | Workspace, core types, TAN projection, FITS WCS writer | 1–2 days |
-| 2 | UCAC4 reader + epoch propagation, verified against an independent reader | 2–3 days |
-| 3 | Index builder (HEALPix density, pattern hash) | 3–5 days |
-| 4 | Hinted matcher (pair seeds + pattern hash), verifier with local refit and NFA, IRLS TAN fit; solves synthetic fields | 1–2 weeks |
-| 5 | Python bindings + host-pipeline backend (sources in); corpus A/B | 3–5 days |
-| 6 | Blind multi-band search ✅, SIP + BIC + covariance ✅, geometric-voting fallback, `fayde calibrate`, sequence mode | 2–3 weeks |
-| 7 | `fayde-fits` header priors + `fayde-ephem` (time, SGP4, aberration), checked against an independent implementation | 1 week |
-| 8 | Xylist validation and diagnostics (§5.0); astrometry.net `.xyls` and tetra3 importers; a host pipeline writes the native xylist | 3–5 days |
-| 9 | `fayde verify` / `refit`, public packaging (crates, wheels, docs, index build recipes) | 1 week |
+## 10. Decisions
 
-## 11. Open questions
-
-1. ~~Instrument classes to index for~~ **Decided:** both. `fayde index build` takes any field
-   width below 90°; UCAC4 suits narrow fields and Tycho-2 wide ones
-   ([`index-set.md`](../index-set.md)).
-2. ~~Catalogue epoch policy~~ **Decided:** fixed-epoch index, high-proper-motion stars excluded
-   from patterns, rigorous propagation at query time (§5.2).
-3. Licence choice: Apache-2.0 only, or MIT/Apache dual?
-4. Zero-point fit: one free zero point per frame, or a colour term as well when the catalogue
-   provides two bands?
-5. Should `p_star` priors be calibrated per producer from corpus statistics, or left to the
-   producer?
-6. Native xylist on disk: Parquet + `request.toml`, or a single FITS file (a binary table plus a
-   header with the frame, prior and observer fields) that stays close to astrometry.net's
-   `.xyls`?
+1. **Catalogue epoch.** The index is built at a fixed epoch, high-proper-motion stars are
+   excluded from patterns, and positions are propagated rigorously at query time (§5.2).
+2. **Licence.** Apache-2.0 only.
