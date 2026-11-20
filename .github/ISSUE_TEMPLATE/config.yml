@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security problem
+    url: https://github.com/shaneryall/Fayde/security/advisories/new
+    about: Report vulnerabilities privately, as described in SECURITY.md.
+  - name: Read the documentation
+    url: https://github.com/shaneryall/Fayde#documentation
+    about: Install steps, catalogs, the command line, Python, and the report's fields.

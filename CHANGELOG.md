@@ -1,6 +1,6 @@
 # Changelog
 
-Versioning rules: `docs/development.md`, "Versioning and releases".
+Versioning rules: `docs/versioning.md`.
 
 Versions up to 0.2.1 were development versions and were not published; their notes are kept
 because the index files and their hashes date from 0.1.0.

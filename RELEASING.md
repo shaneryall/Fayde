@@ -2,7 +2,7 @@
 
 To release Fayde, push a Git tag `vX.Y.Z` for a commit on the `main` branch. GitHub Actions
 builds, tests, and publishes the release files. For more information about versioning, see
-[Versioning and releases](development.md#versioning-and-releases).
+[Fayde's versioning policy](docs/versioning.md).
 
 Replace `X.Y.Z` in the commands on this page with the release version, for example `0.3.0`.
 
@@ -39,7 +39,7 @@ Before you create the release tag, update and check the release files:
 
 6. If the release changes the bytes of an index, rebuild the index set.
 
-7. If you rebuilt the index set, update the hashes in [`docs/index-set.md`](index-set.md).
+7. If you rebuilt the index set, update the hashes in the [pattern index guide](docs/index-set.md).
 
 8. Check that the release files agree with each other:
 
@@ -74,7 +74,7 @@ From the prepared release commit, create and push the tag:
    git push origin main vX.Y.Z
    ```
 
-The tag starts the [release workflow](../.github/workflows/release.yml), which performs the
+The tag starts the [release workflow](.github/workflows/release.yml), which performs the
 following actions:
 
 1. Runs the same checks as continuous integration.
@@ -86,7 +86,7 @@ following actions:
    wheel from the source distribution and tests it.
 5. Creates the GitHub release with a `SHA256SUMS` file after every required check passes.
 6. Downloads the prebuilt `fayde` binary from the new release on every platform, then checks
-   and installs it with the commands from the [install guide](install.md).
+   and installs it with the commands from the [install guide](docs/install.md).
 
 A workflow run that fails before step 5 publishes nothing. Don't move the tag of a release
 that the workflow has already published. To retry a release that failed before publication,
@@ -115,13 +115,13 @@ follow these steps:
    ```
 
 Archive names identify the platform without a version, for example
-`fayde-linux-x86_64.tar.gz`. The download URLs in the [install guide](install.md) depend on
+`fayde-linux-x86_64.tar.gz`. The download URLs in the [install guide](docs/install.md) depend on
 these names. If you change a name in the workflow, update the install guide too.
 
 ## Publish to PyPI and crates.io
 
 Publish every release to both registries. The install commands in the
-[install guide](install.md) use PyPI and crates.io, so they install a version only after you
+[install guide](docs/install.md) use PyPI and crates.io, so they install a version only after you
 publish it.
 
 You can't replace a version after you publish it to PyPI or crates.io. After you check the
@@ -163,7 +163,7 @@ Publish the files from an existing GitHub release:
 5. Select the registries to publish to.
 6. Click **Run workflow**.
 
-The [publishing workflow](../.github/workflows/publish.yml) publishes these files:
+The [publishing workflow](.github/workflows/publish.yml) publishes these files:
 
 - PyPI receives the wheels and source distribution from the GitHub release, which the release
   workflow tested.

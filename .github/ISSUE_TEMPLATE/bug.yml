@@ -1,0 +1,49 @@
+name: Bug report
+description: A crash, an error, a wrong solution, or a solve that fails on an image that should solve.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what Fayde did instead.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command or code
+      description: The exact command line or Python code.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Report or error
+      description: The JSON report, or the error message. Remove anything you can't share.
+      render: json
+  - type: input
+    id: version
+    attributes:
+      label: Fayde version
+      description: The output of `fayde --version`, or `fayde.__version__` in Python.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: For example macOS 15 on Apple silicon, Ubuntu 24.04 on x86_64, or Windows 11.
+    validations:
+      required: true
+  - type: input
+    id: catalog
+    attributes:
+      label: Catalog
+      description: For example UCAC4, and where its files came from.
+  - type: textarea
+    id: data
+    attributes:
+      label: Image or source list
+      description: Attach the file if you can share it, or describe it (size, pixel scale, exposure, whether the stars are points or trails).
