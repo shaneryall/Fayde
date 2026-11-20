@@ -135,18 +135,6 @@ says how much of each source was read.
 | Saturation level from flat-topped peaks at the frame's brightest level; centre of a saturated star from the core of its saturated region (pixels with long runs along both axes); error 0.1 px + 3% of the core radius | A bleed trail has short runs across it; a flat top below the brightest level is a cosmic-ray track or a stuck column. Measured: centre within 0.6 px for stars 3 to 300 × saturation with trails | `crates/fayde-detect/src/saturate.rs`, `lib.rs` (`find_saturation`) |
 | Streak tracing: seeds from ridge-like peaks (elongation ≥ 2), a walk along a running least-squares line (search ± 2 px, threshold 3σ, gaps of 8 px + 10% of the points, at most 30), end clean-up, total-least-squares line, half-level ends, a second trace from the fitted line, acceptance (10 px and 8σ long, half covered, SNR 10, half of the bright peaks ridges), `cosmic_ray` when narrower than 0.4 of the stars' variance | Fayde's own; a line model through the walk keeps it on course across a crossing streak. Measured: ends within 2 px, 0.2 px typical | `crates/fayde-detect/src/streak.rs` |
 
-## Adopted in the design, not yet implemented
-
-| Algorithm | Source | Design section |
-|---|---|---|
-| Pyramid confirmation of seeds | Mortari et al. 2004, *Navigation* 51(3) | §5.3 |
-| Geometric voting | Kolomenkin, Pollak, Shimshoni & Lindenbaum 2008, *IEEE Trans. Aerosp. Electron. Syst.* 44(2) | §5.3 |
-| Instrument distortion fitted across many frames | Bertin 2006 (SCAMP), ASP Conf. Ser. 351, 112; Bernstein et al. 2017, PASP 129, 074503 | §5.5, §6.5 |
-| Benchmarks | ESA Kelvins "Star Trackers: First Contact" (2017); Rijlaarsdam et al. 2020, *Sensors* 20(9), 2579; LOST (github.com/uwcubesat/lost) | §9 |
-
-Citation details for the second table were collected by the literature review; several were read
-only as abstracts (marked there).
-
 ## Considered and not adopted
 
 | Algorithm | Source | Why not |
