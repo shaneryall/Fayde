@@ -8,3 +8,7 @@ __pycache__/
 .cargo/
 .venv-ci/
 dist/
+
+# Documentation site build
+.cache/
+site/

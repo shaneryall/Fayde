@@ -110,6 +110,39 @@ isn't in the repository. To include them, follow these steps:
 The Python tests in `crates/fayde-py/tests` run with `pytest` against an installed wheel. They
 skip the tests that need the catalog when it's missing.
 
+## Build the documentation site
+
+The documentation site is built from the pages in `docs/` with
+[Material for MkDocs](https://squidfunk.github.io/mkdocs-material/). Its command-line reference
+comes from the `--help` text of a built `fayde` command. To build the site and serve it on your
+computer, follow these steps:
+
+1. Build the `fayde` command:
+
+   ```bash
+   cargo build --release -p fayde-cli
+   ```
+
+2. In a virtual environment, install the site tools at the versions that continuous integration
+   uses:
+
+   ```bash
+   python -m pip install --require-hashes -r scripts/docs/requirements.txt
+   ```
+
+   `scripts/docs/requirements.in` lists the tools. To update them, change that file and run
+   `uv pip compile --universal --generate-hashes --python-version 3.13 --no-strip-markers
+   scripts/docs/requirements.in -o scripts/docs/requirements.txt`.
+
+3. Serve the site:
+
+   ```bash
+   FAYDE_BIN=target/release/fayde mkdocs serve
+   ```
+
+   The output gives the local address of the site. Continuous integration builds the site with
+   `mkdocs build --strict`, so a broken link or a warning fails the build.
+
 ## Rules for changes
 
 A change is easier to review and merge when it follows these rules:

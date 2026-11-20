@@ -1,0 +1,96 @@
+name: Docs
+
+# Builds the documentation site from docs/ on every change, and publishes it to GitHub Pages
+# (branch gh-pages): `main` as the "dev" version, each release tag as its own version.
+# The build job can't write to the repository; only the publish job can, and only for a push to
+# main or a release tag.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  pull_request:
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "scripts/docs/**"
+      - "CHANGELOG.md"
+      - "crates/fayde-py/python/**"
+      - "crates/fayde-cli/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: never
+  RUST_TOOLCHAIN: "1.95"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Rust ${{ env.RUST_TOOLCHAIN }}
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --no-self-update
+          rustup default "$RUST_TOOLCHAIN"
+      - name: Build the fayde command for the command-line reference
+        run: cargo build --release --locked -p fayde-cli
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Install the site tools (pinned with hashes)
+        run: python -m pip install -q --require-hashes -r scripts/docs/requirements.txt
+      - name: Build the site (warnings fail the build)
+        env:
+          FAYDE_BIN: target/release/fayde
+          DOCS_REF: ${{ github.ref_type == 'tag' && github.ref_name || 'main' }}
+        run: mkdocs build --strict
+      - name: Keep the fayde command for the publish job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fayde-for-docs
+          path: target/release/fayde
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref_type == 'tag')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: fayde-for-docs
+          path: bin
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Install the site tools (pinned with hashes)
+        run: python -m pip install -q --require-hashes -r scripts/docs/requirements.txt
+      - name: Publish to gh-pages
+        env:
+          FAYDE_BIN: bin/fayde
+          DOCS_REF: ${{ github.ref_type == 'tag' && github.ref_name || 'main' }}
+        run: |
+          chmod +x bin/fayde
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="${GITHUB_REF_NAME#v}"
+            mike deploy --push --update-aliases "${version%.*}" latest
+            mike set-default --push latest
+          else
+            mike deploy --push dev
+          fi
