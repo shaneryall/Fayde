@@ -33,18 +33,20 @@ every star trails.
     that Fayde reports.">
 </p>
 
+Fayde works as follows:
+
 - Fayde detects the stars itself and sets aside hot pixels, cosmic-ray hits, and satellite
   streaks. The stars can be points, as from sidereal tracking, or trails of one length and
   direction, as when the telescope tracks a satellite. If you have your own detector, pass a
   source list instead.
 - Fayde accepts a solution only after it tests the match against the catalog. The report gives
   the odds of the match against chance and the residuals of the fit.
-- When the header gives the date of the image, catalog positions are moved to that date by their
-  proper motions.
+- When the header gives the date of the image, Fayde moves the catalog positions to that date by
+  their proper motions.
 - With a pointing and a precise pixel scale from the header, Fayde needs only the catalog.
   Without them, it uses a pattern index that you build once.
 - Fayde runs from the command line and from Python, prebuilt for Linux, macOS, and Windows. Its
-  numerical results are the same on every platform, so a solve can be repeated anywhere.
+  numerical results are the same on every platform, so you can repeat a solve anywhere.
 
 ## Quick start
 
@@ -83,7 +85,8 @@ on the command line](docs/usage.md#specify-the-pointing-and-scale).
 
 To locate streak candidates without a catalog, run
 `fayde detect --image frame.fits > frame.detections.json`. The report gives pixel endpoints
-and flags for each candidate. See [Detect streaks without a catalog](docs/usage.md#detect-streaks-without-a-catalog).
+and flags for each candidate. For more information, see
+[Detect streaks without a catalog](docs/usage.md#detect-streaks-without-a-catalog).
 
 ## Use from Python
 
@@ -96,7 +99,7 @@ if report["solved"]:
     cards = report["wcs_cards"]
 ```
 
-`solve_image` accepts a file path, a NumPy array, or an Astropy HDU. See
+`solve_image` accepts a file path, a NumPy array, or an Astropy HDU. For more information, see
 [Use Fayde from Python](docs/python.md).
 
 ## Documentation
@@ -122,7 +125,8 @@ version, and the commit when it's known, in its comment cards.
 
 ## License
 
-GNU General Public License, version 3 or later. See [`LICENSE`](LICENSE) and
-[`NOTICE`](NOTICE). Versions 0.3.0 to 0.3.2 were released under the Apache License 2.0 and stay
-under it. If you redistribute Fayde, include both files. Licenses of the bundled Rust crates are in
+Fayde uses the GNU General Public License, version 3 or later. For license terms and
+attribution, see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). Versions 0.3.0 to 0.3.2 were
+released under the Apache License 2.0 and stay under it. If you redistribute Fayde, include both
+files. For the licenses of the bundled Rust crates, see
 [`THIRD-PARTY-LICENSES.md`](THIRD-PARTY-LICENSES.md).

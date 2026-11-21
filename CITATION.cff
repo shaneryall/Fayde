@@ -5,7 +5,7 @@ title: "Fayde: an astrometric plate solver"
 abstract: >-
   Fayde solves the World Coordinate System of an astronomical image from a list of detected
   sources and whatever is known about the frame (pointing, scale, roll, epoch), against the
-  UCAC4 catalogue, and returns a verified TAN or TAN-SIP solution with its measured accuracy.
+  UCAC4 catalog, and returns a verified TAN or TAN-SIP solution with its measured accuracy.
 authors:
   - family-names: Ryall
     given-names: Shane

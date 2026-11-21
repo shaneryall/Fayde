@@ -5,11 +5,12 @@ Bug reports, questions, and changes are welcome. Everyone who takes part follows
 
 ## Report a bug or ask a question
 
-To report a bug or ask a question, open an issue on GitHub. For a
-failed or wrong solve, include the command, the JSON report, the Fayde version
-(`fayde --version`), and the image or source list if you can share it.
+To report a bug or ask a question, open an issue on GitHub. For a failed or wrong solve, include
+the command, the JSON report, the Fayde version (`fayde --version`), and the image or source list
+if you can share it.
 
-To report a security problem, don't open an issue. See the [security policy](SECURITY.md).
+To report a security problem, don't open an issue. For instructions, see the
+[security policy](SECURITY.md).
 
 ## Build Fayde from source
 
@@ -117,8 +118,8 @@ same checks, follow these steps:
    python -m pytest -q crates/fayde-py/tests
    ```
 
-   The tests skip the catalog cases when the oracle file is missing. For these cases, use the
-   catalog and oracle setup described in the steps below.
+   The tests skip the catalog cases when the oracle file is missing. For these cases, set up the
+   catalog and the oracle file as described in the next procedure.
 
 Astropy generates the synthetic FITS fixtures in `tests/fixtures/fits/` and the TAN vectors
 in `crates/fayde-wcs/tests/fixtures/`. The vector fixture ships with the WCS crate.

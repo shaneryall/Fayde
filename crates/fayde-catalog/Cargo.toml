@@ -1,6 +1,6 @@
 [package]
 name = "fayde-catalog"
-description = "Star catalogue access for Fayde: catalogue trait, UCAC4 reader, epoch propagation"
+description = "Star catalog access for Fayde: catalog trait, UCAC4 reader, epoch propagation"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

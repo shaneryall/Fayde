@@ -5,8 +5,10 @@ files. Fayde doesn't include the catalog. The Strasbourg astronomical Data Cente
 publishes it as [catalog I/322A](https://vizier.cfa.harvard.edu/ftp/cats/I/322A/).
 The download is about 8.9 GB.
 
-To download the catalog, use a terminal on Linux or macOS, or PowerShell on Windows. In the
-download commands, use `curl.exe` in place of `curl` on Windows:
+Use a terminal on Linux or macOS, or PowerShell on Windows. On Windows, use `curl.exe` in place
+of `curl` in the download commands.
+
+To download the catalog, follow these steps:
 
 1. On Linux or macOS, create the catalog directories:
 

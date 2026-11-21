@@ -12,8 +12,8 @@ provide. To cover a wider range of scales, follow these steps:
 
 ## Build the recommended indexes
 
-The two recommended indexes cover the whole sky at epoch 2025.0. You need the full UCAC4 catalog,
-with all 900 zone files, and at least 32 GB of free memory.
+The two recommended indexes cover the whole sky at epoch 2025.0, for fields of about 1° and somewhat
+wider. You need the full UCAC4 catalog, with all 900 zone files, and at least 32 GB of free memory.
 
 Replace `UCAC4_DIR` with the path to the directory that contains `u4b`. To cover both field
 sizes, build both indexes:
@@ -35,8 +35,8 @@ the build results:
 
 | Index | Stars | Patterns | File size | Build time | Peak memory |
 |---|---:|---:|---:|---:|---:|
-| `allsky-1.0.fidx` | 1,572,824 | 259,900,180 | 17,211,606,974 bytes | 30 min 26 s | 22.7 GB |
-| `allsky-1.3.fidx` | 1,572,824 | 153,951,343 | 10,218,984,414 bytes | 21 min 50 s | 13.6 GB |
+| `allsky-1.0.fidx` | 1,572,824 | 259,900,180 | 17.2 GB | 30 min 26 s | 22.7 GB |
+| `allsky-1.3.fidx` | 1,572,824 | 153,951,343 | 10.2 GB | 21 min 50 s | 13.6 GB |
 
 ## Plan for memory
 
@@ -86,7 +86,7 @@ gigabytes of memory and about half an hour.
 ## Index build options
 
 To list every option and its default value, run `fayde index build --help`. The table describes
-the options used in the recommended commands:
+the options used in the recommended commands, and `--region`:
 
 | Option | Meaning |
 |---|---|
@@ -97,6 +97,6 @@ the options used in the recommended commands:
 | `--mag-limit` | The faintest magnitude considered |
 | `--min-edge` | The shortest pattern edge, in degrees. Below it, centroid errors dominate |
 | `--epoch` | The epoch that the star positions are propagated to, as a Julian year |
-| `--region RA,DEC,RADIUS` | Builds a regional index, in degrees, instead of an all-sky index. A regional build takes minutes, which makes it useful for tests |
+| `--region RA,DEC,RADIUS` | Builds a regional index instead of an all-sky index, with `RA`, `DEC`, and `RADIUS` in degrees. A regional build takes minutes, which makes it useful for tests |
 
-For more information about the algorithms, see the [references](references.md).
+For more information about the algorithms, see [References](references.md).

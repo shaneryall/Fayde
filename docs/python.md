@@ -23,9 +23,9 @@ an array, pass the frame's header with `header`. You can use Fayde without NumPy
 
 If you detect the stars yourself, pass their positions to `solve`. In this example, `x`, `y`,
 and `flux` are sequences of the source positions and fluxes from your detector, and `hdr` is
-the image header. The `indexes` and `instrument` arguments are optional. To solve the source
-list, check the WCS, fit the WCS again, and find catalog stars at the source positions, use
-these methods:
+the image header. The `indexes` and `instrument` arguments are optional. To solve the frame
+from these positions, check the WCS, fit the WCS again, and find catalog stars at the source
+positions, use these methods:
 
 ```python
 solver = fayde.Solver("/path/to/UCAC4", indexes=["allsky-1.0.fidx"])
@@ -73,7 +73,7 @@ The `solve_detection` method passes the image size and each source's position, f
 trails, the method also passes the measured trail unless you give `trail_length` and
 `trail_angle`. It doesn't read the image header, so pass the header with `header`. If you pass
 the detection report's positions to `solve` without `origin=1`, Fayde interprets each coordinate
-as one pixel larger than its actual value.
+as 1 pixel larger than its actual value.
 
 If an image shows star trails in more than one direction, give the expected direction to
 `fayde.detect` with `trail_angle`, in degrees from +x toward +y. Fayde still measures the

@@ -22,8 +22,8 @@ these requirements:
 
 - Fayde measures point stars, straight trails that share a length and direction, and some
   curved trails. A shared curved path or field rotation can use a template learned from the
-  image. See [Detect stars without solving](usage.md#detect-stars-without-solving) for
-  the detection modes and how to read the result.
+  image. For the detection modes and how to read the result, see
+  [Detect stars without solving](usage.md#detect-stars-without-solving).
 - The image isn't compressed with `fpack`. To decompress an image, use the `funpack` program
   from CFITSIO.
 - The header gives the pointing and the pixel scale. If it doesn't, you can
@@ -213,7 +213,9 @@ To check the archive on Windows, follow these steps:
 
 A checksum shows that the archive is intact. Releases from 0.3.3 on also have a build
 attestation, which shows that a GitHub Actions workflow of the Fayde repository built the
-archive. Optional: To check it, run this [GitHub CLI](https://cli.github.com/) command in the
+archive.
+
+Optional: To check the attestation, use the [GitHub CLI](https://cli.github.com/) in the
 directory that contains the archive:
 
 ```bash
@@ -324,6 +326,5 @@ To install the package, follow these steps:
    ```
 
    The command is available while the virtual environment is active.
-
 
 To solve a frame from Python, see [Use Fayde from Python](python.md).

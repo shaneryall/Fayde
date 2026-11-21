@@ -12,9 +12,11 @@ To use the package, you need the following:
 
 - CPython 3.10 or later. One wheel works with every later version, and you don't need Rust
   to install it.
-- A local copy of the UCAC4 catalog. The catalog isn't included with this package.
-  For download instructions, see
+- To solve frames, a local copy of the UCAC4 catalog. Detection with `fayde.detect` works without
+  one. The catalog isn't included with this package. For download instructions, see
   [Get the UCAC4 catalog](https://github.com/shaneryall/Fayde/blob/main/docs/catalog.md).
+
+## Install the package
 
 To install the package from PyPI, follow these steps:
 
@@ -152,7 +154,6 @@ For more information, see the following pages:
 ## License
 
 Fayde uses the GNU General Public License, version 3 or later. The wheel includes `LICENSE`,
-`NOTICE`, and
-`THIRD-PARTY-LICENSES.md`. The latter lists the licenses of the Rust crates compiled into the
-wheel. If you use Fayde in a publication, cite it as described in
+`NOTICE`, and `THIRD-PARTY-LICENSES.md`, which lists the licenses of the Rust crates compiled
+into the wheel. If you use Fayde in a publication, cite it as described in
 [`CITATION.cff`](https://github.com/shaneryall/Fayde/blob/main/CITATION.cff).

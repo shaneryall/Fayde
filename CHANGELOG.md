@@ -58,9 +58,9 @@ because the index files and their hashes date from 0.1.0.
 - `Solver.solve_detection(report)` in Python solves a `fayde.detect` report directly. Its
   positions are FITS 1-based, which `Solver.solve` takes only with `origin=1`; passing them
   without it moved the solution by a pixel.
-- `FAYDE_UCAC4` names the catalogue directory when `--ucac4` is left out, and for
+- `FAYDE_UCAC4` names the catalog directory when `--ucac4` is left out, and for
   `fayde.Solver()` with no directory.
-- Catalogue errors say to download the zone again.
+- Catalog errors say to download the zone again.
 - Image solves report point retry errors.
 
 ## 0.3.3 (2026-11-21)

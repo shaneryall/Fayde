@@ -87,16 +87,16 @@ To find the stars in an image and write them as a source list, use `fayde detect
 fayde detect --image FRAME -o SOURCES
 ```
 
-Fayde prints a JSON report with the background, the noise, the width of the stars, and every
-source that it found. The report also lists the streaks that cross the image, such as satellite
-trails, and the hot pixels and cosmic-ray hits that Fayde set aside. With `-o`, Fayde also
-writes the sources to `SOURCES`, in the format that `--sources` reads. For more information
-about the report fields, see [Read the detection report](#read-the-detection-report).
+Fayde prints a JSON report with the background, the noise, the width of the stars, and every source
+that it found. The report also lists the streaks that cross the image, such as satellite streaks,
+and the hot pixels and cosmic-ray hits that Fayde set aside. With `-o`, Fayde also writes the
+sources to `SOURCES`, in the format that `--sources` reads. For more information about the report
+fields, see [Read the detection report](#read-the-detection-report).
 
 When Fayde measures stars as points and their full width at half maximum (FWHM) is about
-one pixel or less at full resolution, it keeps sources that are too sharp for the usual
-shape checks. A star this narrow can put nearly all its light in one pixel, so the source
-list can also include hot pixels and compact cosmic-ray hits.
+1 pixel or less at full resolution, it keeps sources that are too sharp for the usual shape
+checks. A star this narrow can put nearly all its light in one pixel, so the source list can
+also include hot pixels and compact cosmic-ray hits.
 
 To list the detection options and their default values, run `fayde detect --help`. The same
 options work with `fayde solve --image`. The `--detect-threshold` option sets the peak threshold
@@ -109,7 +109,8 @@ of the image's sky tiles. Frames with a constant border and ordinary sky use the
 background estimate.
 
 Tracking a satellite, slewing, or rolling a camera can smear every star during an exposure.
-Fayde checks each image for this motion and reports its decision in `mode`.
+Fayde checks each image for this motion and reports its decision in `mode`, which has one of
+the following values:
 
 - `points`: The stars are points, or trails too short to measure as trails.
 - `trails`: Every star is a straight trail of the same length and direction. The `trail` field
@@ -118,26 +119,27 @@ Fayde checks each image for this motion and reports its decision in `mode`.
   object, have the class `point` and aren't used to solve the frame.
 - `kernel`: Fayde measures the stars with a template learned from the image. A shared
   curved path uses one template. Field rotation uses templates that vary with position in
-  the image. Each reported position is the centre of the star's light over the exposure.
-- `refused`: Fayde found evidence of trails but couldn't establish a consistent model.
-  Fayde measures the stars as points. The `census` field gives the reason.
+  the image. Each reported position is the center of the star's light over the exposure.
+- `refused`: Fayde finds evidence of trails but can't establish a consistent model, so it
+  measures the stars as points. The `census` field gives the reason.
 
 To measure every star as a point, add `--no-trails` to `fayde detect` or `fayde solve`.
 
-If an image measured in `trails` or `kernel` mode gives no solution, `fayde solve` retries
-with point detections. The `retried_as_points` field records the retry outcome in `solved`
-and the original census in `trails_census`. If the retry fails to read the catalogue, the
-report carries the error and its reason, plus the first attempt’s search trace and hypothesis count.
+If an image measured in `trails` or `kernel` mode gives no solution before the time and hypothesis
+limits are reached, `fayde solve` retries with point detections. The `retried_as_points` field
+records the retry outcome in `solved` and the original census in `trails_census`. If the retry fails
+to read the catalog, the report carries the error and its reason, plus the first attempt's search
+trace and hypothesis count.
 
-`fayde solve --image` passes a measured trail to the solver. With `-o`, `fayde detect` records
-the measured trail in the source list, and `fayde solve --sources` passes that trail to the
-solver. For more information about the keywords that hold the trail, see
-[Trail keywords](source-list.md#trail-keywords).
+The `fayde solve --image` command passes a measured trail to the solver. With `-o`,
+`fayde detect` records the measured trail in the source list, and `fayde solve --sources`
+passes that trail to the solver. For more information about the keywords that hold the trail,
+see [Trail keywords](source-list.md#trail-keywords).
 
 If an image shows star trails in more than one direction, give the expected direction with
 `--trail-angle`, in degrees from +x toward +y. Fayde uses the angle to choose a direction and
-measures the trail from the image. `fayde detect` accepts `--trail-angle` alone. It reports an
-error if you give `--trail-length` without `--trail-angle`.
+measures the trail from the image. The `fayde detect` command accepts `--trail-angle` alone. It
+reports an error if you give `--trail-length` without `--trail-angle`.
 
 With `fayde solve`, `fayde verify`, or `fayde refit`, give `--trail-length` in pixels and
 `--trail-angle` together, or neither. With `--image`, the angle also guides detection. The two
@@ -145,13 +147,15 @@ values replace the measured or recorded trail in the solve.
 
 ### Detect streaks without a catalog
 
+To find streaks in an image and save the detection report to a file, use `fayde detect`:
+
 ```bash
 fayde detect --image frame.fits > frame.detections.json
 ```
 
 Read the JSON report's `streaks` array for straight streak candidates, longest first. This
 command works without a star catalog or WCS. The optional `-o` FITS output contains the
-stars used for solving. Use the JSON report to consume streak measurements.
+stars used for solving, so read streak measurements from the JSON report.
 
 Each candidate has these fields.
 
@@ -164,8 +168,8 @@ Each candidate has these fields.
 | `snr`, `coverage` | Integrated signal-to-noise ratio of the unmasked ridge and fraction of the visible length above the tracing threshold |
 | `touches_edge`, `cosmic_ray` | An endpoint reaches the image edge, or the candidate is narrow enough to be flagged as a possible detector track, respectively |
 
-The tracer starts from a detectable elongated peak. A faint streak that only becomes
-visible when integrated along its length can be missed. In trailed-star frames, Fayde
+The tracer starts from a detectable elongated peak, so it can miss a faint streak that becomes
+visible only when integrated along its length. In trailed-star frames, Fayde
 uses the shared stellar trails as astrometric sources and reports the remaining streak
 candidates in `streaks`. Treat `cosmic_ray` as a shape flag and the endpoint order as a
 geometric convention. Object identity and direction of motion require other evidence.
@@ -194,21 +198,20 @@ the following:
 
 | Information | Header keywords |
 |---|---|
-| Pointing | Image centre projected through a supported header WCS, otherwise its reference coordinates (`CRVAL1`, `CRVAL2`), `RA` and `DEC`, or `OBJCTRA` and `OBJCTDEC` |
+| Pointing | Image center projected through a supported header WCS, otherwise its reference coordinates (`CRVAL1`, `CRVAL2`), `RA` and `DEC`, or `OBJCTRA` and `OBJCTDEC` |
 | Pixel scale | `XPIXSZ` with `FOCALLEN`, the `CD` matrix, `CDELT1` and `CDELT2`, `PIXSCALE`, or `SECPIX` |
 | Observation time | `JD-OBS`, `MJD-OBS`, or `DATE-OBS`, with `EXPTIME` or `EXPOSURE` |
 | Image size | `NAXIS1` and `NAXIS2` |
 
 If the header has no observation time and you don't set the epoch, Fayde uses the catalog
 positions at epoch J2000.0 and adds a warning that starts with `no observation time` to the
-report. To set the epoch, use
-`--epoch`.
+report. To set the epoch, use `--epoch`.
 
 Fayde searches within 2° of the pointing. To change the limit, use `--radius`. To specify the
-pointing accuracy, use `--pointing-sigma` with the 1σ error in degrees. When
-that error is at most a sixth of the limit and the pixel scale is known to within 3%, Fayde
-first searches within 3σ of the pointing. It widens the search to the limit only when it
-finds no solution there.
+pointing accuracy, use `--pointing-sigma` with the 1σ error in degrees. When that error is at
+most a sixth of the limit and the pixel scale is known to within 3%, Fayde first searches
+within 3σ of the pointing. It widens the search to the limit only when it finds no solution
+there.
 
 To ignore the pointing and pixel scale from a WCS in the frame header, for example a WCS that
 another plate solver wrote, add `--no-header-wcs`. Fayde then reads the header pointing only
@@ -253,11 +256,11 @@ illustrative. To create a profile for your instrument, follow these steps:
 1. Copy `profiles/example.json`.
 2. Edit the copy with your instrument's values. The `source` field of the example explains the
    scale and roll values.
-3. Delete `binning` from the copy if your frame headers lack the keywords it names.
+3. If your frame headers lack the keywords that `binning` names, delete `binning` from the copy.
 
    Without those keywords, Fayde doesn't use the profile's pixel scale for the frame.
 
-4. Delete `roll` from the copy if your frame headers lack the keyword it names.
+4. If your frame headers lack the keyword that `roll` names, delete `roll` from the copy.
 
    Without that keyword, Fayde doesn't use the profile's roll for the frame.
 
@@ -284,7 +287,7 @@ these solutions, follow these steps:
    For each frame whose report has `solved` set to `true`, Fayde writes the solution to `WCS`.
    More frames give a better profile.
 
-2. List only the frames whose report has `solved` set to `true` in a text file, with one frame
+2. In a text file, list only the frames whose report has `solved` set to `true`, with one frame
    per line. Each line contains the path to the FITS image, a tab character, and the path to
    its WCS file, in that order.
 
@@ -324,10 +327,10 @@ command.
 
 When you know the pointing and have a precise pixel scale, Fayde needs only the catalog. In
 that case, omit `--index`. Fayde searches a pattern index only if it finds no solution around
-the pointing. This extra search delays the report when a frame has no solution. When
-the pointing or scale is uncertain or unknown, Fayde also needs a pattern index, which you
-build once from the catalog. To build the recommended indexes, see the
-[index guide](index-set.md).
+the pointing. This extra search delays the report when a frame has no solution. When the
+pointing or scale is uncertain or unknown, Fayde also needs a pattern index, which you build
+once from the catalog. To build the recommended indexes, see
+[Build pattern indexes](index-set.md).
 
 To solve with a pattern index and ignore all priors, use `--index` and `--no-priors`:
 
@@ -352,8 +355,9 @@ scale known to 0.1% and the roll unconstrained:
 | 4° | 11,000–40,000 | 0.24–0.62 s |
 | 8° | 47,000–157,000 | 0.9–2.3 s |
 
-Frames with hundreds of sources took more than 18 s at an 8° radius. To limit a search, use
-these options:
+A search with a 1° radius takes about 50 times less work than one with an 8° radius. Frames
+with hundreds of sources took more than 18 s at an 8° radius. To limit a search, use these
+options:
 
 - Use `--max-hypotheses` to limit the work independently of the computer's speed.
 - Use `--deadline` to limit elapsed search time. For image input the clock starts after the
@@ -361,8 +365,7 @@ these options:
   hypothesis budget. Fayde checks the deadline again after measuring the points.
 
 Each `search` stage in the report ends with an `outcome`: `solved`, `exhausted`, `deadline`, or
-`hypothesis limit`. When Fayde finds no solution, the report names the stage that a limit
-stopped. A search with a 1° radius takes about 50 times less work than one with an 8° radius.
+`hypothesis limit`. When Fayde finds no solution, the report names the stage that a limit stopped.
 
 ## Read the report
 
@@ -438,7 +441,7 @@ the evidence for the decision. Its `reason` field has one of the following value
 | `trails shorter than 7 FWHM` | `points` | The trails are shorter than seven times the stars' full width at half maximum (FWHM) across the trail. |
 | `one straight trail` | `trails` | Every star is a straight trail of one length and direction. |
 | `shared curved star path` | `kernel` | The template learned from the stars has a measurable bend. |
-| `star paths vary with field rotation` | `kernel` | The star trails are tangential to a common centre and grow longer with distance from it. |
+| `star paths vary with field rotation` | `kernel` | The star trails are tangential to a common center and grow longer with distance from it. |
 | `point stars as well as trails (...)` | `refused` | The image has round stars as well as trails. The reason gives the number of each. |
 | `two trail populations` | `refused` | The trails have two directions. To choose one, use `--trail-angle`. |
 | `trails longer than the frame` | `refused` | Most trails touch the frame edge, so Fayde can't measure their length. |
