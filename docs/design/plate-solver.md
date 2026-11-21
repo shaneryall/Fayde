@@ -467,7 +467,7 @@ implemented.
 
 - **Source order (PROSAC; Chum & Matas 2005):** image sources are tried in order of
   `p_star` × brightness, not brightness alone, widening the set progressively. In
-  satellite-tracking frames the brightest detections are often not stars.
+  frames tracking satellites the brightest detections are often not stars.
 - **Hinted, tight scale prior → pair seeds** (k-vector; Mortari): fetch the brightest catalogue
   stars in the hint cone at solve time and build a list of their pair separations. The fainter
   stars that a hypothesis is verified against are read around the hypotheses that pass the

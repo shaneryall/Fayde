@@ -30,8 +30,8 @@ sizes, build both indexes:
    fayde index build --ucac4 UCAC4_DIR --fov 1.3 --stars-per-fov 40 --pattern-stars-per-fov 20 --stars-per-field 12 --mag-limit 15.5 --min-edge 0.05 --epoch 2025 -o allsky-1.3.fidx
    ```
 
-The builds used the version 0.1.0 binary on a 32-core x86_64 Linux computer. Other jobs ran on
-the computer during the builds, with a load of about 38. The table lists the build results:
+The builds used the version 0.1.0 binary on a 32-core x86_64 Linux computer. The table lists
+the build results:
 
 | Index | Stars | Patterns | File size | Build time | Peak memory |
 |---|---:|---:|---:|---:|---:|

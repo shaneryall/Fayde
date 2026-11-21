@@ -341,8 +341,8 @@ several indexes, add `--index` once for each file.
 ### Limit the search time
 
 Search time increases with the area within the pointing radius. The following measurements
-show exhausted searches on a 32-core x86_64 Linux computer. The frames had a pixel scale of
-3 arcseconds per pixel, a scale uncertainty of 0.1%, and unconstrained roll:
+show exhausted searches of real frames on a 32-core x86_64 Linux computer, with the pixel
+scale known to 0.1% and the roll unconstrained:
 
 | Pointing radius | Hypotheses until exhausted | Time |
 |---|---|---|

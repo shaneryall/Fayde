@@ -420,7 +420,7 @@ stars and positions displaced from their exposure-averaged coordinates.
    Use the empirical template when the path's RMS deviation from the best straight
    line is at least 0.5 px. When the census has already accepted one straight trail,
    the template overrides it only if it stacks at least 15 stars and bends by at least
-   1 px. On real satellite-tracking frames, templates of 6 to 11 stars bent by 0.6 to
+   1 px. On real frames tracking satellites, templates of 6 to 11 stars bent by 0.6 to
    3 px moved solutions by up to 1.7 px from the straight-trail fits, which agreed
    with Gaia to 0.05–0.1 px. Every template must stack at least 10 stars: its centre of
    light is every position's origin, so its error moves the whole solution (a
