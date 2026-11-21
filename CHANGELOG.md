@@ -5,7 +5,7 @@ Versioning rules: `docs/versioning.md`.
 Versions up to 0.2.1 were development versions and were not published; their notes are kept
 because the index files and their hashes date from 0.1.0.
 
-## Unreleased
+## 0.3.3 (2026-11-21)
 
 ### Added
 

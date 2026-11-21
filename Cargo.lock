@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "fayde-api"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "fayde-catalog",
  "fayde-core",
@@ -18,7 +18,7 @@ dependencies = [
 
 [[package]]
 name = "fayde-catalog"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "fayde-core",
  "serde",
@@ -27,7 +27,7 @@ dependencies = [
 
 [[package]]
 name = "fayde-cli"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "fayde-api",
  "fayde-catalog",
@@ -42,21 +42,21 @@ dependencies = [
 
 [[package]]
 name = "fayde-core"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "libm",
 ]
 
 [[package]]
 name = "fayde-detect"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "fayde-core",
 ]
 
 [[package]]
 name = "fayde-fits"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "fayde-core",
  "fayde-solve",
@@ -67,7 +67,7 @@ dependencies = [
 
 [[package]]
 name = "fayde-index"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "fayde-catalog",
  "fayde-core",
@@ -78,7 +78,7 @@ dependencies = [
 
 [[package]]
 name = "fayde-py"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "fayde-api",
  "fayde-cli",
@@ -93,7 +93,7 @@ dependencies = [
 
 [[package]]
 name = "fayde-solve"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "fayde-catalog",
  "fayde-core",
@@ -103,7 +103,7 @@ dependencies = [
 
 [[package]]
 name = "fayde-wcs"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "fayde-core",
  "serde",
