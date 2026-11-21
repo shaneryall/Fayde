@@ -1028,10 +1028,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#51-catalogue-layer-fayde-catalog" class="md-nav__link">
+  <a href="#51-catalog-layer-fayde-catalog" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5.1 Catalogue layer (fayde-catalog)
+        5.1 Catalog layer (fayde-catalog)
       
     </span>
   </a>
@@ -1083,10 +1083,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#55-fit-fayde-wcs" class="md-nav__link">
+  <a href="#55-fit-fayde-solve" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5.5 Fit (fayde-wcs)
+        5.5 Fit (fayde-solve)
       
     </span>
   </a>
@@ -1304,6 +1304,34 @@
     
   
     Star detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
   
 
     
@@ -1574,10 +1602,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#51-catalogue-layer-fayde-catalog" class="md-nav__link">
+  <a href="#51-catalog-layer-fayde-catalog" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5.1 Catalogue layer (fayde-catalog)
+        5.1 Catalog layer (fayde-catalog)
       
     </span>
   </a>
@@ -1629,10 +1657,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#55-fit-fayde-wcs" class="md-nav__link">
+  <a href="#55-fit-fayde-solve" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5.5 Fit (fayde-wcs)
+        5.5 Fit (fayde-solve)
       
     </span>
   </a>
@@ -1847,21 +1875,21 @@
 
 
 <h1 id="fayde-plate-solver-design">Fayde plate solver — design<a class="headerlink" href="#fayde-plate-solver-design" title="Permanent link">&para;</a></h1>
-<p>This document describes the solver design. For the crate layout and integration contract, see
-§4 and §6. For commands and report fields, see the <a href="../../usage/">CLI guide</a> and
-<a href="../../python/">Python guide</a>. Source references in the
-prior-art survey (§3) point to the upstream repositories.</p>
+<p>For the crate layout and integration contract, see §4 and §6. For commands and report fields, see
+the <a href="../../usage/">CLI guide</a> and <a href="../../python/">Python guide</a>. Source references in the prior-art
+survey (§3) point to the upstream repositories.</p>
 <h2 id="1-purpose">1. Purpose<a class="headerlink" href="#1-purpose" title="Permanent link">&para;</a></h2>
 <p>Fayde is a public, open-source astrometry tool written in Rust. It goes from a source list to a
 verified WCS with measured accuracy. It must fully meet the needs of a host pipeline, so that the
 pipeline can retire <code>solve-field</code> and the solving-related code around it.</p>
-<p><strong>Input is an xylist, as with <code>solve-field</code>, or an image of point-like stars.</strong> The user runs
-whatever source detector suits their sensor, then gives Fayde the resulting list of sources (§6)
-along with any header or metadata they have. That remains the contract for frames whose stars
-are trailed. Fayde also takes the image itself when its stars are points (a
-frame tracked at the sidereal rate, a spacecraft holding its attitude), detects the stars, keeps
-streaks and artefacts out of the list, and fills the same contract:
-<a href="../detection/"><code>detection.md</code></a>.</p>
+<p>The input is an xylist, as with <code>solve-field</code>, or an image. The user can run whatever source
+detector suits their sensor and give Fayde the resulting list of sources (§6) along with any
+header or metadata they have. Fayde also takes the image itself when its stars
+are points (a frame tracked at the sidereal rate, a spacecraft holding its attitude), detects the
+stars, keeps streaks and artifacts out of the list, and fills the same contract:
+<a href="../detection/"><code>detection.md</code></a>. It does the same when every star is a trail of
+one length and direction (a telescope tracking a satellite):
+<a href="../streak-detection/"><code>streak-detection.md</code></a>.</p>
 <p>It is not a wrapper. It ports the strongest algorithms from three solvers, and it takes over
 capabilities that pipelines otherwise build around a solver, generalized for public use:</p>
 <table>
@@ -1886,7 +1914,7 @@ capabilities that pipelines otherwise build around a solver, generalized for pub
 <tr>
 <td>Match acceptance</td>
 <td>astrometry.net</td>
-<td>Bayesian log-odds verification against the catalogue</td>
+<td>Bayesian log-odds verification against the catalog</td>
 </tr>
 <tr>
 <td>Final fit</td>
@@ -1895,18 +1923,18 @@ capabilities that pipelines otherwise build around a solver, generalized for pub
 </tr>
 <tr>
 <td>Source detection</td>
-<td>new, for point-like stars; otherwise the user supplies the xylist</td>
+<td>Fayde's own, for point-like and trailed stars; otherwise the user supplies the xylist</td>
 <td>One fixed extractor cannot fit every sensor; astrometry.net's built-in <code>simplexy</code> solved about 12% of one host pipeline's frames. Fayde defines a rich xylist contract (§6) that any detector can fill, and fills it itself from an image of point-like stars with a detector that measures the star width, noise and position errors instead of asking for them (<a href="../detection/"><code>detection.md</code></a>).</td>
 </tr>
 <tr>
-<td>Catalogue</td>
-<td>new</td>
-<td>UCAC4 and Tycho-2 read natively behind a catalogue trait</td>
+<td>Catalog</td>
+<td>Fayde's own</td>
+<td>UCAC4 and Tycho-2 read natively behind a catalog trait</td>
 </tr>
 <tr>
-<td>Header priors, neighbour hints</td>
-<td>new</td>
-<td>Scale and pointing resolution and a prediction from a solved neighbour, which a pipeline otherwise builds around the solver</td>
+<td>Header priors, neighbor hints</td>
+<td>Fayde's own</td>
+<td>Scale and pointing resolution and a prediction from a solved neighbor, which a pipeline otherwise builds around the solver</td>
 </tr>
 </tbody>
 </table>
@@ -1914,9 +1942,9 @@ capabilities that pipelines otherwise build around a solver, generalized for pub
 <p>Fayde is a general-purpose public tool. A host pipeline is a user, not a dependency. Fayde takes
 on capabilities that pipelines otherwise build around a solver when they belong in a public
 astrometry tool.</p>
-<p><strong>Detection of trailed stars is not one of them.</strong> The host's detector for such frames stays in
-the host and writes the xylist. Frames with point-like stars can be given as images.</p>
-<p><strong>Implemented in Fayde</strong> (so that a host pipeline need not build them):</p>
+<p>Detection of point-like and trailed stars is one of them. A host may still prefer its own
+detector and give the xylist.</p>
+<p><strong>In Fayde</strong> (so that a host pipeline need not build them):</p>
 <table>
 <thead>
 <tr>
@@ -1926,8 +1954,12 @@ the host and writes the xylist. Frames with point-like stars can be given as ima
 </thead>
 <tbody>
 <tr>
-<td>Source sanitation: dedupe within 3 px, giant-component and linearity filters, brightness ranking</td>
-<td><code>fayde-solve</code> xylist validation (§5.0), expressed as <code>p_star</code> adjustments rather than hard drops</td>
+<td>Star and streak detection from the image, points or trails</td>
+<td><code>fayde-detect</code></td>
+</tr>
+<tr>
+<td>Source ranking and demotion of near-duplicate centroids</td>
+<td><code>fayde-solve</code> (§5.0)</td>
 </tr>
 <tr>
 <td>Scale prior from focal length and pixel size, or from CD or PC+CDELT with unit checks; rejection of mixed or invalid WCS</td>
@@ -1942,23 +1974,7 @@ the host and writes the xylist. Frames with point-like stars can be given as ima
 <td><code>fayde-fits</code></td>
 </tr>
 <tr>
-<td>Annual and orbital aberration, light time</td>
-<td><code>fayde-ephem</code></td>
-</tr>
-<tr>
-<td>Observer state from a TLE (SGP4)</td>
-<td><code>fayde-ephem</code></td>
-</tr>
-<tr>
-<td>Neighbour hints, time-ordered sequence solving</td>
-<td><code>fayde-seq</code></td>
-</tr>
-<tr>
-<td>WCS interpolation across a sequence (borrowing)</td>
-<td><code>fayde-seq</code>, always labelled <code>Interpolated</code> and never as solved</td>
-</tr>
-<tr>
-<td>UCAC4 cone search; "is there a catalogue star here?" check</td>
+<td>UCAC4 cone search; "is there a catalog star here?" check</td>
 <td><code>fayde-catalog</code> (cone search) + <code>fayde verify --at</code></td>
 </tr>
 <tr>
@@ -1971,12 +1987,12 @@ the host and writes the xylist. Frames with point-like stars can be given as ima
 </tr>
 </tbody>
 </table>
-<p><strong>Stays in the host pipeline</strong> (pipeline policy, not astrometry):</p>
+<p>These stay in the host pipeline, as pipeline policy rather than astrometry:</p>
 <ul>
 <li>WCS cache reuse policy, versioned header cards and policy fingerprints.</li>
 <li>Run-summary and evidence schemas.</li>
 <li>Satellite identification, correlation, stacking, and drift.</li>
-<li>The detector for frames with trailed stars, which writes the xylist Fayde reads.</li>
+<li>A detector of the host's own, where it prefers one to Fayde's.</li>
 </ul>
 <p>A host's solving path is then: its detector → xylist → Fayde → adapter → its own cache and
 records.</p>
@@ -2001,25 +2017,25 @@ records.</p>
   quantified.</li>
 <li>Index files are fixed 2MASS/Tycho-2/Gaia-DR2 builds (series 4200/5200); epoch handling is not
   declared, and we cannot build from UCAC4 with our own epoch and density policy.</li>
-<li>No native notion of an image sequence; a pipeline has to implement neighbour hints and
+<li>No native notion of an image sequence; a pipeline has to implement neighbor hints and
   borrowing around it.</li>
 </ul>
 <h2 id="2-requirements">2. Requirements<a class="headerlink" href="#2-requirements" title="Permanent link">&para;</a></h2>
 <h3 id="must">Must<a class="headerlink" href="#must" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Define an input contract optimized for solution quality (§6). Only the sources and image size
-   are required. Every other field (uncertainties, flux, <code>p_star</code>, exposure time,
-   priors with σ) improves the result when present. <strong>Internal pixel convention:</strong> <code>(x, y)</code> = (column, row), with the
-   centre of the first pixel at <code>(0, 0)</code> (NumPy/Astropy). Conversions happen only at the edges:
-   +1 for FITS/astrometry.net xylists, +0.5 and an <code>(x, y)</code>→<code>(y, x)</code> swap for tetra3/cedar.</li>
+are required. Every other field (uncertainties, flux, <code>p_star</code>, exposure time, priors with σ)
+improves the result when present. Internally, <code>(x, y)</code> = (column, row), with the center of the first
+pixel at <code>(0, 0)</code> (NumPy/Astropy). Conversions happen only at the edges: +1 for FITS/astrometry.net
+xylists, +0.5 and an <code>(x, y)</code>→<code>(y, x)</code> swap for tetra3/cedar.</li>
 <li>Use priors when present: pointing, roll, scale and parity, each given as a σ plus a hard limit.
    The limit bounds the search; the σ ranks hypotheses (§6.4).</li>
 <li>Solve blind (no position hint) within a bounded time when the hint is missing or wrong.</li>
 <li>Build indexes from <strong>UCAC4</strong> zone files (<code>z001</code>–<code>z900</code>, 78-byte records), with proper motion
-   propagated to a chosen epoch and per-cell density limiting. Catalogue access goes through a
-   trait so Tycho-2, Gaia DR3 and others can be added.</li>
+propagated to a chosen epoch and per-cell density limiting. Catalog access goes through a trait so
+Tycho-2, Gaia DR3 and others can be added.</li>
 <li>Output a FITS-compatible TAN or TAN-SIP WCS, plus: matched pairs, per-star residuals, RMS,
-   parameter covariance, the log-odds score, index/catalogue identity and epoch.</li>
+   parameter covariance, the log-odds score, index/catalog identity and epoch.</li>
 <li>Deterministic: same input, same index → bit-identical output. Required by a host pipeline's
    WCS cache fingerprints.</li>
 <li>Library first (no subprocess), with a CLI and Python bindings for host pipelines.</li>
@@ -2027,8 +2043,8 @@ records.</p>
    <code>solve-field</code> user should be able to point Fayde at their existing <code>.xyls</code> files and get a
    solution with no other changes.</li>
 <li>Build priors (scale, pointing, exposure time) from standard FITS headers with strict validation.</li>
-<li>Public tool hygiene: permissive licence, documented CLI, published crates and wheels, and
-    reproducible index builds anyone can run from public catalogues.</li>
+<li>Public tool hygiene: an open source license, documented CLI, published crates and wheels, and
+    reproducible index builds anyone can run from public catalogs.</li>
 </ol>
 <h3 id="should">Should<a class="headerlink" href="#should" title="Permanent link">&para;</a></h3>
 <ol>
@@ -2046,84 +2062,80 @@ records.</p>
 </ul>
 <h2 id="3-prior-art">3. Prior art<a class="headerlink" href="#3-prior-art" title="Permanent link">&para;</a></h2>
 <h3 id="31-astrometrynet-dstndstnastrometrynet">3.1 astrometry.net (<code>dstndstn/astrometry.net</code>)<a class="headerlink" href="#31-astrometrynet-dstndstnastrometrynet" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>Input:</strong> an image or a FITS xylist (<code>X</code>, <code>Y</code>, optional <code>FLUX</code>/<code>BACKGROUND</code>). Coordinates are
-  1-based, so the centre of the first pixel is (1, 1) (<code>util/image2xy.c:102-105</code>). The list is
-  sorted brightest first, and <code>--depth</code> limits how many objects are tried. The built-in extractor
-  (simplexy) does median background subtraction, 8σ peaks and a 3×3 centroid
-  (<code>include/astrometry/simplexy.h:10-20</code>).</li>
-<li><strong>Hints:</strong> scale in degwidth, arcminwidth, arcsec/px or focal length
-  (<code>solver/augment-xylist.c:83-89</code>), an RA/Dec centre with a radius (<code>solver/engine.c:496-576</code>),
-  parity, and a CPU limit.</li>
-<li><strong>Pattern:</strong> a quad of 4 stars. A and B are the widest pair. C and D are expressed in the frame
-  where A=(0,0) and B=(1,1), giving a 4-D code that does not change under rotation, scaling or
-  translation (<code>solver/quad-utils.c:15-55</code>). Requiring cx ≤ dx and flipping for parity removes
-  duplicate orderings (<code>quad-utils.c:102-150</code>). Code tolerance is 0.01 (<code>solver.h:30</code>). Field stars
-  are added one at a time and every quad containing the new star is tried
-  (<code>solver/solver.c:898-990</code>), using a kd-tree range search in code space.</li>
-<li><strong>Index:</strong> FITS files, each holding a star kd-tree (unit xyz vectors), a quad table and a code
-  kd-tree. One file covers one band of quad sizes, in steps of √2. The 4100 series (Tycho-2)
-  covers 22′–2000′. The 5200 series covers 2′–22′ and is split into 12 or 48 HEALPix tiles. Small
-  scales need tens of GB. Star density is evened out by <code>uniformize-catalog</code> (N brightest per
-  HEALPix cell, in sweeps) and <code>hpquads</code>.</li>
-<li><strong>Verification:</strong> Bayesian log-odds (<code>solver/verify.c:448-620</code>). Each test star is scored either
-  as a true match (a Gaussian) or as a spurious "distractor" star (uniform over the field), with
-  conflicts resolved. Defaults: distractor ratio 0.25, verify_pix 1 px, accept at odds 1e9
-  (<code>engine.c:672-673</code>).</li>
-<li><strong>Output:</strong> a full TAN + SIP WCS from <code>tweak2</code> (<code>solver.c:126-220</code>), plus <code>.corr</code>, <code>.match</code> and
-  <code>.rdls</code> files.</li>
-<li><strong>Strengths and weaknesses:</strong> the most robust of the three and needs no FOV. It is slow to start
-  (seconds), its indexes are large, and the C/FITS stack is heavy.</li>
-<li><strong>Catalogues:</strong> Tycho-2, 2MASS, USNO-B, NOMAD, UCAC3/4/5 (<code>catalogs/</code>). UCAC4 is supported
-  (<code>catalogs/ucac4.c:51-125</code>) through <code>ucac4tofits</code> → <code>hpsplit</code> → <code>build-astrometry-index</code>.
-  <strong>It does not propagate proper motion</strong>; positions stay at J2000.</li>
-</ul>
+<p>astrometry.net reads an image or a FITS xylist (<code>X</code>, <code>Y</code>, optional <code>FLUX</code>/<code>BACKGROUND</code>).
+Coordinates are 1-based, so the center of the first pixel is (1, 1)
+(<code>util/image2xy.c:102-105</code>). The list is sorted brightest first, and <code>--depth</code> limits how many
+objects are tried. The built-in extractor (simplexy) does median background subtraction, 8σ
+peaks and a 3×3 centroid (<code>include/astrometry/simplexy.h:10-20</code>).</p>
+<p>The hints are the scale in degwidth, arcminwidth, arcsec/px or focal length
+(<code>solver/augment-xylist.c:83-89</code>), an RA/Dec center with a radius (<code>solver/engine.c:496-576</code>),
+parity, and a CPU limit.</p>
+<p>The pattern is a quad of 4 stars. A and B are the widest pair. C and D are expressed in the frame
+where A=(0,0) and B=(1,1), giving a 4-D code that does not change under rotation, scaling or
+translation (<code>solver/quad-utils.c:15-55</code>). Requiring cx ≤ dx and flipping for parity removes
+duplicate orderings (<code>quad-utils.c:102-150</code>). Code tolerance is 0.01 (<code>solver.h:30</code>). Field stars
+are added one at a time and every quad containing the new star is tried
+(<code>solver/solver.c:898-990</code>), using a kd-tree range search in code space.</p>
+<p>The index is a set of FITS files, each holding a star kd-tree (unit xyz vectors), a quad table
+and a code kd-tree. One file covers one band of quad sizes, in steps of √2. The 4100 series
+(Tycho-2) covers 22′–2000′. The 5200 series covers 2′–22′ and is split into 12 or 48 HEALPix
+tiles. Small scales need tens of GB. Star density is evened out by <code>uniformize-catalog</code>
+(N brightest per HEALPix cell, in sweeps) and <code>hpquads</code>.</p>
+<p>Verification uses Bayesian log-odds (<code>solver/verify.c:448-620</code>). Each test star is scored either
+as a true match (a Gaussian) or as a spurious "distractor" star (uniform over the field), with
+conflicts resolved. Defaults: distractor ratio 0.25, verify_pix 1 px, accept at odds 1e9
+(<code>engine.c:672-673</code>).</p>
+<p>The output is a full TAN + SIP WCS from <code>tweak2</code> (<code>solver.c:126-220</code>), plus <code>.corr</code>, <code>.match</code>
+and <code>.rdls</code> files.</p>
+<p>It is the most robust of the three and needs no FOV. It is slow to start (seconds), its indexes
+are large, and the C/FITS stack is heavy.</p>
+<p>Its catalogs are Tycho-2, 2MASS, USNO-B, NOMAD and UCAC3/4/5 (<code>catalogs/</code>). UCAC4 is supported
+(<code>catalogs/ucac4.c:51-125</code>) through <code>ucac4tofits</code> → <code>hpsplit</code> → <code>build-astrometry-index</code>. <strong>It
+does not propagate proper motion</strong>; positions stay at J2000.</p>
 <h3 id="32-tetra3-esatetra3">3.2 tetra3 (<code>esa/tetra3</code>)<a class="headerlink" href="#32-tetra3-esatetra3" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>Input:</strong> <code>solve_from_image</code> uses its own blob extractor (<code>tetra3.py:1796</code>).
-  <code>solve_from_centroids</code> takes <strong>(y, x)</strong>, with the origin at the top-left pixel edge (so the first
-  pixel centre is 0.5), sorted brightest first, plus <code>(height, width)</code>.</li>
-<li><strong>Pattern:</strong> 4 stars give 6 edges. They are sorted and divided by the longest edge to give 5
-  ratios, binned at <code>1/(4·max_err)</code> (<code>tetra3.py:1060-1071</code>). The key is a polynomial over the bins,
-  multiplied by 2654435761, in an open-addressed table with quadratic probing
-  (<code>tetra3.py:110-153</code>). It tries every 4-combination of the brightest 8 centroids
-  (<code>tetra3.py:1381</code>).</li>
-<li><strong>Database:</strong> an <code>.npz</code> with a star table (float32) and a pattern table of star indices (2× table
-  oversize), about 99 MB. Built per FOV scale (step 1.5×) with a minimum star separation of
-  <code>0.6·fov/√stars_per_fov</code> (<code>tetra3.py:925-1013</code>).</li>
-<li><strong>Verification:</strong> rotation by SVD (Kabsch) <strong>with no determinant check, so it can accept a
-  mirror-image (wrong parity) solution</strong> (<code>tetra3.py:236-244</code>). Projected catalogue stars are
-  matched by nearest neighbour and accepted using a binomial false-positive probability
-  (<code>tetra3.py:1589</code>).</li>
-<li><strong>Output:</strong> RA, Dec, roll, FOV, one radial distortion term k (<code>tetra3.py:1641</code>), RMSE, match count
-  and probability. No WCS or SIP.</li>
-<li><strong>Strengths and weaknesses:</strong> 10–500 ms in Python. Pattern density is uneven across the sky, and
-  limiting the search to the brightest 8 stars fails when bright detections are spurious.</li>
-<li><strong>Catalogues:</strong> BSC5, Hipparcos, Tycho (<code>tetra3.py:702-870</code>). Proper motion is applied linearly
-  from 1991.25 to the requested epoch, and stars without proper motion are dropped. No UCAC4 or
-  Gaia support.</li>
-</ul>
+<p><code>solve_from_image</code> uses its own blob extractor (<code>tetra3.py:1796</code>).
+<code>solve_from_centroids</code> takes <strong>(y, x)</strong>, with the origin at the top-left pixel edge (so the first
+pixel center is 0.5), sorted brightest first, plus <code>(height, width)</code>.</p>
+<p>A pattern of 4 stars gives 6 edges. They are sorted and divided by the longest edge to give 5
+ratios, binned at <code>1/(4·max_err)</code> (<code>tetra3.py:1060-1071</code>). The key is a polynomial over the bins,
+multiplied by 2654435761, in an open-addressed table with quadratic probing
+(<code>tetra3.py:110-153</code>). It tries every 4-combination of the brightest 8 centroids
+(<code>tetra3.py:1381</code>).</p>
+<p>The database is an <code>.npz</code> with a star table (float32) and a pattern table of star indices
+(2× table oversize), about 99 MB. It is built per FOV scale (step 1.5×) with a minimum star
+separation of <code>0.6·fov/√stars_per_fov</code> (<code>tetra3.py:925-1013</code>).</p>
+<p>Verification finds the rotation by SVD (Kabsch) <strong>with no determinant check, so it can accept a
+mirror-image (wrong parity) solution</strong> (<code>tetra3.py:236-244</code>). Projected catalog stars are
+matched by nearest neighbor and accepted using a binomial false-positive probability
+(<code>tetra3.py:1589</code>).</p>
+<p>The output is RA, Dec, roll, FOV, one radial distortion term k (<code>tetra3.py:1641</code>), RMSE, match
+count and probability, with no WCS or SIP.</p>
+<p>It solves in 10–500 ms in Python. Pattern density is uneven across the sky, and limiting the
+search to the brightest 8 stars fails when bright detections are spurious.</p>
+<p>Its catalogs are BSC5, Hipparcos and Tycho (<code>tetra3.py:702-870</code>). Proper motion is applied
+linearly from 1991.25 to the requested epoch, and stars without proper motion are dropped. It
+has no UCAC4 or Gaia support.</p>
 <h3 id="33-cedar-solve-smroidcedar-solve">3.3 cedar-solve (<code>smroid/cedar-solve</code>)<a class="headerlink" href="#33-cedar-solve-smroidcedar-solve" title="Permanent link">&para;</a></h3>
-<p>A tetra3 fork with the same API and pixel convention. What changed:</p>
+<p>A tetra3 fork with the same API and pixel convention.</p>
+<p>Its database, unlike tetra3's, is uniform: patterns are generated in "lattice fields" on a
+Fibonacci sphere, with a fixed 50 patterns per field, brightest first, in breadth-first
+combination order (<code>tetra3.py:1182-1308</code>). The table size is the next prime above 3× the pattern
+count, with linear probing (<code>tetra3.py:1316-1320</code>). Each slot stores a 16-bit key hash, which
+rejects probe collisions without loading stars (<code>tetra3.py:1382</code>, <code>2268</code>), plus a float16
+longest edge. The magnitude limit is set automatically from the star density needed
+(<code>tetra3.py:1118-1143</code>). The database is about 38 MB (about 42k stars).</p>
+<p>The solve tries every image combination breadth-first, so there is no fixed limit of 8 stars
+(<code>tetra3.py:1819</code>). Hash bins are visited nearest first (<code>~1855-1866</code>). Match tolerance is 0.002,
+the default timeout is 5 s, and solves can be canceled. It adds P90E/MAXE errors and the rotation
+matrix. The distortion range search was removed.</p>
+<p>Its catalogs are the same as tetra3's.</p>
+<p>There is no Rust solver. smroid's cedar-detect is a Rust star detector:</p>
 <ul>
-<li><strong>Uniform database:</strong> patterns are generated in "lattice fields" on a Fibonacci sphere, with a
-  fixed 50 patterns per field, brightest first, in breadth-first combination order
-  (<code>tetra3.py:1182-1308</code>). The table size is the next prime above 3× the pattern count, with linear
-  probing (<code>tetra3.py:1316-1320</code>). Each slot stores a 16-bit key hash, which rejects probe
-  collisions without loading stars (<code>tetra3.py:1382</code>, <code>2268</code>), plus a float16 longest edge. The
-  magnitude limit is set automatically from the star density needed (<code>tetra3.py:1118-1143</code>). The
-  database is about 38 MB (about 42k stars).</li>
-<li><strong>Solve:</strong> tries every image combination breadth-first, so there is no fixed limit of 8 stars
-  (<code>tetra3.py:1819</code>). Hash bins are visited nearest first (<code>~1855-1866</code>). Match tolerance is 0.002,
-  the default timeout is 5 s, and solves can be cancelled. It adds P90E/MAXE errors and the rotation
-  matrix. The distortion range search was removed.</li>
-<li><strong>Catalogues:</strong> same as tetra3.</li>
-<li><strong>Rust:</strong> there is no Rust solver. smroid's <strong>cedar-detect</strong> is a Rust star detector:</li>
 <li>a row gate followed by a 2-D gate, noise estimation, rejection of hot pixels and trails, and
-    2/4/8× binning;</li>
+  2/4/8× binning;</li>
 <li>about 10 ms per Mpx on a Raspberry Pi 4;</li>
-<li>takes 8-bit images only and returns centroids with the first pixel centre at 0.5
-    (<code>src/algorithm.rs:509-528</code>, <code>958</code>).</li>
+<li>takes 8-bit images only and returns centroids with the first pixel center at 0.5
+  (<code>src/algorithm.rs:509-528</code>, <code>958</code>).</li>
 </ul>
 <p>It could become the CLI's extractor if it were extended to 16-bit images.</p>
 <h3 id="34-comparison">3.4 Comparison<a class="headerlink" href="#34-comparison" title="Permanent link">&para;</a></h3>
@@ -2140,7 +2152,7 @@ records.</p>
 <tr>
 <td>Input</td>
 <td>image or FITS xylist, 1-based (x, y)</td>
-<td>image or (y, x), first pixel centre at 0.5</td>
+<td>image or (y, x), first pixel center at 0.5</td>
 <td>same as tetra3</td>
 </tr>
 <tr>
@@ -2174,7 +2186,7 @@ records.</p>
 <td>10–100 ms</td>
 </tr>
 <tr>
-<td>Catalogues</td>
+<td>Catalogs</td>
 <td>Tycho-2, 2MASS, Gaia, USNO-B, UCAC4/5</td>
 <td>BSC5, HIP, TYC</td>
 <td>BSC5, HIP, TYC</td>
@@ -2192,91 +2204,78 @@ records.</p>
 benchmarks) is reviewed in <a href="../../research/literature-review/"><code>docs/research/literature-review.md</code></a>.
 Sections 5, 6 and 9 describe what Fayde implements.</p>
 <ol>
-<li><strong>Database layout from cedar-solve:</strong></li>
+<li>The database layout comes from cedar-solve:</li>
 <li>uniform lattice fields with a fixed budget of patterns per field;</li>
 <li>brightest-first breadth-first combinations;</li>
 <li>a prime-sized table with linear probing;</li>
-<li>
-<p>a 16-bit key check and the longest edge (as <code>f32</code>) in each slot.</p>
+<li>a 16-bit key check and the longest edge (as <code>f32</code>) in each slot.</li>
+</ol>
 <p>A lookup probes every key in the tolerance window (or scans the table when the window holds
-  more keys than the table has slots) and ranks the hits by their exact shape error. The index
-  is a versioned flat binary, read into memory, rather than npz.
-2. <strong>Verification from astrometry.net</strong> (Bayesian log-odds with distractors), behind a cheap
-   pre-filter that counts sources landing near catalogue stars (§5.4).
-3. <strong>A real WCS output</strong> (TAN, with SIP of order 2–3), plus RA, Dec, pixel scale and roll. Fayde
-   fits each seed with an explicit parity and, when the parity is unknown, tries both and verifies
-   each, so the parity is right, which tetra3 does not check.
-4. <strong>Several indexes for different field widths, like astrometry.net's series</strong>, tried in order
+   more keys than the table has slots) and ranks the hits by their exact shape error. The index
+   is a versioned flat binary, read into memory, rather than npz.
+2. Verification comes from astrometry.net (Bayesian log-odds with distractors), behind a cheap
+   pre-filter that counts sources landing near catalog stars (§5.4).
+3. The output is a real WCS (TAN, with SIP of order 2–3), plus RA, Dec, pixel scale and roll.
+   Fayde fits each seed with an explicit parity and, when the parity is unknown, tries both and
+   verifies each, so the parity is right, which tetra3 does not check.
+4. Several indexes for different field widths, like astrometry.net's series, are tried in order
    of closeness to the frame's diagonal (the widest first when the scale is unknown). A pointing
    hint rejects a matched pattern with a star farther from the pointing than the search radius
    plus the frame's half-diagonal.
-5. <strong>Pluggable catalogues with proper motion applied to every star.</strong> Each position moves along
+5. Catalogs are pluggable, and proper motion is applied to every star. Each position moves along
    its proper motion on the sphere, which holds at the poles, and stars without proper motion are
    kept with a larger error: all three take shortcuts near the poles or drop such stars.</p>
-</li>
-</ol>
 <h2 id="4-architecture">4. Architecture<a class="headerlink" href="#4-architecture" title="Permanent link">&para;</a></h2>
 <p>Cargo workspace:</p>
 <div class="highlight"><pre><span></span><code>fayde/
   crates/
-    fayde-core      types: Source, Hint, SkyPos, Wcs, Solution, errors
-    fayde-catalog   Catalog trait; UCAC4 reader; epoch propagation; HEALPix cell queries
-    fayde-index     index builder + on-disk format (mmap); pattern generation
-    fayde-solve     adaptive planner, matchers (pair seeds, pattern hash), verifier, fit
-    fayde-wcs       TAN/SIP projection, weighted fit, covariance
-    fayde-fits      xylist read (native + astrometry.net), header→priors, WCS + provenance write
-    fayde-ephem     time scales, observer state (SGP4/TLE, ground site), aberration, refraction
-    fayde-seq       sequence solving, prediction, labelled interpolation
-    fayde-cli       `fayde index build`, `fayde solve`, `fayde verify`, `fayde refit`
+    fayde-core      sky, pixel and epoch types; portable numerical primitives
+    fayde-catalog   Catalog trait, UCAC4/Tycho-2/star-table/.fcat readers, proper motion
+    fayde-index     HEALPix selection, pattern hash, streamed index file reads and writes
+    fayde-solve     Source, SolveRequest, Outcome and Solution; search, verification, fits and covariance
+    fayde-wcs       TAN/SIP projections, WCS header cards, WCS prediction from pointing and roll
+    fayde-fits      FITS images and source lists, header priors, profiles, WCS file output
+    fayde-detect    star, trail and streak detection in an image
+    fayde-api       request building and the JSON report, shared by the command line and Python
+    fayde-cli       `fayde index build`, `fayde index info`, `fayde catalog`, `fayde solve`,
+                    `fayde verify`, `fayde refit`, `fayde detect`, `fayde calibrate`, `fayde bench`,
+                    `fayde compare`
     fayde-py        PyO3 bindings (general Python API)
 </code></pre></div>
-<p>Dependency direction: <code>core</code> ← <code>catalog</code>, <code>wcs</code>, <code>ephem</code> ← <code>index</code> ← <code>solve</code> ← <code>seq</code> ← <code>fits</code>,
-<code>cli</code>, <code>py</code>. <code>fayde-solve</code> depends on neither <code>fits</code> nor <code>seq</code>, so the library stays small for
-embedded users such as star trackers.</p>
-<p>Dependencies kept small: <code>memmap2</code>, <code>rayon</code> (index build only), <code>nalgebra</code> (fits),
-<code>fitsio</code> or a minimal FITS writer, <code>pyo3</code>. No C toolchain at runtime.</p>
+<p>The solver uses <code>fayde-core</code>, <code>fayde-catalog</code>, <code>fayde-index</code> and <code>fayde-wcs</code>. FITS, detection
+and request orchestration sit outside the solver. <code>fayde-api</code> combines those layers for the
+CLI and Python. The index reader verifies a checksum in one streamed pass, then parses the
+index into memory in a second pass.</p>
+<p>Dependencies kept small: <code>serde</code> and <code>serde_json</code> (reports, profiles), <code>libm</code> (portable math),
+<code>pyo3</code> (Python bindings), <code>flate2</code> (catalog downloads, in pure Rust). FITS reading and writing,
+the k-d tree and the linear algebra are Fayde's own. No C toolchain at runtime.</p>
 <h2 id="5-solve-pipeline">5. Solve pipeline<a class="headerlink" href="#5-solve-pipeline" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>sources + hints
-   │
-   ├─ 0. validate      contract + source checks (§5.0); order by p_star × brightness
-   ├─ 1. predict       (sequence mode) previous WCS + motion model → candidate WCS
-   │                    └─ verify → accept, or continue
-   ├─ 2. hinted match  catalogue cone at the hint: pair seeds (tight scale) or
-   │                    pattern hash (loose scale); geometric voting as fallback
-   ├─ 3. blind match   pattern hash across index scale bands (no priors)
-   ├─ 4. verify        local refit on inliers → log-odds + NFA; threshold
-   ├─ 5. refine        IRLS fit on the verifier's mixture likelihood; SIP only
-   │                    by BIC, on top of the instrument distortion model
-   └─ 6. report        WCS + residuals + covariance + error scale + provenance
+   ├─ validate geometry and options, filter and rank usable centroids (§5.0)
+   ├─ plan pair-seed and pattern-hash stages from the hints and indexes (§5.2a)
+   ├─ try hypotheses, refit locally, verify, and select the final TAN/SIP fit (§5.3–5.5)
+   ├─ try the predicted WCS if the search found no solution and a prediction was supplied (§5.6)
+   └─ report the solution, abstention, or error
 </code></pre></div>
-<p>Each stage has its own time budget. The overall budget is a single per-frame deadline, matching
-a host pipeline's per-frame solver budget.</p>
+<p>Search stages share the request's deadline and hypothesis limit. The relaxed-prior pass, when
+enabled, uses the remaining budget and continues the hypothesis count.</p>
 <h3 id="50-xylist-validation-fayde-solve">5.0 Xylist validation (<code>fayde-solve</code>)<a class="headerlink" href="#50-xylist-validation-fayde-solve" title="Permanent link">&para;</a></h3>
-<p>Fayde never sees the image, so it checks the xylist before solving:</p>
+<p>A source list can come from any detector, so Fayde checks it before solving:</p>
 <ul>
-<li><strong>Contract checks:</strong> finite values, valid covariances, positions inside the frame, a consistent
-  number of rows in every column. A violation is an input error that names the row and field.</li>
-<li><strong>Source checks:</strong></li>
-<li>duplicates within a few pixels;</li>
-<li>outliers in component size or width (hot pixels and cosmic rays are too narrow, blends too
-    large).</li>
+<li>Validate the frame dimensions, search priors, and solver policy. The Python adapter also
+  checks that source arrays have equal lengths.</li>
+<li>Ignore non-finite centroids and centroids outside the frame. Rank the remaining sources by
+  <code>p_star</code> and flux when supplied. With no flux, use <code>p_star</code> and input order.</li>
+<li>Demote candidates near a better-ranked centroid. Keep truncated sources as match evidence
+  and exclude them from seeding and fitting.</li>
 </ul>
-<p>These adjust <code>p_star</code> rather than dropping rows, so a poor detector shows up in the diagnostics
-  instead of silently degrading the solve.
-- <strong>Diagnostics in the solution:</strong> source counts by check, the detection limit Fayde estimated
-  when none was given, and which optional fields were missing and what they would have added.
-  This tells detector authors what to improve.</p>
-<h3 id="51-catalogue-layer-fayde-catalog">5.1 Catalogue layer (<code>fayde-catalog</code>)<a class="headerlink" href="#51-catalogue-layer-fayde-catalog" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">pub</span><span class="w"> </span><span class="k">trait</span><span class="w"> </span><span class="n">Catalog</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="k">fn</span><span class="w"> </span><span class="nf">id</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">CatalogId</span><span class="p">;</span><span class="w">               </span><span class="c1">// name, version, source files hash</span>
-<span class="w">    </span><span class="k">fn</span><span class="w"> </span><span class="nf">cone</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">centre</span><span class="p">:</span><span class="w"> </span><span class="nc">SkyPos</span><span class="p">,</span><span class="w"> </span><span class="n">radius</span><span class="p">:</span><span class="w"> </span><span class="nc">Angle</span><span class="p">,</span><span class="w"> </span><span class="n">q</span><span class="p">:</span><span class="w"> </span><span class="kp">&amp;</span><span class="nc">StarQuery</span><span class="p">)</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nb">Vec</span><span class="o">&lt;</span><span class="n">Star</span><span class="o">&gt;</span><span class="p">;</span>
-<span class="p">}</span>
-<span class="k">pub</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">StarQuery</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">pub</span><span class="w"> </span><span class="n">epoch</span><span class="p">:</span><span class="w"> </span><span class="nc">Epoch</span><span class="p">,</span><span class="w"> </span><span class="k">pub</span><span class="w"> </span><span class="n">mag_max</span><span class="p">:</span><span class="w"> </span><span class="kt">f32</span><span class="p">,</span><span class="w"> </span><span class="k">pub</span><span class="w"> </span><span class="n">band</span><span class="p">:</span><span class="w"> </span><span class="nc">Band</span><span class="w"> </span><span class="p">}</span>
-<span class="k">pub</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="nc">Star</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">pub</span><span class="w"> </span><span class="n">pos</span><span class="p">:</span><span class="w"> </span><span class="nc">SkyPos</span><span class="p">,</span><span class="w"> </span><span class="k">pub</span><span class="w"> </span><span class="n">mag</span><span class="p">:</span><span class="w"> </span><span class="kt">f32</span><span class="p">,</span><span class="w"> </span><span class="k">pub</span><span class="w"> </span><span class="n">pos_err</span><span class="p">:</span><span class="w"> </span><span class="nb">Option</span><span class="o">&lt;</span><span class="p">[</span><span class="kt">f32</span><span class="p">;</span><span class="mi">2</span><span class="p">]</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="k">pub</span><span class="w"> </span><span class="n">id</span><span class="p">:</span><span class="w"> </span><span class="nc">StarId</span><span class="w"> </span><span class="p">}</span>
-</code></pre></div>
+<h3 id="51-catalog-layer-fayde-catalog">5.1 Catalog layer (<code>fayde-catalog</code>)<a class="headerlink" href="#51-catalog-layer-fayde-catalog" title="Permanent link">&para;</a></h3>
+<p>The <a href="https://github.com/shaneryall/Fayde/blob/main/crates/fayde-catalog/src/lib.rs"><code>Catalog</code> trait</a> exposes fallible cone search and
+scans. Queries specify an optional epoch and magnitude limit plus a magnitude band. Catalog
+stars carry a sky position, identifier, optional magnitude, and position errors.</p>
 <p>UCAC4 reader:</p>
 <ul>
-<li>Reads the original zone files in place, one memory map per zone, with no conversion step. There
+<li>Reads the original zone files in place, seeking to the record ranges for each cone. There
   are 900 zones (<code>z001</code>–<code>z900</code>), each a 0.2° Dec band starting at −90° and sorted by RA, about 113M
   stars and 8.9 GB in total.</li>
 <li>Each record is 78 bytes, little-endian, decoded with explicit little-endian conversion (the field
@@ -2285,99 +2284,99 @@ a host pipeline's per-frame solver budget.</p>
 <li><code>magm</code>/<code>maga</code> i16 (mmag), <code>sigra</code>/<code>sigdc</code> i8 (+128 mas);</li>
 <li><code>pmrac</code>/<code>pmdc</code> i16 (0.1 mas/yr, where pmRA already includes cos δ), <code>sigpmr</code>/<code>sigpmd</code> i8 (+128);</li>
 <li>2MASS J/H/K, APASS B/V/g/r/i, and <code>rnm</code> u32 (the unique star ID).</li>
-<li><strong>Sentinels:</strong> a magnitude of 20000 means missing. A proper motion of 32767 means the real value
-  is in <code>u4i/u4hpm.dat</code>, which is loaded once.</li>
+<li>Two values are sentinels: a magnitude of 20000 means missing, and a proper motion of 32767
+  means the real value is in <code>u4i/u4hpm.dat</code>, which is loaded once.</li>
 <li><code>u4i/u4index.unf</code> holds, for each of the 900 zones × 1440 RA bins (0.25° each), a start offset and
   a count, so a cone search seeks straight to the rows it needs. The file is optional: a zone
   file is in RA order, so without it the same rows are found by binary search of the zone file.</li>
-<li><strong>Epoch:</strong> positions are ICRS mean positions at epoch 2000.0. <code>cepra</code>/<code>cepdc</code> are central epochs,
-  not the reference epoch: positions do not move from them, but position errors grow from them.
+<li>Positions are ICRS mean positions at epoch 2000.0. <code>cepra</code>/<code>cepdc</code> are central epochs, not
+  the reference epoch: positions do not move from them, but position errors grow from them.
   Proper motion moves each position to the query epoch as a unit vector on the sphere, the
   zero-parallax, zero-radial-velocity case of Butkevich &amp; Lindegren (2014), which holds at the
   poles. The error on each axis grows as <code>√(σ₀² + (t − t_c)²·σμ²)</code> from the central epoch
-  <code>t_c</code>. Stars without valid
-  proper motion keep their 2000.0 position with an inflated position error, rather than being
-  dropped as tetra3 does.</li>
-<li><strong>Magnitude band:</strong> <code>magm</code> (579–642 nm, close to unfiltered silicon) by default, falling back to
-  <code>maga</code>. This is the same default rule as the
-  independent reader behind the test oracle, so results can be compared row for row.</li>
-<li><strong>Bright stars:</strong> UCAC4 is saturated or incomplete brighter than about mag 7–8. Indexes merge
-  Tycho-2 (or Hipparcos) for bright stars and remove duplicates within about 1″.</li>
+  <code>t_c</code>. Stars without valid proper motion keep their 2000.0 position with an inflated position
+  error, rather than being dropped as tetra3 does.</li>
+<li>The magnitude band is <code>magm</code> (579–642 nm, close to unfiltered silicon) by default, falling back
+  to <code>maga</code>. This is the same default rule as the independent reader behind the test oracle, so
+  results can be compared row for row.</li>
+<li>UCAC4 is saturated or incomplete brighter than about mag 7–8. A Tycho-2 index covers the
+  bright stars for wide fields.</li>
 </ul>
 <p>Test vectors come from an independent UCAC4 reader
 (<code>crates/fayde-catalog/tests/reader_oracle.rs</code>).</p>
 <h3 id="52-index-fayde-index">5.2 Index (<code>fayde-index</code>)<a class="headerlink" href="#52-index-fayde-index" title="Permanent link">&para;</a></h3>
-<p>Built offline from a <code>Catalog</code>, stored as one mmap-able file per scale band:</p>
+<p>Each scale band is built offline from a <code>Catalog</code> and stored in one <code>.fidx</code> file:</p>
 <ul>
-<li><strong>Star selection:</strong> HEALPix cells at the index epoch. Keep the K brightest stars per cell, in
-  a streaming pass, with a minimum separation between stars (default 10″,
+<li>Stars are selected in HEALPix cells at the index epoch. Each cell keeps its K brightest stars,
+  in a streaming pass, with a minimum separation between stars (default 10″,
   <code>min_sep_arcsec</code>). A nearby kept star, including across HEALPix boundaries, rejects the
-  candidate unless the candidate is brighter (ties by catalogue ID); a better candidate
-  replaces all its fainter neighbours. Rejected stars are not buffered for reconsideration,
-  so results are deterministic for a given catalogue stream. This follows astrometry.net's
+  candidate unless the candidate is brighter (ties by catalog ID); a better candidate
+  replaces all its fainter neighbors. Rejected stars are not buffered for reconsideration,
+  so results are deterministic for a given catalog stream. This follows astrometry.net's
   <code>uniformize-catalog</code> approach. It keeps the density even, so the galactic plane does not swamp
   the hash table and the poles are not empty. The magnitude limit is optional
   (<code>--mag-limit</code>); stars without a magnitude are left out.</li>
-<li><strong>Field widths:</strong> each index is built for one field width (<code>--fov</code>). A solve can load several,
-  tried in order of closeness to the frame's diagonal (the widest first when the scale is
-  unknown, §5.3); <a href="../../index-set/"><code>index-set.md</code></a>
-  lists a recommended set.</li>
-<li><strong>Pattern hash table</strong> (cedar-solve design):</li>
+<li>Each index is built for one field width (<code>--fov</code>). A solve can load several, tried in order of
+  closeness to the frame's diagonal (the widest first when the scale is unknown, §5.3);
+  <a href="../../index-set/"><code>index-set.md</code></a> lists a recommended set.</li>
+<li>The pattern hash table follows cedar-solve's design:</li>
 <li>lattice fields with a fixed number of patterns per field, chosen brightest first in
     breadth-first combination order;</li>
 <li>the key is 5 sorted edge ratios, binned;</li>
 <li>the table size is a prime above 3× the pattern count, with linear probing;</li>
-<li>each slot holds a 16-bit key check and a float16 longest edge, plus 4 star IDs.</li>
-<li><strong>Coverage vs size (measured on a regional UCAC4 index, 0.4° FOV):</strong> with 2× lattice
-  oversampling 0 of 70 image 4-sets were in the index; 30× found 11, 100× (cedar-solve's value)
-  found 35, and the true match always ranked first. Patterns grow roughly linearly with
-  oversampling (431 → 11,645 for the region), so an all-sky index for a sub-degree FOV at 100× is
-  large (rough estimate: tens of millions of patterns, gigabytes). This is a reason hinted solves
-  should start from pair seeds built at solve time (§5.3), with the stored pattern index reserved
-  for loose priors and blind solving.</li>
-<li><strong>Two tiers:</strong> the first all-sky benchmark solved 89/100 frames blind with
-  no wrong solutions, but every failure was a dense field whose true patterns were absent from
-  the table (0 of 126–1001 true 4-star sets of the frame's top index stars). Cause: about 40 index
-  stars per field of view, but patterns built from each field's 10 brightest, so a frame's
-  brightest stars rarely formed a stored pattern. The fix is tetra3/cedar-solve's two densities:
-  the dense tier (20 stars per field of view by default) feeds the pattern-seed pre-filter, and
-  patterns come only from a sparse pattern tier.
-  First attempt (v2): one star per cell of side fov/√10 rounded <em>down</em> to a HEALPix level put
+<li>each slot holds a 16-bit key check, a 32-bit floating-point longest edge, and four star indices.</li>
+<li>lookup visits neighboring keys or checks stored patterns directly when there are fewer
+    table slots than keys to visit. Candidates are ranked by exact ratio error.</li>
+<li>Measured on a regional UCAC4 index at 0.4° FOV, 0 of 70 image 4-sets were in the index with 2×
+  lattice oversampling; 30× found 11, 100× (cedar-solve's value) found 35, and the true match always
+  ranked first. Patterns grow roughly linearly with oversampling (431 → 11,645 for the region), so
+  an all-sky index for a sub-degree FOV at 100× is large (rough estimate: tens of millions of
+  patterns, gigabytes). This is a reason hinted solves should start from pair seeds built at solve
+  time (§5.3), with the stored pattern index reserved for loose priors and blind solving.</li>
+<li>The index has two tiers. The first all-sky benchmark solved 89/100 frames blind with no wrong
+  solutions, but every failure was a dense field whose true patterns were absent from the table
+  (0 of 126–1001 true 4-star sets of the frame's top index stars). There were about 40 index
+  stars per field of view, but patterns were built from each field's 10 brightest, so a frame's
+  brightest stars rarely formed a stored pattern. Fayde therefore uses tetra3/cedar-solve's two
+  densities: the dense tier (20 stars per field of view by default) feeds the pattern-seed
+  pre-filter, and patterns come only from a sparse pattern tier.</li>
+</ul>
+<p>The v2 selection, one star per cell of side fov/√10 rounded <em>down</em> to a HEALPix level, put
   both tiers on nside 256, so half the index became pattern stars and fields were truncated
   again (6 failures in 149 frames, from 8). The v3 selection kept k brightest stars per
   coarse HEALPix cell, creating boundary artifacts: a bright star could lose its slot while a
-  nearby, much fainter star in the next cell was promoted. Current (v4): visit dense-tier stars
-  brightest-first (ties by catalogue ID), accepting each only if no accepted pattern star is
-  within <code>r_min = 0.6 × fov / sqrt(N)</code>, with N = <code>pattern_stars_per_fov</code> (default 20).
-  This is ESA tetra3's minimum-separation thinning (Brown &amp; Stubis 2017 / TETRA): the
-  characteristic spacing fov/√N sets an approximate density N/fov², or roughly 10 pattern
-  stars in a square frame whose diagonal is fov. The 0.6 factor is empirical; achieved density
-  depends on the available dense stars, and sparse catalogues can undershoot the target.
-  An incremental Cartesian unit-vector grid checks 27 neighbouring buckets with exact chord
-  distances, avoiding cell-boundary and polar artifacts; the existing static k-d tree then
-  supplies lattice-field neighbours. Progress reports the number of pattern stars per fov² over
-  the requested region (or all sky). Pattern membership remains stored per star, with index
-  <strong>file format v2 unchanged</strong>; v4 names the selection method, not the file format.
-  Validation: a synthetic uniform all-sky input of 1.6 million dense stars at
-  fov = 1° retained 751,083 pattern stars, <strong>18.207 per fov²</strong> (−9.0% from target 20), in
-  about <strong>1.8–1.9 s</strong> for sorting and thinning in release mode. An independent k-d-tree check
-  verifies separation for every retained star. The coarse-boundary and 3″-double regressions
-  both failed before the fixes and pass with v4. Regional UCAC4 validation retains 67 dense
-  stars and 9,411 patterns; 5/70 image patterns are present, all ranked first. These v4 results
-  are separate from the earlier oversampling measurements above.</li>
-<li><strong>Quad kd-tree</strong> (astrometry.net design) — <em>considered, not adopted</em> (§5.3): 4-D quad codes for blind solving, code tolerance about
-  0.01.</li>
-<li><strong>Epoch policy</strong> (see §10): the index is built at a fixed epoch (2025.0 by default). Stars whose
-  proper motion would move them more than half the pattern tolerance at half the field width in 25
-  years (about 180 mas/yr per degree of field) are left out of the index, so it stays valid for
-  decades; a star with no proper motion counts as still. Pair seeds, verification and fitting do not
-  use index positions: they read catalogue stars propagated to the observation epoch at query time
-  (§5.1), so they still see those stars. UCAC4 propagation errors at 2026 are about 0.06–0.3″
-  (0.02–0.1 px at 3″/px); Gaia matters only for accuracy goals finer than that.</li>
-<li>The header records catalogue ID, epoch, magnitude limit, cell level and build parameters, and
+  nearby, much fainter star in the next cell was promoted.</p>
+<p>The v4 selection, which Fayde uses, visits dense-tier stars brightest-first (ties by catalog
+  ID) and accepts each only if no accepted pattern star is within <code>r_min = 0.6 × fov / sqrt(N)</code>,
+  with N = <code>pattern_stars_per_fov</code> (default 20). This is ESA tetra3's minimum-separation
+  thinning (Brown &amp; Stubis 2017 / TETRA): the characteristic spacing fov/√N sets an approximate
+  density N/fov², or roughly 10 pattern stars in a square frame whose diagonal is fov. The 0.6
+  factor is empirical; achieved density depends on the available dense stars, and sparse
+  catalogs can undershoot the target. An incremental Cartesian unit-vector grid checks 27
+  neighboring buckets with exact chord distances, avoiding cell-boundary and polar artifacts;
+  the existing static k-d tree then supplies lattice-field neighbors. Progress reports the
+  number of pattern stars per fov² over the requested region (or all sky). Pattern membership is
+  stored per star, and the index file format stays v2: v4 names the selection method, not the
+  file format.</p>
+<p>On a synthetic uniform all-sky input of 1.6 million dense stars at fov = 1°, v4 retained
+  751,083 pattern stars, 18.207 per fov² (−9.0% from target 20), in about 1.8–1.9 s for sorting
+  and thinning in release mode. An independent k-d-tree check verifies separation for every
+  retained star. The coarse-boundary and 3″-double regression tests, which failed before v4,
+  pass with it. Regional UCAC4 validation retains 67 dense stars and 9,411 patterns; 5/70 image
+  patterns are present, all ranked first. These v4 results are separate from the oversampling
+  measurements above.
+- astrometry.net's quad kd-tree (4-D quad codes for blind solving, code tolerance about 0.01)
+  was considered and not adopted (§5.3).
+- The index is built at a fixed epoch (2025.0 by default; see §10). Stars whose proper motion
+  would move them more than half the pattern tolerance at half the field width in 25 years
+  (about 180 mas/yr per degree of field) are left out of the index, so it stays valid for
+  decades; a star with no proper motion counts as still. Pair seeds, verification and fitting do
+  not use index positions: they read catalog stars propagated to the observation epoch at query
+  time (§5.1), so they still see those stars. UCAC4 propagation errors at epoch 2026 are about
+  0.06–0.3″ (0.02–0.1 px at 3″/px); Gaia matters only for accuracy goals finer than that.
+- The header records catalog ID, epoch, magnitude limit, cell level and build parameters, and
   a trailer holds a content hash. A pattern-hash solution names its index's hash, and the report
-  lists the hash of every index loaded.</li>
-</ul>
+  lists the hash of every index loaded.</p>
 <h3 id="52a-adaptive-search-plan">5.2a Adaptive search plan<a class="headerlink" href="#52a-adaptive-search-plan" title="Permanent link">&para;</a></h3>
 <p>Fayde's default entry point, <code>solve_auto</code>, plans the search from the metadata the request carries
 instead of defaulting to a blind search. Stages run in order and share one hypothesis count, so
@@ -2435,430 +2434,194 @@ with a warning. A sequence stage (predict from the previous frame, §5.6) will g
 implemented.</p>
 <h3 id="53-matchers-fayde-solve">5.3 Matchers (<code>fayde-solve</code>)<a class="headerlink" href="#53-matchers-fayde-solve" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Source order (PROSAC; Chum &amp; Matas 2005):</strong> image sources are tried in order of
-  <code>p_star</code> × brightness, not brightness alone, widening the set progressively. In
-  satellite-tracking frames the brightest detections are often not stars.</li>
-<li><strong>Hinted, tight scale prior → pair seeds</strong> (k-vector; Mortari): fetch the brightest catalogue
-  stars in the hint cone at solve time and build a list of their pair separations. The fainter
-  stars that a hypothesis is verified against are read around the hypotheses that pass the
-  pre-filter, not for the whole cone, which is tens of frame areas. Each image pair from
-  the top of the source order is looked up by separation (tolerance from the scale σ and
-  position errors). One matched pair plus the parity prior fixes rotation, scale and translation,
-  so it is a complete hypothesis. With known roll, single-star seeds suffice. Fewer stars per seed
-  is what matters with many false detections: with half the sources false, a pair is all-real 25%
-  of the time and a 4-star pattern only 6%.</li>
-<li><strong>Hinted, loose scale prior → pattern hash:</strong> build patterns from the ordered image sources and
-  look up only hash entries whose stars lie in the cone. The scale range prunes by edge length
-  before lookup.</li>
-<li><strong>Hinted fallback → geometric voting</strong> (Kolomenkin et al. 2008): each image pair votes for
-  catalogue pairs of matching separation; the stars with the most consistent votes seed
-  hypotheses. Used when seeds and hash fail, e.g. many bright false sources.</li>
-<li><strong>Blind:</strong> pattern-hash lookups across the indexes loaded, each built for one field width (as
-  astrometry.net's index series), the closest to the frame's diagonal first (the widest when the
-  scale is unknown), hypotheses counted across all of them. astrometry.net's 4-D quad codes were
-  considered and not adopted: the 5 edge ratios describe the same four-point shape, and the hash
-  lookup already gives continuous-tolerance matching (<code>docs/references.md</code>, "Considered and not
-  adopted").</li>
-<li>All matchers emit hypotheses <code>(image stars ↔ catalogue stars, similarity transform)</code> into a
-  verifier queue, ordered by prior probability and seed quality. The first hypothesis over the
-  acceptance threshold wins; ties are broken deterministically.</li>
+<li>Image sources are tried in order of <code>p_star</code> × brightness, not brightness alone, widening the
+  set progressively (PROSAC; Chum &amp; Matas 2005). In frames tracking satellites, the brightest
+  detections are often not stars.</li>
+<li>With a pointing hint and a tight scale prior, the matcher uses pair seeds (k-vector; Mortari).
+  It fetches the brightest catalog stars in the hint cone at solve time and builds a list of
+  their pair separations. The fainter stars that a hypothesis is verified against are read
+  around the hypotheses that pass the pre-filter, not for the whole cone, which is tens of frame
+  areas. Each image pair from the top of the source order is looked up by separation (tolerance
+  from the scale σ and position errors). One matched pair and a choice of parity fix rotation,
+  scale and translation. The roll prior can rule out a seed. With half the sources false, a
+  pair is all-real 25% of the time and a 4-star pattern only 6%.</li>
+<li>With a pointing hint and a loose scale prior, the matcher uses the pattern hash. It builds
+  patterns from the ordered image sources and looks up only hash entries whose stars lie in the
+  cone. The scale range prunes by edge length before lookup.</li>
+<li>Fayde has no geometric-voting fallback (Kolomenkin et al. 2008), in which image pairs vote for
+  catalog pairs of matching separation. A source list dominated by false detections can use up
+  the search budget before a seed finds real stars.</li>
+<li>A blind solve does pattern-hash lookups across the indexes loaded, each built for one field
+  width (as astrometry.net's index series), the closest to the frame's diagonal first (the widest
+  when the scale is unknown), with hypotheses counted across all of them. astrometry.net's 4-D
+  quad codes were considered and not adopted: the 5 edge ratios describe the same four-point
+  shape, and the hash lookup already gives continuous-tolerance matching (<code>docs/references.md</code>,
+  "Considered and not adopted").</li>
+<li>Each stage tries candidate transforms in deterministic order. The search returns a hypothesis
+  once it passes verification and the final fit.</li>
 </ul>
 <h3 id="54-verifier">5.4 Verifier<a class="headerlink" href="#54-verifier" title="Permanent link">&para;</a></h3>
-<p>Cheap pre-filter first: the binomial false-positive probability that tetra3 uses, computed from a
-nearest-neighbour match count. Hypotheses that pass go on to the full test.</p>
-<p><strong>Local refit before deciding</strong> (LO-RANSAC; Chum, Matas &amp; Kittler 2003): a seed transform from 2–4
-stars is rough. The hypothesis is refitted on its provisional inliers (weighted, §5.5), re-matched,
-and only then scored. This rescues correct hypotheses whose seed transform was slightly off.</p>
-<p>Bayesian log-odds as in astrometry.net (<code>solver/verify.c:448-620</code>, distractor ratio 0.25 by
-default): for each image source in rank order (§5.0), the probability
-it matches a projected catalogue star (Gaussian with the source's covariance) versus being a
-distractor (uniform over the field). Accept at log-odds ≥ ln(10⁹), reject at ≤ −ln(10⁹)
-(tunable). Upgrades over the original, all driven by the input contract (§6):</p>
+<p>The pre-filter projects the first 12 ranked sources outside the seed and counts those that land
+within <code>3σ + 2 px + 0.01·d</code> of a star, <code>d</code> being the distance in pixels from the seed's center: at
+least 2 among the catalog stars read for pair seeds, at least 1 among the index's stars for
+pattern seeds. Hypotheses that pass go on to the full test.</p>
+<p>A seed transform from 2–4 stars is rough, so the hypothesis is refitted on its provisional
+inliers (weighted, §5.5), re-matched, and only then scored (LO-RANSAC; Chum, Matas &amp; Kittler
+2003). This rescues correct hypotheses whose seed transform was slightly off.</p>
+<p>The full test is Bayesian log-odds as in astrometry.net (<code>solver/verify.c:448-620</code>, distractor
+ratio 0.25 by default): for each image source in rank order (§5.0), the probability it matches a
+projected catalog star (Gaussian with the combined position error) versus being a distractor
+(uniform over the field). The default acceptance threshold is ln(10⁹) after the
+hypothesis-count correction. Fayde combines the centroid error (<code>sigma_px</code> or the policy default)
+with catalog uncertainty, uses <code>p_star</code> to adjust the distractor probability, and stretches
+the match gate along a known trail for truncated sources. The solve also scores its pointing,
+roll and scale priors. The verifier treats each position error as isotropic and doesn't compare
+brightnesses.</p>
+<p>Each solution reports its number of false alarms (NFA), <code>hypotheses_tested × exp(−log_odds)</code>.
+Acceptance uses the log-odds minus the natural logarithm of the hypothesis count. The fixed-model
+likelihood argument assumes independent uniform null sources. Refitting on provisional matches uses
+some of the scored sources to select the model. End-to-end false-accept rates therefore need
+empirical calibration for each search regime (§9).</p>
+<h3 id="55-fit-fayde-solve">5.5 Fit (<code>fayde-solve</code>)<a class="headerlink" href="#55-fit-fayde-solve" title="Permanent link">&para;</a></h3>
 <ul>
-<li>per-source covariance (<code>pos_cov</code>, or the default from <code>fwhm</code> and <code>snr</code>);</li>
-<li>per-source distractor prior from <code>p_star</code>;</li>
-<li>catalogue stars counted only inside <code>valid_region</code> and brighter than <code>detection_limit</code>;</li>
-<li>a magnitude-consistency term from a fitted zero point;</li>
-<li>a pointing, roll and scale prior term, so the result is a posterior and not just a likelihood.</li>
-</ul>
-<p><strong>Number of false alarms (NFA):</strong> alongside the log-odds, each solution reports
-NFA = (hypotheses tested) × P(a false hypothesis scores this well). The acceptance threshold is
-applied to the log-odds minus ln(hypotheses tested), so searching harder does not raise the
-false-accept rate. The false-accept rate is measured on random source lists (§9).</p>
-<h3 id="55-fit-fayde-wcs">5.5 Fit (<code>fayde-wcs</code>)<a class="headerlink" href="#55-fit-fayde-wcs" title="Permanent link">&para;</a></h3>
-<ul>
-<li>The first rotation comes from an SVD (Kabsch) fit. Its determinant sign gives the parity, which
-  is checked against the parity hint. tetra3 skips this check and can return a mirror-image
-  solution.</li>
-<li>Weighted least-squares TAN fit on the matched pairs. Weights come from each source's covariance
-  and the catalogue position error at the observation epoch.</li>
-<li><strong>Robust fit on the verifier's likelihood:</strong> iteratively reweighted least squares (IRLS) over
-  the same Gaussian-plus-distractor mixture the verifier uses. Each match gets a soft weight from
-  its probability of being real; there is no hard kσ clipping. The fit and the verifier therefore
+<li>Seed transforms use the supplied parity or try both image parities.</li>
+<li>The weighted least-squares TAN fit uses the centroid and catalog position error at the
+  observation epoch.</li>
+<li>The robust fit is iteratively reweighted least squares (IRLS) over the same
+  Gaussian-plus-distractor mixture the verifier uses. Each match gets a soft weight from its
+  probability of being real; there is no hard kσ clipping. The fit and the verifier therefore
   agree on what an outlier is.</li>
-<li><strong>Error-scale factor:</strong> a global factor s on the supplied covariances is fitted and reported.
-  s ≫ 1 means the producer under-reports its centroid errors, which is useful feedback to
-  detector authors.</li>
-<li><strong>Distortion:</strong> fitted once per instrument across many frames (<code>fayde calibrate</code>, SCAMP-style
-  global solution; Bernstein et al. 2017) and supplied as the instrument distortion prior (§6.5).
-  Per-frame SIP is only a small correction on top of that prior, with the order chosen by BIC
-  (or leave-one-out residuals), never by default. Fitting order-3 SIP per frame on 30–60 stars
-  overfits. Two checks follow BIC. An order is kept only if no lower order predicts held-out
-  cells of the frame as well (with matches in fewer than four of the nine cells, no
-  distortion; when the order cannot be scored, BIC's choice stands). When the request has a
-  scale or roll prior, a solution with distortion is converged again as TAN with scale and roll
-  free of the priors: a TAN outside the hint's limits that explains the sources at least as
-  well replaces it and is then refused, and a TAN inside them replaces it only with higher
-  posterior odds. Distortion must not stand in for a scale or roll the hint held back.</li>
-<li>Output: CRVAL, CRPIX (at image centre, matching <code>--crpix-center</code>), CD, SIP A/B (+AP/BP),
-  parameter covariance, per-star residuals, RMS, median and 95th-percentile residual.</li>
+<li>A global error-scale factor s on the supplied covariances is fitted and reported. s ≫ 1 means
+  the producer under-reports its centroid errors, which is useful feedback to detector authors.</li>
+<li>Fayde fits SIP distortion per frame, with the order chosen by BIC. Fayde doesn't fit one
+  distortion model across many frames, as a SCAMP-style global solution does (Bernstein et al.
+  2017). Among orders up to BIC's choice, the lowest whose weighted mean squared error on held-out
+  cells of the frame is within 5% of the best is kept (with matches in fewer than four of the nine
+  cells, no distortion; when the order cannot be scored, BIC's choice stands). SIP is also dropped,
+  or the hypothesis rejected, when a cell of a 3 × 3 grid with at least 6 sources has confident
+  matches at under a quarter of the frame's rate. When the request has a scale or roll prior, a
+  solution with distortion is converged again as TAN with scale and roll free of the priors: a TAN
+  outside the hint's limits that explains the sources at least as well replaces it and is then
+  refused, and a TAN inside them replaces it only with higher posterior odds. Distortion must not
+  stand in for a scale or roll the hint held back.</li>
+<li>The solution carries CRVAL, CRPIX at image center, CD, optional SIP, parameter covariance,
+  per-star residuals, weighted RMS, and a leave-one-out RMS when there are enough matches.</li>
 </ul>
 <h3 id="56-sequence-mode">5.6 Sequence mode<a class="headerlink" href="#56-sequence-mode" title="Permanent link">&para;</a></h3>
 <p>The solver keeps state for a sequence ID: last WCS, timestamps, fitted pointing drift. For frame N
 it predicts the WCS, runs §5.4 only, and accepts if it passes. This replaces a pipeline-side
-neighbour-hint ladder for the common case and stays separate from WCS <em>borrowing</em>: Fayde never
+neighbor-hint ladder for the common case and stays separate from WCS <em>borrowing</em>: Fayde never
 returns a WCS that did not pass verification on the frame itself.</p>
 <h2 id="6-input-contract">6. Input contract<a class="headerlink" href="#6-input-contract" title="Permanent link">&para;</a></h2>
-<p>The input contract is designed for <strong>solution quality first</strong>. Producers adapt to it, rather
-than the other way round. Every field below exists because it improves the
-solve rate, rejects false solutions, or makes the solution more accurate. The "Effect" column says
-how.</p>
+<p>The <a href="https://github.com/shaneryall/Fayde/blob/main/crates/fayde-solve/src/request.rs">Rust request types</a> define what the solver
+consumes. The <a href="https://github.com/shaneryall/Fayde/blob/main/crates/fayde-api/src/lib.rs">shared API</a> resolves header values, instrument
+profiles and caller overrides before building that request. See the <a href="../../source-list/">FITS source-list
+format</a> for the file contract.</p>
 <h3 id="61-principles">6.1 Principles<a class="headerlink" href="#61-principles" title="Permanent link">&para;</a></h3>
-<ol>
-<li><strong>Every measurement carries its uncertainty.</strong> A position without an error forces the solver
-   to guess a weight. Uncertainties drive the verifier's likelihood (§5.4) and the fit weights
-   (§5.5).</li>
-<li><strong>Prior knowledge comes as a probability distribution plus a hard limit, never as a bare
-   bound.</strong> For example, pointing is given as "centre, 1σ = 0.3°, never beyond 8°". The σ
-   ranks hypotheses and enters the score. The limit bounds the search. A wrong prior can cost time
-   but cannot force a wrong answer.</li>
-<li><strong>Only the source list and image size are required.</strong> Each optional field the producer leaves
-   out is either estimated by Fayde (for example the zero point or detection limit) or treated as
-   unknown. Whichever happened is recorded in the solution's provenance.</li>
-<li><strong>Give raw facts, not pre-digested ones.</strong> Send exposure times rather than an epoch, and
-   measured fluxes rather than magnitudes. Fayde derives the rest the same way for every producer.</li>
-<li><strong>The core crates contain nothing producer-specific.</strong> Each field can carry a free-text
-   <code>origin</code> tag (for example <code>"tle_target"</code> or <code>"header_commanded"</code>), which is passed through to
-   the provenance.</li>
-</ol>
+<p>Give Fayde the frame dimensions, source centroids, and any measured centroid errors, fluxes,
+and star probabilities. Supply uncertainty with a pointing, scale, or roll estimate so the
+search can rank hypotheses and apply the intended limits. Fayde records where each prior
+came from in the CLI and Python reports.</p>
 <h3 id="62-frame">6.2 Frame<a class="headerlink" href="#62-frame" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
 <th>Field</th>
-<th>Level</th>
-<th>Effect</th>
+<th>Input</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>width</code>, <code>height</code> (px)</td>
-<td><strong>required</strong></td>
-<td>Field geometry, edge handling</td>
+<td><code>width</code>, <code>height</code></td>
+<td>Image dimensions in pixels. Supply them directly, through the image, or through the source list and its header.</td>
 </tr>
 <tr>
-<td><code>valid_region</code>: bitmask (any downsampling) or polygons</td>
-<td>recommended</td>
-<td>The verifier does not count catalogue stars as missing inside masked areas (bad columns, edges, vignetting, the target itself). Gives sharper log-odds and fewer false rejections.</td>
+<td><code>trail</code></td>
+<td>Optional common star trail. The Rust request takes full length in pixels and angle in radians from +x toward +y. The CLI, Python options and FITS source list take degrees.</td>
 </tr>
 <tr>
-<td><code>detection_limit</code>: flux threshold and/or estimated limiting magnitude, optional completeness map</td>
-<td>recommended</td>
-<td>The verifier expects only catalogue stars the detector could have seen. This is the largest single improvement to log-odds discrimination on sparse fields. Fayde estimates it if absent.</td>
-</tr>
-<tr>
-<td><code>exposure</code>: start time with time scale (UTC/TAI/TT), duration</td>
-<td>recommended</td>
-<td>Proper-motion epoch and aberration. Without it the solve uses epoch 2000.0 and a position error inflated by proper motion.</td>
-</tr>
-<tr>
-<td><code>band</code>: filter name or effective wavelength range</td>
-<td>optional</td>
-<td>Chooses the catalogue magnitude band (<code>magm</code>, APASS V/r, Gaia G…) so the magnitude-consistency check works</td>
+<td>Observation epoch</td>
+<td>Set <code>Policy::epoch</code> in Rust or use an epoch override or observation header in the CLI and Python. Without one, file-backed catalogs use J2000.0, and the CLI and Python warn.</td>
 </tr>
 </tbody>
 </table>
 <h3 id="63-sources">6.3 Sources<a class="headerlink" href="#63-sources" title="Permanent link">&para;</a></h3>
-<p>Fayde accepts the xylist as <strong>external input</strong>: it never runs or calls the detector. But the
-xylist is not limited to <code>x, y</code>. It carries everything a good detector measures. The more of it
-a producer fills in, the better the solve. Columnar: a struct of arrays in Rust, NumPy arrays in
-Python, Arrow/Parquet or a FITS binary table on disk.</p>
-<p><strong>Position</strong></p>
 <table>
 <thead>
 <tr>
-<th>Field</th>
-<th>Level</th>
-<th>Effect</th>
+<th><code>Source</code> field</th>
+<th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>x</code>, <code>y</code> (px, centre of the first pixel = 0)</td>
-<td><strong>required</strong></td>
-<td>Centroid. Every source is treated as a point. A producer with streaked stars supplies the streak centroid, which should be its mid-exposure position.</td>
+<td><code>x</code>, <code>y</code></td>
+<td>Centroid in pixels. Rust and Python default to zero-based pixel centers. FITS source-list positions are one-based.</td>
 </tr>
 <tr>
-<td><code>truncated</code> (bool; xylist column <code>TRUNCATED</code>) (<strong>implemented</strong>)</td>
-<td>recommended (track-rate)</td>
-<td>The source is cut by the frame edge, so its centroid is biased along the trail. It counts as evidence with a gate stretched along <code>Frame::trail</code> (1σ = half the trail length; ×4 isotropic when no trail is given), never enters a fit and never seeds. Synthetic test: 17 edge trails biased along a 90 px trail gave 17.96″ grid RMS unflagged, 0.35″ flagged, all 17 still matched.</td>
+<td><code>flux</code></td>
+<td>Optional integrated flux in linear units, used for ranking.</td>
 </tr>
 <tr>
-<td><code>Frame::trail</code> (length px, angle) (<strong>implemented</strong>; CLI <code>--trail-length/--trail-angle</code>)</td>
-<td>recommended (track-rate)</td>
-<td>Direction and length of the gate for truncated sources.</td>
+<td><code>sigma_px</code></td>
+<td>Optional isotropic 1σ centroid error in pixels. The policy supplies the default.</td>
 </tr>
 <tr>
-<td><code>pos_cov</code> (σx², σxy, σy²)</td>
-<td>recommended</td>
-<td>Fit weights and the verifier's match likelihood. Defaults to an isotropic error from <code>fwhm</code> and <code>snr</code> when absent.</td>
+<td><code>p_star</code></td>
+<td>Optional probability that a detection is a star, from 0 to 1.</td>
+</tr>
+<tr>
+<td><code>truncated</code></td>
+<td>Whether the frame edge or a mask cuts the source. Fayde uses truncated sources to score a match and excludes them from seeding and fitting. A known trail widens the match gate along its direction.</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Shape</strong></p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Level</th>
-<th>Effect</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>fwhm</code> (px)</td>
-<td>recommended</td>
-<td>Default centroid error; rejects cosmic rays and hot pixels, which are too narrow</td>
-</tr>
-<tr>
-<td><code>npix</code> (pixels in the component)</td>
-<td>optional</td>
-<td>Rejects giant blended components</td>
-</tr>
-<tr>
-<td><code>bbox</code> (row/column min/max)</td>
-<td>optional</td>
-<td>Diagnostics only</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Photometry</strong></p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Level</th>
-<th>Effect</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>flux</code>, <code>flux_err</code> (integrated, ADU)</td>
-<td>recommended</td>
-<td>Brightness order; the fitted zero point and the magnitude-consistency check in the verifier, which is a second, independent test against false matches</td>
-</tr>
-<tr>
-<td><code>peak</code> (ADU), <code>mf_peak</code> and <code>mf_snr</code> (matched-filter response and its signal-to-noise)</td>
-<td>recommended</td>
-<td>Fallback for brightness order and weighting when integrated flux is missing.</td>
-</tr>
-<tr>
-<td><code>background</code>, <code>noise</code> (local, ADU)</td>
-<td>optional</td>
-<td>Weights the flux error; marks sources on bright background</td>
-</tr>
-<tr>
-<td><code>saturated_pixels</code> (count)</td>
-<td>optional</td>
-<td>Left out of the zero-point fit, with a larger centroid error</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Classification and provenance</strong></p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Level</th>
-<th>Effect</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>p_star</code> (0–1)</td>
-<td>optional</td>
-<td>Prior probability the source is a real star. Sets a separate distractor weight per source, so known targets and doubtful detections can be included without risk.</td>
-</tr>
-<tr>
-<td><code>class</code> (enum) with <code>p_target</code>, <code>p_cosmic</code>, <code>p_hot</code></td>
-<td>optional</td>
-<td>A known satellite target becomes masked rather than counted as a missing star</td>
-</tr>
-<tr>
-<td><code>blend</code> (bool) or <code>neighbors</code> (count within 2·fwhm)</td>
-<td>optional</td>
-<td>Inflated position error</td>
-</tr>
-<tr>
-<td><code>stage</code> (string: detector pass, e.g. <code>primary</code>, <code>low_count_fallback</code>, <code>long_streak</code>)</td>
-<td>optional</td>
-<td>Lets Fayde weight passes differently and report solve rate per pass</td>
-</tr>
-<tr>
-<td><code>rank</code> (brightness rank from the detector)</td>
-<td>optional</td>
-<td>Tie-breaking and traceability</td>
-</tr>
-<tr>
-<td><code>id</code> (u64)</td>
-<td>optional</td>
-<td>Passed through to the matched-pairs output</td>
-</tr>
-<tr>
-<td><code>extra.*</code> (any further columns)</td>
-<td>optional</td>
-<td>Carried through unchanged into the diagnostics, so producer-specific fields are never lost</td>
-</tr>
-</tbody>
-</table>
-<p>Fayde takes <strong>every</strong> source. It does its own staging in <code>p_star</code> × brightness order (§5.3; the
-30/45/60 tiers become internal), so producers should not cap or pre-filter the list. A doubtful source should be
-sent with a low <code>p_star</code> rather than left out.</p>
+<p>The solver ranks centroids itself. Keep uncertain candidates with a low <code>p_star</code> when the
+upstream detector can estimate one. The verifier takes one isotropic position error per source,
+and it doesn't compare source brightness with catalog magnitudes.</p>
 <h3 id="63a-frame-level-detector-outputs">6.3a Frame-level detector outputs<a class="headerlink" href="#63a-frame-level-detector-outputs" title="Permanent link">&para;</a></h3>
-<p>The detector also learns things about the whole frame. Fayde wants those too:</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Level</th>
-<th>Effect</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>psf_fwhm</code>, <code>background</code>, <code>noise</code> (frame-wide)</td>
-<td>recommended</td>
-<td>Defaults for sources that lack them; feeds the estimate of the detection limit</td>
-</tr>
-<tr>
-<td><code>detection_threshold</code> (SNR and/or ADU) with completeness estimate</td>
-<td>recommended</td>
-<td>Becomes <code>detection_limit</code> (§6.2)</td>
-</tr>
-<tr>
-<td><code>masked_regions</code>: masks for alarms or targets, bad columns, detector edges</td>
-<td>recommended</td>
-<td>Becomes <code>valid_region</code> (§6.2)</td>
-</tr>
-<tr>
-<td><code>detector</code>: name, version, config hash</td>
-<td>recommended</td>
-<td>Recorded in the solution's provenance, so results can be traced to the exact detector run</td>
-</tr>
-</tbody>
-</table>
+<p>The detection report contains its mode, background and noise estimates, and per-source
+measurements. In straight-trail mode, the common length and angle accompany the source list.
+For a source measured along and across a trail, the solver receives the larger position error
+as <code>sigma_px</code>. See <a href="../../usage/#read-the-detection-report">Read the detection report</a>.</p>
 <h3 id="64-priors">6.4 Priors<a class="headerlink" href="#64-priors" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>Field</th>
-<th>Level</th>
+<th>Input</th>
 <th>Effect</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>pointing</code>: RA/Dec centre, 1σ, hard radius, origin</td>
-<td>recommended</td>
-<td>Restricts the search to a cone and ranks hypotheses by prior probability. Turns most solves into hinted solves (§5.3).</td>
+<td>Pointing center, 1σ error and maximum radius</td>
+<td>Set the search region and contribute to the score.</td>
 </tr>
 <tr>
-<td><code>roll</code>: angle, 1σ, hard limit, origin (<strong>implemented</strong>: <code>RollPrior</code>; CLI <code>--roll/--roll-sigma/--roll-max</code>; or an instrument roll rule, §6.5)</td>
-<td>optional</td>
-<td>Prunes seeds before they are counted and adds a prior term to the score. On sparse synthetic frames (4 real stars + 3 false), roll + parity + a tight scale took 8/10 → 10/10 solved and 493 → 10 hypotheses (<code>tests/priors_and_accuracy.rs</code>).</td>
+<td>Scale in arcsec/px and 1σ error</td>
+<td>Select index bands and prune hypotheses. A tight scale and pointing enable pair-seed search.</td>
 </tr>
 <tr>
-<td><code>scale</code>: arcsec/px, 1σ, hard range</td>
-<td>recommended</td>
-<td>Selects index bands and prunes by pattern edge length</td>
+<td>Roll, 1σ error and maximum deviation</td>
+<td>Constrain image orientation.</td>
 </tr>
 <tr>
-<td><code>parity</code>: negative (sky as seen), positive (mirrored), or unknown (<strong>implemented</strong>; CLI <code>--parity</code>; instrument profile)</td>
-<td>recommended</td>
-<td>Halves the hypothesis space and guards against mirror-image solutions</td>
-</tr>
-<tr>
-<td><code>previous</code>: an earlier solution (WCS + covariance + exposure time) and an optional pointing rate</td>
-<td>optional</td>
-<td>Sequence mode (§5.6): predict, verify, done</td>
+<td>Parity</td>
+<td>Choose the image handedness.</td>
 </tr>
 </tbody>
 </table>
 <h3 id="65-instrument-model">6.5 Instrument model<a class="headerlink" href="#65-instrument-model" title="Permanent link">&para;</a></h3>
-<p>Reusable across frames. Stored as a separate <code>InstrumentProfile</code> (JSON, <code>fayde-fits::instrument</code>;
-CLI <code>--instrument</code>) so standalone users set it up once. Precedence for every prior: command line,
-then instrument profile, then frame header. A profile gives the
-scale with σ, the parity, and a roll rule <code>roll = offset + sign × header[keyword]</code>. An example
-profile is in <code>profiles/example.json</code>. On a real frame whose header carries the roll angle, a
-calibrated profile cut pair-seed hypotheses from 172 to 2 with an identical solution.</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Level</th>
-<th>Effect</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>pixel_pitch</code> (µm), <code>focal_length</code> (mm) with σ, <code>binning</code></td>
-<td>recommended</td>
-<td>Scale prior when <code>scale</code> is not given</td>
-</tr>
-<tr>
-<td><code>distortion</code>: SIP coefficients from <code>fayde calibrate</code> (§5.5), with the calibration date</td>
-<td>optional</td>
-<td>Fits only small corrections on top of a known distortion. Gives accurate solutions with few stars, where fitting SIP from scratch would overfit.</td>
-</tr>
-<tr>
-<td><code>parity</code></td>
-<td>optional</td>
-<td>Default for the per-frame parity prior</td>
-</tr>
-<tr>
-<td><code>scale_arcsec</code>, <code>scale_sigma_arcsec</code></td>
-<td>recommended</td>
-<td>Instrument scale prior; overrides header-derived scales</td>
-</tr>
-<tr>
-<td><code>roll</code>: <code>{keyword, offset_deg, sign, sigma_deg, max_dev_deg}</code></td>
-<td>optional</td>
-<td>Per-frame roll prior from a header keyword</td>
-</tr>
-</tbody>
-</table>
+<p>The JSON instrument profile can supply a scale and its uncertainty, binning, parity, a roll
+rule based on a header keyword, pointing uncertainty and radius, and whether to use the
+frame's WCS as a hint. Caller overrides take precedence, followed by the profile and then the
+image header. See the <a href="https://github.com/shaneryall/Fayde/blob/main/profiles/example.json">instrument profile example</a> and the
+<a href="../../usage/#calibrate-an-instrument-profile">calibration guide</a>.</p>
 <h3 id="66-observer">6.6 Observer<a class="headerlink" href="#66-observer" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Level</th>
-<th>Effect</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>observer</code>: GCRS position (km) and velocity (km/s) at mid-exposure, <strong>or</strong> a ground site (lon, lat, height)</td>
-<td>recommended</td>
-<td>Fayde computes annual plus orbital aberration. It reports the WCS in either astrometric (catalogue) or apparent coordinates, without folding aberration into an apparent plate-scale error. For a telescope in low Earth orbit the aberration is up to about 23″ (about 7 px at 3″/px).</td>
-</tr>
-<tr>
-<td><code>weather</code>: temperature, pressure, humidity (ground only)</td>
-<td>optional</td>
-<td>Refraction, including its variation across wide fields</td>
-</tr>
-</tbody>
-</table>
+<p>Fayde doesn't model the observer. It applies no stellar aberration from the observer's velocity,
+no light-time correction and no refraction, and it computes no observer state from a TLE or a
+ground site. Fayde solves each frame on its own: a solved neighbor's WCS can seed the next frame
+(§5.6), but Fayde keeps no state across a sequence and never interpolates a WCS between frames.</p>
 <h3 id="67-solve-policy">6.7 Solve policy<a class="headerlink" href="#67-solve-policy" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2871,154 +2634,63 @@ calibrated profile cut pair-seed hypotheses from 172 to 2 with an identical solu
 <tbody>
 <tr>
 <td><code>deadline</code></td>
-<td>none</td>
-<td>Wall-clock budget for the whole frame</td>
+<td>None</td>
+<td>Starts when the solver receives the request. An accepted hypothesis can finish its final fit.</td>
+</tr>
+<tr>
+<td><code>max_hypotheses</code></td>
+<td>5,000,000</td>
+<td>Limits scored hypotheses across the search stages.</td>
 </tr>
 <tr>
 <td><code>accept_log_odds</code></td>
-<td>ln(1e9)</td>
-<td>Acceptance threshold (§5.4)</td>
+<td>ln(10⁹)</td>
+<td>Threshold after subtracting the log of the hypothesis count.</td>
+</tr>
+<tr>
+<td><code>default_sigma_px</code></td>
+<td>1 px</td>
+<td>Position error for a source without <code>sigma_px</code>.</td>
 </tr>
 <tr>
 <td><code>max_sip_order</code></td>
 <td>3</td>
-<td>Upper limit; the order actually used is chosen by model selection</td>
+<td>Upper limit for SIP model selection.</td>
 </tr>
 <tr>
-<td><code>output_frame</code></td>
-<td><code>icrs_astrometric</code></td>
-<td>Or <code>apparent</code> (needs <code>observer</code>)</td>
-</tr>
-<tr>
-<td><code>output_epoch</code></td>
-<td>mid-exposure</td>
-<td>The epoch catalogue positions are propagated to</td>
-</tr>
-<tr>
-<td><code>indexes</code></td>
-<td>all loaded</td>
-<td>Restrict to named indexes or catalogues</td>
+<td><code>epoch</code></td>
+<td>None: J2000.0 for file-backed catalogs</td>
+<td>Target epoch for catalog proper motion.</td>
 </tr>
 </tbody>
 </table>
 <h3 id="68-encodings">6.8 Encodings<a class="headerlink" href="#68-encodings" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Rust:</strong> <code>SolveRequest { frame, sources, priors, instrument, observer, policy }</code>, built with a
-  builder that checks invariants (finite values, positive σ, a covariance with no negative
-  variance).</li>
-<li><strong>Python (<code>fayde-py</code>):</strong> NumPy arrays for sources and dicts or dataclasses for the rest. Zero
-  copy where possible.</li>
-<li><strong>Files (CLI):</strong> <code>request.toml</code> plus <code>sources.parquet</code> (or Arrow IPC). Importers read
-  astrometry.net FITS xylists (1-based, converted on read) and tetra3 <code>(y, x)</code> arrays, so existing
-  users can switch without changing their tools.</li>
+<li>In Rust, construct <code>SolveRequest</code> with <code>frame</code>, <code>sources</code>, <code>priors</code>, <code>policy</code>, and <code>previous</code>.
+  Pass the catalog and any indexes to the solver. <code>fayde_api::build_request</code> can resolve the
+  header and profile first.</li>
+<li>In Python, use <code>Solver.solve</code> with coordinate sequences, <code>Solver.solve_image</code> with a FITS
+  path, NumPy array or Astropy HDU, or <code>Solver.solve_detection</code> with a detection report.
+  Header cards or a keyword dictionary provide frame metadata.</li>
+<li>On the command line, use <code>fayde solve --image</code> with a FITS image or <code>fayde solve --sources</code>
+  with a FITS binary table. Add <code>--header</code>, <code>--instrument</code>, or explicit options as needed.</li>
 </ul>
 <h3 id="69-integrating-with-a-host-pipeline">6.9 Integrating with a host pipeline<a class="headerlink" href="#69-integrating-with-a-host-pipeline" title="Permanent link">&para;</a></h3>
-<p>A host pipeline runs its own detector, writes the xylist and calls Fayde. What the detector and
-the pipeline should export to give Fayde the best possible input:</p>
-<table>
-<thead>
-<tr>
-<th>Fayde field</th>
-<th>What the host supplies</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>x</code>, <code>y</code></td>
-<td>Zero-based centroids from the detector's source table</td>
-</tr>
-<tr>
-<td><code>fwhm</code>, <code>npix</code>, <code>bbox</code>, <code>rank</code></td>
-<td>PSF width, pixel count, bounding box and brightness rank per source</td>
-</tr>
-<tr>
-<td><code>mf_peak</code>, <code>mf_snr</code></td>
-<td>Matched-filter response and its signal-to-noise</td>
-</tr>
-<tr>
-<td><code>flux</code>, <code>flux_err</code></td>
-<td>Integrated flux and its error, for the zero-point fit</td>
-</tr>
-<tr>
-<td><code>stage</code></td>
-<td>Tag each row with the detector pass that found it</td>
-</tr>
-<tr>
-<td><code>p_star</code>, <code>class</code></td>
-<td>Candidate scores and star/target vetoes, as probabilities instead of filtering upstream</td>
-</tr>
-<tr>
-<td><code>saturated_pixels</code></td>
-<td>Count per source</td>
-</tr>
-<tr>
-<td><code>masked_regions</code> → <code>valid_region</code></td>
-<td>The mask used during detection</td>
-</tr>
-<tr>
-<td><code>detection_threshold</code> → <code>detection_limit</code></td>
-<td>The threshold actually used</td>
-</tr>
-<tr>
-<td><code>detector</code></td>
-<td>Name, version and config hash</td>
-</tr>
-<tr>
-<td><code>exposure</code></td>
-<td>The frame header: <code>fayde-fits</code> resolves DATE-OBS / JD-OBS / TIME-OBS and EXPTIME</td>
-</tr>
-<tr>
-<td><code>observer</code></td>
-<td>For a spacecraft, its own GCRS state at mid-exposure</td>
-</tr>
-<tr>
-<td><code>pointing</code></td>
-<td>Header CRVAL, a TLE-derived target position or a solved neighbour, each as a σ plus a hard radius according to how far it is trusted</td>
-</tr>
-<tr>
-<td><code>scale</code></td>
-<td>A σ, not a padded range. With an instrument profile (§6.5): the profile's scale times √(<code>XBINNING</code>·<code>YBINNING</code>); the profile drops the scale when the header lacks those keywords, so give <code>--scale</code> then</td>
-</tr>
-<tr>
-<td><code>roll</code>, <code>parity</code></td>
-<td>An instrument profile (§6.5): a roll rule on a header keyword holding the roll angle, and the instrument's parity</td>
-</tr>
-<tr>
-<td><code>previous</code></td>
-<td>A solved neighbouring frame's solution, not only its centre</td>
-</tr>
-<tr>
-<td><code>truncated</code>, <code>Frame::trail</code></td>
-<td>Flag sources cut by the frame edge and export the frame trail length/angle</td>
-</tr>
-<tr>
-<td><code>instrument.distortion</code></td>
-<td>Build one from a calibration run (§9)</td>
-</tr>
-<tr>
-<td>star/not-star check</td>
-<td><code>fayde verify --at</code> / <code>Solver.stars_at</code>: nearest stars, combined σ, <code>p_consistent</code>, <code>p_chance</code></td>
-</tr>
-</tbody>
-</table>
-<p>What the host consumes back: the TAN/TAN-SIP header, matched pairs with residuals, and index and
-catalogue identity with epoch. Fayde returns all of these plus covariance and full provenance.
-The host's adapter builds its own cache records and run summaries from them.</p>
-<p>Integration path:</p>
 <ol>
-<li><code>fayde-py</code> exposes <code>fayde.Solver(ucac4, indexes)</code> with <code>solve</code>, <code>verify</code>, <code>refit</code> and <code>stars_at</code>,
-   each returning the CLI's JSON report as a dict (<code>crates/fayde-py</code>).</li>
-<li>The host adds a Fayde backend next to its existing solver backend, behind a config switch.
-   Inputs from the table are added one by one; each should give a measurable improvement in the
-   corpus A/B (§9).</li>
-<li>Run both on the existing corpus and compare solve rate, residuals and latency before changing
-   the default.</li>
+<li>Send the detector's source list and the frame header, or pass the image to Fayde's detector.</li>
+<li>Supply a catalog path and any indexes needed for the search. In Python, reuse one <code>Solver</code>
+   across frames so it opens them once.</li>
+<li>Read the solution or abstention before using the WCS. A solved report includes WCS cards,
+   matched pairs and residuals, uncertainty estimates, and the catalog and index identity.
+   The Rust solution also exposes the parameter covariance.</li>
+<li>Compare solutions against the host's current backend on the same frames. Measure solve
+   rate, residuals, and latency before switching the default.</li>
 </ol>
 <h2 id="7-error-handling">7. Error handling<a class="headerlink" href="#7-error-handling" title="Permanent link">&para;</a></h2>
 <ul>
-<li>No solution is a valid result, returned as <code>Solution::Abstained { reason, best_log_odds, timings }</code>,
-  never an error.</li>
-<li>Errors are for bad input (non-finite hints, zero image size) and unreadable index/catalogue.</li>
+<li>An exhausted search returns <code>Outcome::Abstained</code> with its reason, best log-odds if available,
+  hypothesis count, and search trace.</li>
+<li>Errors are for bad input (non-finite hints, zero image size) and unreadable index/catalog.</li>
 <li>A hypothesis limit or deadline that runs out also returns <code>Outcome::Abstained</code>, with that
   reason, the best log-odds seen (no WCS), the hypothesis count and the trace.</li>
 </ul>
@@ -3027,31 +2699,31 @@ The host's adapter builds its own cache records and run summaries from them.</p>
 <ul>
 <li>tetra3 and cedar-solve (Apache-2.0): code may be ported with notices kept.</li>
 <li>astrometry.net: mostly BSD-3, which is compatible with notices kept. Some components are GPL.
-  Fayde takes no code from them: code under another author's copyleft licence would stop the
+  Fayde takes no code from them: code under another author's copyleft license would stop the
   copyright holder from relicensing Fayde. Rule: port from papers (Lang et al. 2010) and BSD files
-  only; check the licence header of every file before porting from it.</li>
-<li>Catalogue data: Fayde's releases contain no catalogue data and no built indexes.</li>
+  only; check the license header of every file before porting from it.</li>
+<li>Catalog data: Fayde's releases contain no catalog data and no built indexes.</li>
 </ul>
 <h2 id="9-validation">9. Validation<a class="headerlink" href="#9-validation" title="Permanent link">&para;</a></h2>
 <ol>
-<li><strong>Unit:</strong> projection round trips, edge-ratio codes, UCAC4 record decode against an
-   independent reader on the same zones.</li>
-<li><strong>Synthetic:</strong> <code>fayde bench</code> solves source lists projected from the catalogue with a known
+<li>Unit tests cover projection round trips, edge-ratio codes, and UCAC4 record decoding against
+   an independent reader on the same zones.</li>
+<li>On synthetic data, <code>fayde bench</code> solves source lists projected from the catalog with a known
    WCS, with position noise, false sources and missing stars, and measures the recovery error.
    Every other list holds only random positions, to count false solutions.</li>
-<li><strong>Real frames:</strong> <code>fayde compare</code> checks each solution against a stored reference WCS on a
+<li>On real frames, <code>fayde compare</code> checks each solution against a stored reference WCS on a
    5 × 5 grid of image points.</li>
-<li><strong>False-positive guard:</strong> <code>fayde bench</code> counts and reports the random lists that solve.
-   Whether the false-accept rate stays within what the reported NFA predicts (§5.4) isn't
+<li>As a guard against false positives, <code>fayde bench</code> counts and reports the random lists that
+   solve. Whether the false-accept rate stays within what the reported NFA predicts (§5.4) isn't
    measured.</li>
 </ol>
 <p>Fayde's results haven't been compared with other solvers on shared public frames.</p>
 <h2 id="10-decisions">10. Decisions<a class="headerlink" href="#10-decisions" title="Permanent link">&para;</a></h2>
 <ol>
-<li><strong>Catalogue epoch.</strong> The index is built at a fixed epoch, high-proper-motion stars are
-   excluded from patterns, and positions are propagated rigorously at query time (§5.2).</li>
-<li><strong>Licence.</strong> GPL-3.0-or-later from 0.3.3, with every dependency under a permissive license, so
-   the copyright holder can relicense. Versions 0.3.0 to 0.3.2 were Apache-2.0.</li>
+<li>The index is built at a fixed epoch, high-proper-motion stars are excluded from patterns, and
+   positions are propagated rigorously at query time (§5.2).</li>
+<li>Fayde is licensed GPL-3.0-or-later from 0.3.3, with every dependency under a permissive license,
+   so the copyright holder can relicense. Versions 0.3.0 to 0.3.2 were Apache-2.0.</li>
 </ol>
 
 

@@ -746,15 +746,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#033-2026-11-21" class="md-nav__link">
+  <a href="#040-2026-11-21" class="md-nav__link">
     <span class="md-ellipsis">
       
-        0.3.3 (2026-11-21)
+        0.4.0 (2026-11-21)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="0.3.3 (2026-11-21)">
+    <nav class="md-nav" aria-label="0.4.0 (2026-11-21)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -770,6 +770,45 @@
         
           <li class="md-nav__item">
   <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#033-2026-11-21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.3.3 (2026-11-21)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.3.3 (2026-11-21)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Changed
@@ -1003,6 +1042,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../design/streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../research/literature-review/" class="md-nav__link">
         
   
@@ -1058,15 +1125,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#033-2026-11-21" class="md-nav__link">
+  <a href="#040-2026-11-21" class="md-nav__link">
     <span class="md-ellipsis">
       
-        0.3.3 (2026-11-21)
+        0.4.0 (2026-11-21)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="0.3.3 (2026-11-21)">
+    <nav class="md-nav" aria-label="0.4.0 (2026-11-21)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1082,6 +1149,45 @@
         
           <li class="md-nav__item">
   <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#033-2026-11-21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.3.3 (2026-11-21)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.3.3 (2026-11-21)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         Changed
@@ -1205,8 +1311,61 @@
 <p>Versioning rules: <code>docs/versioning.md</code>.</p>
 <p>Versions up to 0.2.1 were development versions and were not published; their notes are kept
 because the index files and their hashes date from 0.1.0.</p>
-<h2 id="033-2026-11-21">0.3.3 (2026-11-21)<a class="headerlink" href="#033-2026-11-21" title="Permanent link">&para;</a></h2>
+<h2 id="040-2026-11-21">0.4.0 (2026-11-21)<a class="headerlink" href="#040-2026-11-21" title="Permanent link">&para;</a></h2>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Trailed stars from an image. When every star is a straight trail of one length and direction
+  (the telescope tracked a satellite or slewed), <code>fayde detect</code>, <code>--image</code> and
+  <code>fayde.detect</code>/<code>solve_image</code> measure the stars as trails. A trail census decides <code>points</code>,
+  <code>trails</code> or <code>refused</code> from two independent estimates and a regional check, an aimed filter
+  finds the trails, and one fit per trail gives its position with errors along and across it.
+  Trails shorter than 7 FWHM are left to the point detector. On 109 real frames whose stars are
+  points the star lists are unchanged; on 84 real frames tracking satellites, 66 solve (9
+  before). Design and measurements: <code>docs/design/streak-detection.md</code>.</li>
+<li>The detection report gives <code>mode</code>, <code>census</code>, <code>trail</code>, <code>sigma_along_px</code> and <code>sigma_across_px</code>.
+  The tracked object comes out as class <code>point</code>, and <code>fayde solve --image</code> passes the measured
+  trail to the solver.</li>
+<li><code>--trail-angle</code> (Python <code>detect(trail_angle=)</code>) chooses among trail directions.
+  <code>fayde detect -o</code> writes the trail into the source list (<code>TRAILLEN</code>, <code>TRAILANG</code>), and
+  <code>fayde solve --sources</code> reads it back.</li>
+<li>Stars smeared along a curved path are detected with an empirical template, and field rotation
+  with templates that vary across the image. The detection report adds <code>kernel</code> mode and a
+  <code>kernel</code> field with the template's dimensions, star count, path length, bend and region count.</li>
+<li>A frame measured in <code>trails</code> or <code>kernel</code> mode that gives no solution before reaching the time and
+  hypothesis limits is solved again with its stars measured as points (<code>fayde solve --image</code>, Python
+  <code>solve_image</code>). The report's <code>retried_as_points</code> says so, and describes the first attempt if the
+  retry ends in an error.</li>
+<li><code>--no-trails</code> (<code>fayde detect</code>, <code>fayde solve</code>; Python <code>no_trails</code>) measures every star as a
+  point, skipping the trail census.</li>
+<li>The trail census holds up against cosmic rays and background structure. On frames crowded with
+  radiation hits, it masks sharp charge deposits and keeps narrow tracks out of the direction vote.
+  On those frames, and when the first census finds no trail among bright elongated sources, a second
+  census takes anchors from bright sources after a finer local background and any strong periodic
+  pattern are removed. On 30 simulated trailed frames with 80–1,000 hits per cm² per second, or a
+  smooth background field of 5–20 ADU on 5 ADU noise, the census finds trails on all 30, with the
+  direction within 0.09°.</li>
+<li>On frames whose stars all trail, radiation hits don't set the stars' width. When the round
+  peaks are as narrow as hits, and the elongated peaks along the frame's trail direction are
+  more than twice as wide, detection takes the trails' width across the trail. Hits are flagged
+  by comparing their sharpness with that width: on simulated track-rate frames, 120 of 120.
+  A hit isn't reported as a tracked object, the tracked object is reported at its position with
+  its flux, and roughly collinear trails aren't traced as a satellite streak, whose light is
+  even along its length.</li>
+<li><code>Solver.solve_detection(report)</code> in Python solves a <code>fayde.detect</code> report directly. Its
+  positions are FITS 1-based, which <code>Solver.solve</code> takes only with <code>origin=1</code>; passing them
+  without it moved the solution by a pixel.</li>
+<li><code>FAYDE_UCAC4</code> names the catalog directory when <code>--ucac4</code> is left out, and for
+  <code>fayde.Solver()</code> with no directory.</li>
+</ul>
+<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
+<ul>
+<li>For Rust users of <code>fayde-detect</code>, <code>fayde-api</code> and <code>fayde-fits</code>, these changes are breaking:
+  <code>DetectOptions</code>, <code>Detected</code>, <code>Detection</code> and <code>SourceList</code> gain fields, <code>Class</code> gains <code>Point</code>,
+  and <code>FrameMode</code> gains <code>Kernel</code>.</li>
+<li>Catalog errors say to download the zone again.</li>
+</ul>
+<h2 id="033-2026-11-21">0.3.3 (2026-11-21)<a class="headerlink" href="#033-2026-11-21" title="Permanent link">&para;</a></h2>
+<h3 id="added_1">Added<a class="headerlink" href="#added_1" title="Permanent link">&para;</a></h3>
 <ul>
 <li>The README and <code>CITATION.cff</code> give the DOI of the archived releases,
   <a href="https://doi.org/10.5281/zenodo.24379728">10.5281/zenodo.24379728</a>.</li>
@@ -1214,7 +1373,7 @@ because the index files and their hashes date from 0.1.0.</p>
   from the tagged source by Fayde's release workflow, run <code>gh attestation verify</code> (see
   <code>docs/install.md</code>).</li>
 </ul>
-<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
+<h3 id="changed_1">Changed<a class="headerlink" href="#changed_1" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Fayde 0.3.3 and later are licensed under the GNU General Public License, version 3 or later
   (<code>GPL-3.0-or-later</code>). Versions 0.3.0 to 0.3.2 stay under the Apache License 2.0. Using Fayde

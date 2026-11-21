@@ -730,6 +730,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#benchmark-harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benchmark harness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#faydes-own-choices-no-published-source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -915,6 +926,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../design/streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../research/literature-review/" class="md-nav__link">
         
   
@@ -982,6 +1021,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#benchmark-harness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benchmark harness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#faydes-own-choices-no-published-source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1030,10 +1080,10 @@
 
 <h1 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h1>
 <p>Every algorithm Fayde uses, where it comes from, and where it lives in the code. When an
-algorithm has no published source, the entry says so. Keep this file in step with the code: a
-change that adds or replaces an algorithm updates its entry here, and the implementing module's
-doc comment cites the same source.</p>
-<p>Wider survey and verdicts: <a href="../research/literature-review/"><code>docs/research/literature-review.md</code></a>.</p>
+algorithm has no published source, the entry says so. The doc comment of the module that
+implements an algorithm cites the same source.</p>
+<p>For a wider survey of the literature, with verdicts for Fayde, see
+<a href="../research/literature-review/">Literature review</a>.</p>
 <h2 id="implemented">Implemented<a class="headerlink" href="#implemented" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1071,8 +1121,8 @@ doc comment cites the same source.</p>
 </tr>
 <tr>
 <td>UCAC4 record format, encodings and central epochs; zone files in RA order, tabulated per 0.25° bin by <code>u4index.unf</code></td>
-<td>Zacharias et al. 2013, AJ 145, 44; <code>readme_u4.txt</code> (USNO, 2012), notes 6, 8, 9. The RA order was checked on the catalogue itself: in all 900 zone files (113,780,093 records) a search by RA gives every one of the index's 1,296,000 entries</td>
-<td>Reading the catalogue in place; finding a cone's records with or without <code>u4index.unf</code></td>
+<td>Zacharias et al. 2013, AJ 145, 44; <code>readme_u4.txt</code> (USNO, 2012), notes 6, 8, 9. The RA order was checked on the catalog itself: in all 900 zone files (113,780,093 records) a search by RA gives every one of the index's 1,296,000 entries</td>
+<td>Reading the catalog in place; finding a cone's records with or without <code>u4index.unf</code></td>
 <td><code>crates/fayde-catalog/src/ucac4.rs</code></td>
 </tr>
 <tr>
@@ -1083,13 +1133,13 @@ doc comment cites the same source.</p>
 </tr>
 <tr>
 <td>Elementary functions (sin, cos, atan2, log, exp, pow, hypot) with platform-independent results</td>
-<td>Sun Microsystems fdlibm (1993), via FreeBSD msun and musl libm, ported to Rust as the <code>libm</code> crate (rust-lang); built without its <code>arch</code> feature</td>
+<td>Sun Microsystems fdlibm (1993), through FreeBSD msun and musl libm, ported to Rust as the <code>libm</code> crate (rust-lang); built without its <code>arch</code> feature</td>
 <td>The same bits on macOS, Linux and Windows, so index bytes and content hashes match across machines. <code>powi</code> is binary exponentiation in a fixed order. Std methods are banned by <code>clippy.toml</code></td>
 <td><code>crates/fayde-core/src/math.rs</code></td>
 </tr>
 <tr>
-<td>Star/not-star test at a position: Rayleigh tail <code>exp(−d²/2σ²)</code> of a 2-D isotropic Gaussian offset, and Poisson nearest-neighbour chance <code>1 − exp(−ρπd²)</code></td>
-<td>Rayleigh distribution of the radius of a 2-D isotropic Gaussian; Chandrasekhar 1943, Rev. Mod. Phys. 15, 1, §III.7 (nearest-neighbour distribution for a uniform density). The 0.0027 cut (3σ two-sided, 1-D) is a convention, a Fayde choice</td>
+<td>Star/not-star test at a position: Rayleigh tail <code>exp(−d²/2σ²)</code> of a 2-D isotropic Gaussian offset, and Poisson nearest-neighbor chance <code>1 − exp(−ρπd²)</code></td>
+<td>Rayleigh distribution of the radius of a 2-D isotropic Gaussian; Chandrasekhar 1943, Rev. Mod. Phys. 15, 1, §III.7 (nearest-neighbor distribution for a uniform density). The 0.0027 cut (3σ two-sided, 1-D) is a convention, a Fayde choice</td>
 <td><code>fayde verify --at</code>, <code>Solver.stars_at</code></td>
 <td><code>crates/fayde-solve/src/at.rs</code></td>
 </tr>
@@ -1108,8 +1158,8 @@ doc comment cites the same source.</p>
 <tr>
 <td>Background on a mesh of tiles, interpolated</td>
 <td>Bertin &amp; Arnouts 1996, A&amp;AS 117, 393, §3 (SExtractor)</td>
-<td>Background and noise maps</td>
-<td><code>crates/fayde-detect/src/mesh.rs</code></td>
+<td>Background and noise maps, including the finer trail census background</td>
+<td><code>crates/fayde-detect/src/mesh.rs</code>, <code>crates/fayde-detect/src/trail.rs</code> (<code>clean_census</code>)</td>
 </tr>
 <tr>
 <td>Noise from differences of separated pixel pairs</td>
@@ -1125,9 +1175,9 @@ doc comment cites the same source.</p>
 </tr>
 <tr>
 <td>Moments of the clipped normal and first-order skew correction at 5σ</td>
-<td>Moments from integrating the normal density above the floor. Quantile correction from <a href="https://digital.library.adelaide.edu.au/items/55888ee8-28e1-4405-8402-dc91b7467c62">Cornish &amp; Fisher 1937, Rev. Int. Stat. Inst. 5, 307</a></td>
-<td>Upper-tail scale for point detection on clipped frames</td>
-<td><code>crates/fayde-detect/src/mesh.rs</code> (<code>ClippedBackground::filtered</code>)</td>
+<td>Moments from integrating the normal density above the floor. Quantile correction from <a href="https://doi.org/10.2307/1400905">Cornish &amp; Fisher 1938, <em>Rev. Inst. Int. Stat.</em> 5(4), 307</a></td>
+<td>Upper-tail scale for point and trail detection on clipped frames</td>
+<td><code>crates/fayde-detect/src/mesh.rs</code> (<code>ClippedBackground::filtered</code>), <code>trail.rs</code> (<code>run</code>)</td>
 </tr>
 <tr>
 <td>Median absolute deviation as a robust scale, factor 1.4826</td>
@@ -1142,7 +1192,7 @@ doc comment cites the same source.</p>
 <td><code>crates/fayde-detect/src/peaks.rs</code> (<code>measure</code>)</td>
 </tr>
 <tr>
-<td>Least-squares quadratic surface on a 3 × 3 neighbourhood (facet model)</td>
+<td>Least-squares quadratic surface on a 3 × 3 neighborhood (facet model)</td>
 <td>Haralick 1984, IEEE TPAMI 6(1), 58</td>
 <td>The normal equations of that fit</td>
 <td><code>crates/fayde-detect/src/peaks.rs</code> (<code>measure</code>)</td>
@@ -1184,8 +1234,8 @@ doc comment cites the same source.</p>
 <td><code>crates/fayde-detect/src/lib.rs</code> (<code>finish</code>)</td>
 </tr>
 <tr>
-<td>Sharpness: light through the optics reaches a peak's neighbours, a hot pixel's charge does not</td>
-<td>Stetson 1987, PASP 99, 191 (DAOFIND's sharpness statistic); the test on the second faintest neighbour is Fayde's</td>
+<td>Sharpness: light through the optics reaches a peak's neighbors, a hot pixel's charge does not</td>
+<td>Stetson 1987, PASP 99, 191 (DAOFIND's sharpness statistic); the test on the second faintest neighbor is Fayde's</td>
 <td>Hot pixels and cosmic rays</td>
 <td><code>crates/fayde-detect/src/lib.rs</code> (<code>sharp_in_raw</code>)</td>
 </tr>
@@ -1208,7 +1258,7 @@ doc comment cites the same source.</p>
 <td><code>crates/fayde-index/src/healpix.rs</code></td>
 </tr>
 <tr>
-<td>Uniform catalogue selection (N brightest separated stars per HEALPix cell; default 10″ separation, brighter replacements across cell boundaries)</td>
+<td>Uniform catalog selection (N brightest separated stars per HEALPix cell; default 10″ separation, brighter replacements across cell boundaries)</td>
 <td><a href="https://arxiv.org/abs/0910.2233">Lang et al. 2010, AJ 139, 1782</a> (astrometry.net <code>uniformize-catalog</code>); streaming replacement policy and 10″ default are Fayde choices</td>
 <td>Even dense-tier star density without close doubles occupying both slots</td>
 <td><code>crates/fayde-index/src/build.rs</code> (<code>Selector::push</code>, <code>select_stars</code>)</td>
@@ -1216,7 +1266,7 @@ doc comment cites the same source.</p>
 <tr>
 <td>Fibonacci lattice on the sphere (golden angle reduced to one turn before sin/cos)</td>
 <td>González 2010, <em>Math. Geosci.</em> 42, 49</td>
-<td>Pattern field centres</td>
+<td>Pattern field centers</td>
 <td><code>crates/fayde-index/src/build.rs</code> (<code>lattice</code>)</td>
 </tr>
 <tr>
@@ -1250,7 +1300,7 @@ doc comment cites the same source.</p>
 <td><code>crates/fayde-index/src/kdtree.rs</code></td>
 </tr>
 <tr>
-<td>Radius search on a uniform grid of cells (the cell method for fixed-radius near neighbours)</td>
+<td>Radius search on a uniform grid of cells (the cell method for fixed-radius near neighbors)</td>
 <td>Bentley &amp; Friedman 1979, <em>ACM Comput. Surv.</em> 11(4), 397, a survey of range searching in which cells are one of the structures</td>
 <td>Matching sources to the reference stars of one hypothesis (the points change with every refit, so a structure filled in one pass beats one that is sorted)</td>
 <td><code>crates/fayde-solve/src/grid.rs</code></td>
@@ -1298,13 +1348,13 @@ doc comment cites the same source.</p>
 <td><code>crates/fayde-solve/src/solve.rs</code></td>
 </tr>
 <tr>
-<td>Similarity seeds from 2 or 4 correspondences: closed-form complex least squares, <code>z_c = α z_p + β</code> or <code>α conj(z_p) + β</code>, starting in the catalogue-centroid tangent plane and refitted with the tangent point at the fitted <code>CRVAL</code> (see Fayde's own choices)</td>
+<td>Similarity seeds from 2 or 4 correspondences: closed-form complex least squares, <code>z_c = α z_p + β</code> or <code>α conj(z_p) + β</code>, starting in the catalog-centroid tangent plane and refitted with the tangent point at the fitted <code>CRVAL</code> (see Fayde's own choices)</td>
 <td>Planar equivalent of Umeyama 1991, IEEE TPAMI 13(4), 376–380 (least-squares similarity); related rotation fit: Kabsch 1976, <em>Acta Cryst.</em> A32, 922</td>
 <td>Rotation, isotropic scale, translation and both parities without affine shear; also local refits with fewer than 8 matches</td>
 <td><code>crates/fayde-solve/src/solve.rs</code> (<code>similarity_seed</code>, <code>rematch_fit</code>)</td>
 </tr>
 <tr>
-<td>Cauchy IRLS weights <code>1 / (σ_tot² (1 + (r/r0)²))</code>, source and catalogue variance added in quadrature</td>
+<td>Cauchy IRLS weights <code>1 / (σ_tot² (1 + (r/r0)²))</code>, source and catalog variance added in quadrature</td>
 <td>Holland &amp; Welsch 1977, <em>Commun. Stat.</em> 6(9); <code>r0 = 3 σ_tot</code> is Fayde's tuning choice</td>
 <td>Robust local refits before verification</td>
 <td><code>crates/fayde-solve/src/solve.rs</code> (<code>local_refit</code>)</td>
@@ -1341,7 +1391,7 @@ doc comment cites the same source.</p>
 </tr>
 <tr>
 <td>Scale and roll priors as terms of the final fit: a Gaussian prior on a linear-model parameter as one more weighted observation</td>
-<td>Gelman et al. 2013, <em>Bayesian Data Analysis</em> 3rd ed., ch. 14 (prior information as additional data points); the linearisation along CD₀ and ∂CD₀/∂θ, leaving skew and anisotropy free, is Fayde's</td>
+<td>Gelman et al. 2013, <em>Bayesian Data Analysis</em> 3rd ed., ch. 14 (prior information as additional data points); the linearization along CD₀ and ∂CD₀/∂θ, leaving skew and anisotropy free, is Fayde's</td>
 <td>Holding sparse (5–15 star) fits near the instrument scale and roll</td>
 <td><code>crates/fayde-solve/src/fit.rs</code> (<code>LinearPrior</code>, <code>solve_with_prior</code>), <code>solve.rs</code> (<code>linear_prior</code>)</td>
 </tr>
@@ -1381,10 +1431,85 @@ doc comment cites the same source.</p>
 <td>Index content hash for provenance and corruption checks</td>
 <td><code>crates/fayde-index/src/file.rs</code></td>
 </tr>
+<tr>
+<td>Trail census, first estimate: one vote per bright connected component, direction and length <code>√(12·(λmajor − λminor))</code> from its flux-weighted second moments, weights capped, modes of a histogram of 2θ, weighted medians</td>
+<td>Danescu &amp; Turcu 2026, <em>Sensors</em> 26(5), 1628 (median orientation and length of elongated components); the moment estimator is Fayde's own</td>
+<td>Deciding whether a frame's stars are trails, and the trail to start from</td>
+<td><code>crates/fayde-detect/src/trail.rs</code> (<code>components</code>, <code>census</code>)</td>
+</tr>
+<tr>
+<td>Aimed segment filter: running sums along sheared rows (lines of the trail's direction made rows, linear interpolation across them), window weights summing to the physical length, then the point detector's Gaussian</td>
+<td>Scanning every translate of a digital line at any angle: Soille, Breen &amp; Jones 1996, <em>IEEE TPAMI</em> 18(5), 562 (for erosion and dilation; using the scan for running sums is Fayde's); the matched filter for a trail is the PSF convolved with the segment: Nir, Zackay &amp; Ofek 2018, <em>AJ</em> 156, 229</td>
+<td>Finding trails at about √(L / 1.5 FWHM) times the point filter's signal-to-noise ratio</td>
+<td><code>crates/fayde-detect/src/trail.rs</code> (<code>aimed_box</code>, <code>line_sums</code>)</td>
+</tr>
+<tr>
+<td>Threshold for the aimed filter: the Gaussian kernel with the same density of noise maxima, <code>σ² = 1 / (2√det Λ)</code>, <code>Λ</code> the gradient covariance of the actual kernel on a quarter-pixel grid</td>
+<td>Adler &amp; Taylor 2007, <em>Random Fields and Geometry</em> (density of maxima of a smooth Gaussian field)</td>
+<td>One noise peak per frame in the trail filter, as in the point filter</td>
+<td><code>crates/fayde-detect/src/trail.rs</code> (<code>equivalent_sigma</code>)</td>
+</tr>
+<tr>
+<td>Trail fit: pixel-integrated Gaussian ⊛ segment (erf model), the frame's length, angle and width held, position, flux and a background plane free; Gauss–Newton; errors along and across from the Fisher matrix; trail against point by the likelihood ratio (equal parameter counts, geometry known)</td>
+<td>Vereš et al. 2012, <em>PASP</em> 124, 1197; Bouquillon et al. 2017, <em>A&amp;A</em> 606, A27 (model and Cramér–Rao bounds)</td>
+<td>Each star trail's position and its errors along and across</td>
+<td><code>crates/fayde-detect/src/trail.rs</code> (<code>profile</code>, <code>fit</code>)</td>
+</tr>
+<tr>
+<td>Neighbors' models subtracted before a second fit</td>
+<td>Neighbor-subtracted PSF fitting: Stetson 1987, <em>PASP</em> 99, 191 (DAOPHOT)</td>
+<td>Trails beside or in line with one another</td>
+<td><code>crates/fayde-detect/src/trail.rs</code> (<code>run</code>)</td>
+</tr>
+<tr>
+<td>Empirical PSF from isolated stars, registered and combined with a clipped mean</td>
+<td>Empirical PSF from isolated stars: <a href="https://doi.org/10.1086/131977">Stetson 1987, PASP 99, 191</a> (DAOPHOT), <a href="https://aspbooks.org/publications/442/435.pdf">Bertin 2011, ASP Conf. Ser. 442, 435</a> (PSFEx). The clipped mean (each pixel of the stack leaves out values farther than 4 × (noise + 5% of the median) from the median, and weights the rest by inverse variance), the cutoff on template bend and the regional model for field rotation are Fayde's.</td>
+<td>Shared curved paths and field rotation</td>
+<td><code>crates/fayde-detect/src/kernel.rs</code> (<code>train</code>), <code>kernel/rotation.rs</code> (<code>Rotation::learn</code>)</td>
+</tr>
+<tr>
+<td>Local cubic interpolation</td>
+<td><a href="https://doi.org/10.1016/B978-0-12-079050-0.50020-5">Catmull &amp; Rom 1974, Computer Aided Geometric Design, 317</a></td>
+<td>Subpixel registration and translation of the empirical template</td>
+<td><code>crates/fayde-detect/src/kernel.rs</code> (<code>cubic</code>, <code>sample</code>)</td>
+</tr>
+<tr>
+<td>Direct matched filter with a sparse template; suppress sidelobes by subtracting brighter fitted sources before correlating again</td>
+<td>Zackay &amp; Ofek 2017, ApJ 836, 187 (matched filter); <a href="https://ui.adsabs.harvard.edu/abs/1974A%26AS...15..417H/abstract">Högbom 1974, A&amp;AS 15, 417</a> (CLEAN-style subtraction). Fayde subtracts sources in image space and checks the correlation at each candidate.</td>
+<td>Finding and separating stars smeared by curved motion</td>
+<td><code>crates/fayde-detect/src/kernel.rs</code> (<code>correlate</code>, <code>measure</code>)</td>
+</tr>
+<tr>
+<td>Empirical template fit and position covariance; density of noise peaks from the template gradient covariance</td>
+<td>Bouquillon et al. 2017, A&amp;A 606, A27 (Fisher information); Adler &amp; Taylor 2007, <em>Random Fields and Geometry</em> (noise-peak density); Efron 2008, Stat. Sci. 23(1), 1 (local false discovery rate)</td>
+<td>Positions, errors, thresholds, and star probabilities</td>
+<td><code>crates/fayde-detect/src/kernel.rs</code> (<code>fit</code>, <code>measure</code>, <code>Template::equivalent_sigma</code>)</td>
+</tr>
+<tr>
+<td>Regional rotation templates with an empirical transverse profile and a Gaussian-smoothed segment along the local tangent</td>
+<td>Gaussian-smoothed segment from Vereš et al. 2012, PASP 124, 1197. Fayde fits the rotation center and angular span, and uses a quadratic arc along the segment.</td>
+<td>Detection at varying trail lengths and directions in a rotating field</td>
+<td><code>crates/fayde-detect/src/kernel/rotation.rs</code> (<code>Rotation::template</code>)</td>
+</tr>
+<tr>
+<td>Periodic background pattern removed: in 32 × 32 pixel tiles, the offset and a cosine and a sine term per known frequency fitted by least squares to the pixels away from sources (3 robust σ from the tile median, 2 px around), the terms interpolated bilinearly between tile centers and the waves subtracted</td>
+<td>Least-squares fitting of sinusoids to unevenly sampled data: Lomb 1976, <em>Ap&amp;SS</em> 39, 447; Scargle 1982, <em>ApJ</em> 263, 835. Tiled fits that follow a slowly drifting amplitude and phase are Fayde's own</td>
+<td>Readout stripes, during the trail census retry</td>
+<td><code>crates/fayde-detect/src/pattern.rs</code> (<code>remove</code>), <code>crates/fayde-detect/src/trail.rs</code> (<code>clean_census</code>)</td>
+</tr>
+<tr>
+<td>Periodic pattern frequencies: power spectra of the frames' backgrounds (sources clipped) on a power-of-two square by a radix-2 fast Fourier transform, normalized and averaged; peaks 30 times the median power holding at least 0.5% of the variance, refined between bins by a parabola through the log power</td>
+<td>Cooley &amp; Tukey 1965, <em>Math. Comp.</em> 19, 297. Peak thresholds are Fayde's own</td>
+<td>Single-frame trail census retry (waves with at least 2% power and two cycles per fitting tile)</td>
+<td><code>crates/fayde-detect/src/pattern.rs</code> (<code>Finder</code>), <code>crates/fayde-detect/src/trail.rs</code> (<code>clean_census</code>)</td>
+</tr>
 </tbody>
 </table>
-<p>The detection entries (<code>fayde-detect</code>) come from the survey in the literature review, §7, which
-says how much of each source was read.</p>
+<p>The detection entries (<code>fayde-detect</code>) come from the survey in the literature review, §7 and §8,
+which say how much of each source was read.</p>
+<h3 id="benchmark-harness">Benchmark harness<a class="headerlink" href="#benchmark-harness" title="Permanent link">&para;</a></h3>
+<p>The benchmark harness, its design, and its citations are in a separate benchmark repository,
+which keeps the benchmark apart from any solver.</p>
 <h3 id="faydes-own-choices-no-published-source">Fayde's own choices (no published source)<a class="headerlink" href="#faydes-own-choices-no-published-source" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -1396,7 +1521,7 @@ says how much of each source was read.</p>
 </thead>
 <tbody>
 <tr>
-<td>Incremental Cartesian unit-vector buckets of side at least the separation chord, searching 27 neighbouring buckets and checking exact distances</td>
+<td>Incremental Cartesian unit-vector buckets of side at least the separation chord, searching 27 neighboring buckets and checking exact distances</td>
 <td>Bounded local searches for streaming insertion/replacement and pattern thinning, without rebuilding the static k-d tree; independent of HEALPix boundaries</td>
 <td><code>crates/fayde-index/src/build.rs</code> (<code>SeparationGrid</code>)</td>
 </tr>
@@ -1411,17 +1536,17 @@ says how much of each source was read.</p>
 <td><code>crates/fayde-catalog/src/ucac4.rs</code></td>
 </tr>
 <tr>
-<td>Strict-by-default catalogue queries (missing zone = error)</td>
+<td>Strict-by-default catalog queries (missing zone = error)</td>
 <td>An empty cone must never be mistaken for empty sky</td>
 <td><code>crates/fayde-catalog/src/lib.rs</code></td>
 </tr>
 <tr>
-<td>Pre-filter: ≥ 2 of the next 12 ranked sources must land on seed-list catalogue stars within <code>3σ + 2 px + 1% of distance from the seed pair</code></td>
+<td>Pre-filter: ≥ 2 of the next 12 ranked sources must land on seed-list catalog stars within <code>3σ + 2 px + 1% of distance from the seed pair</code></td>
 <td>Tolerance grows with distance because a 2-star seed's rotation/scale error does</td>
 <td><code>crates/fayde-solve/src/solve.rs</code> (<code>prefilter</code>)</td>
 </tr>
 <tr>
-<td>Reference count per hypothesis: brightest <code>clamp(round(1.5 × Σ p_star), 10, 2000)</code> catalogue stars in the frame, using usable sources after duplicate demotion (<code>p_star</code> defaults to 1)</td>
+<td>Reference count per hypothesis: brightest <code>clamp(round(1.5 × Σ p_star), 10, 2000)</code> catalog stars in the frame, using usable sources after duplicate demotion (<code>p_star</code> defaults to 1)</td>
 <td>Effective real-source count prevents low-probability detections from inflating background density; placeholder until <code>detection_limit</code> is supported (design doc §6.2)</td>
 <td><code>crates/fayde-solve/src/solve.rs</code></td>
 </tr>
@@ -1442,7 +1567,7 @@ says how much of each source was read.</p>
 </tr>
 <tr>
 <td>Distortion tune-up: a hypothesis that is not conclusive under a linear model, or that matches over 1.25× (+3) as many stars at 12 px as inside its own gates, is re-matched at 12 px with the order chosen by BIC until no more stars join, then at 6 and 3 px; the better-scoring of the linear and tuned models is kept, and the tune-up counts as one more hypothesis</td>
-<td>Fayde's own. With lens distortion a linear model leaves the outer stars outside the match gate. astrometry.net also refits a promising match before deciding (tune-up in <code>solver.c</code>, recalled from the source), without distortion. Measured: 5% distortion with 0.3 px centroids went from 18/30 solved (4 of them wrong by &gt; 3″) to 30/30, none wrong</td>
+<td>Fayde's own. With lens distortion a linear model leaves the outer stars outside the match gate. astrometry.net also refits a promising match before deciding (the tune-up in <code>solver_handle_hit</code>, <code>solver.c</code>, which refits at order 1), without distortion. Measured: 5% distortion with 0.3 px centroids went from 18/30 solved (4 of them wrong by &gt; 3″) to 30/30, none wrong</td>
 <td><code>crates/fayde-solve/src/solve.rs</code> (<code>tune</code>, <code>try_hypothesis</code>)</td>
 </tr>
 <tr>
@@ -1506,22 +1631,22 @@ says how much of each source was read.</p>
 <td><code>crates/fayde-fits/src/priors.rs</code> (<code>foreign_frame</code>, <code>header_priors</code>)</td>
 </tr>
 <tr>
-<td>Blind hypotheses whose implied frame exceeds twice the index field size are skipped before any catalogue query</td>
+<td>Blind hypotheses whose implied frame exceeds twice the index field size are skipped before any catalog query</td>
 <td>An index cannot hold patterns larger than its fields; such hypotheses produced sky-sized cones (found in a comparison run on real frames)</td>
 <td><code>crates/fayde-solve/src/solve.rs</code> (<code>pattern_hash</code>)</td>
 </tr>
 <tr>
-<td>Catalogue cones cached per (HEALPix cell of the field centre, √2 field-radius bucket)</td>
-<td>Avoids one catalogue query per blind hypothesis</td>
+<td>Catalog cones cached per (HEALPix cell of the field center, √2 field-radius bucket)</td>
+<td>Avoids one catalog query per blind hypothesis</td>
 <td><code>crates/fayde-solve/src/solve.rs</code> (<code>pattern_hash</code>)</td>
 </tr>
 <tr>
-<td>Catalogue stars of a pointing prior read as hypotheses need them: only the brightest stars of the prior's cone for seeding (<code>Catalog::cone_brightest</code>), and every star in a cone of 1.25 × the frame's radius around a hypothesis that passes the pre-filter; after 6 such reads the rest of the prior's cone is read in one go</td>
+<td>Catalog stars of a pointing prior read as hypotheses need them: only the brightest stars of the prior's cone for seeding (<code>Catalog::cone_brightest</code>), and every star in a cone of 1.25 × the frame's radius around a hypothesis that passes the pre-filter; after 6 such reads the rest of the prior's cone is read in one go</td>
 <td>A 2° prior around a 0.6° frame covers 46 frame areas, and reading, propagating and sorting all of it was three quarters of a hinted solve. A hypothesis sees the stars it would see with the whole cone in memory, in the same order: results on 109 real frames are unchanged to the last bit. Of those solves, 62 needed one read and 1 the whole cone</td>
 <td><code>crates/fayde-solve/src/refset.rs</code>, <code>solve.rs</code> (<code>pair_seeds</code>, <code>prior_cone</code>)</td>
 </tr>
 <tr>
-<td>Cone test that computes the exact separation only at the edge: a star whose J2000 direction is farther from the centre than the radius plus the largest proper motion is rejected on a dot product; the others are decided by the chord from the vector the propagation produced, and <code>centre.separation(position) &gt; radius</code> is evaluated only within 1e-9 rad of the edge (and for cones wider than 1 rad)</td>
+<td>Cone test that computes the exact separation only at the edge: a star whose J2000 direction is farther from the center than the radius plus the largest proper motion is rejected on a dot product; the others are decided by the chord from the vector the propagation produced, and <code>centre.separation(position) &gt; radius</code> is evaluated only within 1e-9 rad of the edge (and for cones wider than 1 rad)</td>
 <td>The exact form costs two sines, two cosines and an arctangent per star on top of the propagation. Compared with a record-by-record scan: 1.7 million stars in 720 cones equal, including 5,565 cones whose edge passes through or beside a star</td>
 <td><code>crates/fayde-catalog/src/ucac4.rs</code> (<code>ConeTest</code>)</td>
 </tr>
@@ -1531,8 +1656,8 @@ says how much of each source was read.</p>
 <td><code>crates/fayde-solve/src/solve.rs</code> (<code>plan</code>, <code>pair_seeds</code>)</td>
 </tr>
 <tr>
-<td>Instrument profile from solved frames (<code>fayde calibrate</code>): median fitted scale, with 1σ = 1.5 × its robust spread and at least 0.1% of the scale; parity when every solution agrees; roll rule <code>offset + sign × keyword</code> for the sign whose offsets scatter less, offset the median about the mean direction, 1σ = 2 × the robust spread (at least 0.05°), hard limit 10σ (at least 1°); pointing 1σ = median offset between the header pointing and the solved frame centre, divided by √(2 ln 2)</td>
-<td>Medians and median absolute deviations, so that poor solutions among the frames do not move the profile. The 0.1% floor: the solver's hard limit is 3σ on the scale fitted to one frame, and fits to a dozen stars scatter by 0.1 to 0.2% (a σ of 0.0013″ on 2.994″ lost a frame). √(2 ln 2) is the median of a Rayleigh distribution in units of its σ: the radial offset of a pointing with a Gaussian error σ per axis. A profile needs no other solver: 66 cold solutions gave 2.99361″/px and roll = 90.015° − keyword, scatter 0.039°</td>
+<td>Instrument profile from solved frames (<code>fayde calibrate</code>): median fitted scale, with 1σ = 1.5 × its robust spread and at least 0.1% of the scale; parity when every solution agrees; roll rule <code>offset + sign × keyword</code> for the sign whose offsets scatter less, offset the median about the mean direction, 1σ = 2 × the robust spread (at least 0.05°), hard limit 10σ (at least 1°); pointing 1σ = median offset between the header pointing and the solved frame center, divided by √(2 ln 2)</td>
+<td>Medians and median absolute deviations, so that poor solutions among the frames do not move the profile. The 0.1% floor: the solver's hard limit is 3σ on the scale fitted to one frame, and fits to a dozen stars scatter by 0.1 to 0.2% (a σ of 0.04% of the scale lost a frame). √(2 ln 2) is the median of a Rayleigh distribution in units of its σ: the radial offset of a pointing with a Gaussian error σ per axis. A profile needs no other solver: 66 of Fayde's own solutions gave a roll scatter of 0.039°</td>
 <td><code>crates/fayde-api/src/calibrate.rs</code></td>
 </tr>
 <tr>
@@ -1542,7 +1667,7 @@ says how much of each source was read.</p>
 </tr>
 <tr>
 <td>Cone search without <code>u4index.unf</code>: binary search of each zone file by RA; the records it leads to are checked for RA order</td>
-<td>A catalogue copy without <code>u4i/</code> read whole zones: 350 ms per hinted solve, where a copy with the index took 22 ms. The search reads the records the index gives (see the UCAC4 entry above)</td>
+<td>A catalog copy without <code>u4i/</code> read whole zones: 350 ms per hinted solve, where a copy with the index took 22 ms. The search reads the records the index gives (see the UCAC4 entry above)</td>
 <td><code>crates/fayde-catalog/src/ucac4.rs</code> (<code>ra_range</code>)</td>
 </tr>
 <tr>
@@ -1571,8 +1696,8 @@ says how much of each source was read.</p>
 <td><code>crates/fayde-solve/src/solve.rs</code> (<code>prior_log_ratio</code>)</td>
 </tr>
 <tr>
-<td>Catalogue position error at epoch added in quadrature to the centroid error, per match</td>
-<td>Standard error propagation; uses <code>Star::pos_err_mas</code> from §5.1</td>
+<td>Catalog position error at epoch added in quadrature to the centroid error, per match</td>
+<td>Standard error propagation; uses the catalog's <code>Star::pos_err_mas</code></td>
 <td><code>crates/fayde-solve/src/verify.rs</code>, <code>solve.rs</code></td>
 </tr>
 <tr>
@@ -1621,7 +1746,7 @@ says how much of each source was read.</p>
 <td><code>crates/fayde-solve/src/solve.rs</code> (<code>pattern_hash</code>)</td>
 </tr>
 <tr>
-<td>Pattern-hash assignments: enumerate all ≤ 24 image permutations whose six labelled edge ratios (each divided by the largest edge) agree within lookup tolerance; fit both similarity parities, retain radial RMS ≤ 3 × max source σ, try smallest RMS first; require ≥ 1 extra index-star hit</td>
+<td>Pattern-hash assignments: enumerate all ≤ 24 image permutations whose six labeled edge ratios (each divided by the largest edge) agree within lookup tolerance; fit both similarity parities, retain radial RMS ≤ 3 × max source σ, try smallest RMS first; require ≥ 1 extra index-star hit</td>
 <td>Canonical centroid-distance ranks can swap under noise; the similarity fit is sourced above, while enumeration, thresholds and residual ordering are Fayde choices</td>
 <td><code>crates/fayde-solve/src/solve.rs</code> (<code>pattern_seeds</code>, <code>pattern_hash</code>)</td>
 </tr>
@@ -1631,7 +1756,7 @@ says how much of each source was read.</p>
 <td><code>crates/fayde-solve/src/solve.rs</code> (<code>pair_seeds</code>, <code>pattern_hash</code>)</td>
 </tr>
 <tr>
-<td>Catalogue pair traversal starts nearest the separation implied by the scale-prior mean, then alternates outward on either side</td>
+<td>Catalog pair traversal starts nearest the separation implied by the scale-prior mean, then alternates outward on either side</td>
 <td>Fayde's prior-guided extension of PROSAC (Chum &amp; Matas 2005); tries plausible scales before the low edge of the permitted interval</td>
 <td><code>crates/fayde-solve/src/solve.rs</code> (<code>pairs_from_mean</code>)</td>
 </tr>
@@ -1666,7 +1791,7 @@ says how much of each source was read.</p>
 <td><code>crates/fayde-detect/src/lib.rs</code> (<code>stand_out</code>), <code>peaks.rs</code> (<code>ring_median</code>)</td>
 </tr>
 <tr>
-<td>Mesh tiles replaced only when above the largest of the four two-neighbour line means; straight-line extrapolation of the background beyond the outermost tile centres</td>
+<td>Mesh tiles replaced only when above the largest of the four two-neighbor line means; straight-line extrapolation of the background beyond the outermost tile centers</td>
 <td>A 3 × 3 median flattens the corner of a frame lit from outside, and a mesh held flat to the edge turns a gradient into signal (111 false sources at the edge of a binned frame before, 3 after)</td>
 <td><code>crates/fayde-detect/src/mesh.rs</code> (<code>despike</code>, <code>at</code>)</td>
 </tr>
@@ -1681,14 +1806,64 @@ says how much of each source was read.</p>
 <td><code>crates/fayde-detect/src/lib.rs</code> (<code>classify</code>)</td>
 </tr>
 <tr>
-<td>Saturation level from flat-topped peaks at the frame's brightest level; centre of a saturated star from the core of its saturated region (pixels with long runs along both axes); error 0.1 px + 3% of the core radius</td>
-<td>A bleed trail has short runs across it; a flat top below the brightest level is a cosmic-ray track or a stuck column. Measured: centre within 0.6 px for stars 3 to 300 × saturation with trails</td>
+<td>Saturation level from flat-topped peaks at the frame's brightest level; center of a saturated star from the core of its saturated region (pixels with long runs along both axes); error 0.1 px + 3% of the core radius</td>
+<td>A bleed trail has short runs across it; a flat top below the brightest level is a cosmic-ray track or a stuck column. Measured: center within 0.6 px for stars 3 to 300 × saturation with trails</td>
 <td><code>crates/fayde-detect/src/saturate.rs</code>, <code>lib.rs</code> (<code>find_saturation</code>)</td>
 </tr>
 <tr>
 <td>Streak tracing: seeds from ridge-like peaks (elongation ≥ 2), a walk along a running least-squares line (search ± 2 px, threshold 3σ, gaps of 8 px + 10% of the points, at most 30), end clean-up, total-least-squares line, half-level ends, a second trace from the fitted line, acceptance (10 px and 8σ long, half covered, SNR 10, half of the bright peaks ridges), <code>cosmic_ray</code> when narrower than 0.4 of the stars' variance</td>
 <td>Fayde's own; a line model through the walk keeps it on course across a crossing streak. Measured: ends within 2 px, 0.2 px typical</td>
 <td><code>crates/fayde-detect/src/streak.rs</code></td>
+</tr>
+<tr>
+<td>Census, second estimate: autocovariance of the filtered image, each anchor counted once (partner over anchor, at most 2), saturated stars and traced satellite streaks left out; on a retry, anchors from bright elongated components across all directions; direction coarse to fine (36 directions at a lag of four widths, then the lag doubled up to half a trail, two correlation widths searched each time); length from a PSF-blurred triangle plus a constant. It must agree with the first estimate within 20% in length and three filtered widths over the length (at least 4.6°) in direction, and the trail must be the same in each region of a 3 × 3 grid with enough trails, else in the trails fitted one by one</td>
+<td>Fayde's own (<code>docs/design/streak-detection.md</code> §4.1, §7). Loose in direction: on real frames its direction was off by up to 5° where the first estimate was within 0.5° of the fits; it guards against gross failures (merged blobs, bleed trails), and the filter is aimed by the fits</td>
+<td><code>crates/fayde-detect/src/trail.rs</code> (<code>autocovariance</code>, <code>census</code>, <code>run</code>)</td>
+</tr>
+<tr>
+<td>Trails shorter than 7 FWHM (across the trail) are left to the point detector</td>
+<td>Real frames meant to show points drift by up to 6.8 FWHM, and the point pass solves them; the point filter loses under 0.2 mag at 2 FWHM</td>
+<td><code>crates/fayde-detect/src/trail.rs</code> (<code>MIN_LENGTH_FWHM</code>)</td>
+</tr>
+<tr>
+<td>A frame with more than four round sources of the stars' width per trail vote is refused</td>
+<td>Point stars with a few aligned satellite segments must not pass as trailed; radiation hits on real trailed frames reached 3.5 times</td>
+<td><code>crates/fayde-detect/src/trail.rs</code> (<code>MAX_ROUND_SHARE</code>)</td>
+</tr>
+<tr>
+<td>The frame's length, angle and width: medians of up to 15 of the brightest isolated whole trails, each fitted with all three free; the census's values when none settles</td>
+<td>Medians ignore a blended or curved few; isolation keeps neighbors out of the fit</td>
+<td><code>crates/fayde-detect/src/trail.rs</code> (<code>refine</code>)</td>
+</tr>
+<tr>
+<td>Traced streaks along the trail and at most three trails long are star trails; the others are subtracted as traced before the trail pass, and a seed on one is kept only if the better model fits it to χ²/dof ≤ 1.5</td>
+<td>Seeds along a satellite near the trail's direction made false stars; stars it crosses are kept</td>
+<td><code>crates/fayde-detect/src/trail.rs</code> (<code>star_like</code>, <code>run</code>)</td>
+</tr>
+<tr>
+<td>A seed is also fitted as a point when 40% of its light along the line lies within two widths of its brightest point, or its trail fit has χ²/dof &gt; 2</td>
+<td>The tracked object and other point-like sources, at a fraction of the cost of fitting every seed twice</td>
+<td><code>crates/fayde-detect/src/trail.rs</code> (<code>POINT_CHECK_*</code>)</td>
+</tr>
+<tr>
+<td><code>p_star</code> = (1 − local false discovery rate of the filtered peak) × the trail model's posterior against a point (equal priors); positions known no better than half a trail along or two widths across are dropped; a fit counts when its last steps are under half their errors (steps that reverse are halved)</td>
+<td>As the point pass for the first factor; the rest from synthetic and real frames, where faint long trails and trails cut by the edge wander along the trail</td>
+<td><code>crates/fayde-detect/src/trail.rs</code> (<code>run</code>, <code>fit</code>)</td>
+</tr>
+<tr>
+<td>The solver's isotropic position error is the larger of the errors along and across the trail</td>
+<td>Conservative: the solver takes one isotropic error per source</td>
+<td><code>crates/fayde-detect/src/lib.rs</code> (<code>trails</code>)</td>
+</tr>
+<tr>
+<td>The census and the trail pass run at full resolution when the point pass binned; the point pass's hot pixels and cosmic-ray tracks are trusted only when it ran at full resolution, else artifacts are found by their pixels alone</td>
+<td>Trails read as wide stars make the point pass bin, and binned it calls pieces of trails sharp</td>
+<td><code>crates/fayde-detect/src/lib.rs</code> (<code>detect</code>, <code>trails</code>)</td>
+</tr>
+<tr>
+<td><code>exp(−t²/2)</code> and <code>erf(t)</code> from tables 1/512 apart, linear between entries</td>
+<td>Fayde's own; the tables are built with <code>fayde_core::Portable</code>, so the same on every machine</td>
+<td><code>crates/fayde-detect/src/trail.rs</code> (<code>tables</code>)</td>
 </tr>
 </tbody>
 </table>
@@ -1735,7 +1910,7 @@ says how much of each source was read.</p>
 <tr>
 <td>4-D quad codes searched in a kd-tree</td>
 <td>Lang et al. 2010</td>
-<td>Fayde's 5 sorted edge ratios describe the same four-point shape as a quad code, and the hash lookup already enumerates neighbouring bins and re-checks the exact shape, which is the continuous-tolerance behaviour a kd-tree gives. What astrometry.net adds for blind solving is its scale-band index series, which Fayde adopts.</td>
+<td>Fayde's 5 sorted edge ratios describe the same four-point shape as a quad code, and the hash lookup already enumerates neighboring bins and re-checks the exact shape, which is the continuous-tolerance behavior a kd-tree gives. What astrometry.net adds for blind solving is its scale-band index series, which Fayde adopts.</td>
 </tr>
 </tbody>
 </table>

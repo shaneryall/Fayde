@@ -695,6 +695,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#trail-keywords" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trail keywords
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#write-a-source-list" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -920,6 +931,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../design/streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../research/literature-review/" class="md-nav__link">
         
   
@@ -1001,6 +1040,17 @@
     <span class="md-ellipsis">
       
         Image size
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trail-keywords" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trail keywords
       
     </span>
   </a>
@@ -1105,9 +1155,36 @@ by default.</p>
 the <code>IMAGEW</code> and <code>IMAGEH</code> keywords to the dimensions in pixels. If the source list doesn't have
 these keywords, Fayde takes the size from the frame header (<code>--header</code>) or from the <code>--width</code>
 and <code>--height</code> options.</p>
+<h2 id="trail-keywords">Trail keywords<a class="headerlink" href="#trail-keywords" title="Permanent link">&para;</a></h2>
+<p>When every star in the image is a trail of one length and direction, a source list can record
+the trail with two keywords in the table header:</p>
+<table>
+<thead>
+<tr>
+<th>Keyword</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRAILLEN</code></td>
+<td>The full length of the trail, in pixels</td>
+</tr>
+<tr>
+<td><code>TRAILANG</code></td>
+<td>The direction of the trail, in degrees from +x toward +y</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>fayde detect</code> command writes both keywords when it measures the stars as trails. When you
+pass a source list that has both keywords with <code>--sources</code>, Fayde gives that trail to the
+solver, unless you give <code>--trail-length</code> and <code>--trail-angle</code>. If one of the keywords is
+missing, Fayde ignores the other.</p>
 <h2 id="write-a-source-list">Write a source list<a class="headerlink" href="#write-a-source-list" title="Permanent link">&para;</a></h2>
 <p>In this example, <code>x</code>, <code>y</code>, and <code>flux</code> are sequences with one value for each source, and the
-image is 4,096 by 4,096 pixels. To write and solve a source list, follow these steps:</p>
+image is 4,096 by 4,096 pixels. The <code>x</code> and <code>y</code> positions must be 1-based. If your detector
+gives 0-based positions, add 1 to each position. To write and solve a source list, follow
+these steps:</p>
 <ol>
 <li>In Python, with the <code>astropy</code> package installed, write the source list with an Astropy table:</li>
 </ol>

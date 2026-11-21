@@ -959,6 +959,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../design/streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../research/literature-review/" class="md-nav__link">
         
   
@@ -1135,8 +1163,10 @@ without Python, install the command-line tool on its own. Then
 <p>To solve a frame, you also need a FITS image from your own observation. The image must meet
 these requirements:</p>
 <ul>
-<li>The stars are point sources, as in an image taken with sidereal tracking. Fayde doesn't yet
-  detect trailed stars.</li>
+<li>Fayde measures point stars, straight trails that share a length and direction, and some
+  curved trails. A shared curved path or field rotation can use a template learned from the
+  image. For the detection modes and how to read the result, see
+  <a href="../usage/#detect-stars-without-solving">Detect stars without solving</a>.</li>
 <li>The image isn't compressed with <code>fpack</code>. To decompress an image, use the <code>funpack</code> program
   from CFITSIO.</li>
 <li>The header gives the pointing and the pixel scale. If it doesn't, you can
@@ -1197,7 +1227,10 @@ install the tool, continue to <a href="../catalog/">Get the UCAC4 catalog</a>.</
 <div class="highlight"><pre><span></span><code>tar<span class="w"> </span>-xzf<span class="w"> </span><span class="s2">"fayde-</span><span class="nv">$platform</span><span class="s2">.tar.gz"</span>
 </code></pre></div>
 <p>Extraction creates a directory named <code>fayde-</code> followed by your platform value. The
-   directory contains the <code>fayde</code> binary, the license files, and an example instrument profile.</p>
+   directory contains the <code>fayde</code> binary, <code>README.md</code>, <code>CHANGELOG.md</code>, the license files
+   (<code>LICENSE</code>, <code>NOTICE</code>, and <code>THIRD-PARTY-LICENSES.md</code>), and <code>CITATION.cff</code>. It also contains
+   the documentation pages in its <code>docs</code> directory and the example instrument profile in its
+   <code>profiles</code> directory.</p>
 <ol>
 <li>Install the binary in <code>/usr/local/bin</code>, which is on your <code>PATH</code>:</li>
 </ol>
@@ -1233,7 +1266,9 @@ install the tool, continue to <a href="../catalog/">Get the UCAC4 catalog</a>.</
 <div class="highlight"><pre><span></span><code><span class="nb">Expand-Archive</span> <span class="n">fayde-windows-x86_64</span><span class="p">.</span><span class="n">zip</span> <span class="n">-DestinationPath</span> <span class="p">.</span>
 </code></pre></div>
 <p>Extraction creates a directory named <code>fayde-windows-x86_64</code>. The directory contains
-   <code>fayde.exe</code>, the license files, and an example instrument profile.</p>
+   <code>fayde.exe</code>, <code>README.md</code>, <code>CHANGELOG.md</code>, the license files (<code>LICENSE</code>, <code>NOTICE</code>, and
+   <code>THIRD-PARTY-LICENSES.md</code>), and <code>CITATION.cff</code>. It also contains the documentation pages in
+   its <code>docs</code> directory and the example instrument profile in its <code>profiles</code> directory.</p>
 <ol>
 <li>In the current PowerShell session, add the extracted directory to <code>Path</code>:</li>
 </ol>
@@ -1298,7 +1333,8 @@ the release.</p>
 </ol>
 <p>A checksum shows that the archive is intact. Releases from 0.3.3 on also have a build
 attestation, which shows that a GitHub Actions workflow of the Fayde repository built the
-archive. Optional: To check it, run this <a href="https://cli.github.com/">GitHub CLI</a> command in the
+archive.</p>
+<p>Optional: To check the attestation, use the <a href="https://cli.github.com/">GitHub CLI</a> in the
 directory that contains the archive:</p>
 <div class="highlight"><pre><span></span><code>gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span>ARCHIVE<span class="w"> </span>--repo<span class="w"> </span>shaneryall/Fayde
 </code></pre></div>

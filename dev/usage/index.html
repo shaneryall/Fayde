@@ -475,6 +475,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#set-the-catalog-directory-once" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Set the catalog directory once
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#use-your-own-source-list" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -490,6 +501,17 @@
     <span class="md-ellipsis">
       
         Detect stars without solving
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detect-streaks-without-a-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detect streaks without a catalog
       
     </span>
   </a>
@@ -545,6 +567,34 @@
     <span class="md-ellipsis">
       
         Limit the search time
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#read-the-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Read the report
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Read the report">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#read-the-detection-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Read the detection report
       
     </span>
   </a>
@@ -992,6 +1042,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../design/streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../research/literature-review/" class="md-nav__link">
         
   
@@ -1059,6 +1137,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#set-the-catalog-directory-once" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Set the catalog directory once
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#use-your-own-source-list" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1074,6 +1163,17 @@
     <span class="md-ellipsis">
       
         Detect stars without solving
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detect-streaks-without-a-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detect streaks without a catalog
       
     </span>
   </a>
@@ -1129,6 +1229,34 @@
     <span class="md-ellipsis">
       
         Limit the search time
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#read-the-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Read the report
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Read the report">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#read-the-detection-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Read the detection report
       
     </span>
   </a>
@@ -1213,10 +1341,26 @@ solving, see <a href="../catalog/">Get the UCAC4 catalog</a>.</p>
      why.</li>
 </ol>
 <p>Fayde returns an exit status of 0 when the run completes, with or without a solution. If the
-   run fails, Fayde returns an exit status of 1 and prints the error to standard error.</p>
+   run fails, Fayde returns an exit status of 1 and prints the error to standard error. If the
+   solver fails after Fayde reads the inputs, for example because a zone file that the solve
+   needs is missing, Fayde also prints a JSON report to standard output. That report has
+   <code>error</code> set to <code>true</code> and the error in <code>reason</code>.</p>
+<p>For more information about the report fields, see <a href="#read-the-report">Read the report</a>.</p>
 <p>When a run writes no solution, Fayde removes any file that already exists at <code>OUTPUT</code>. Fayde
-keeps the file if it rejects the command before the run starts, if it can't write to <code>OUTPUT</code>, or if
-<code>OUTPUT</code> is one of the input files.</p>
+keeps the file if it rejects the command before the run starts, if its initial check finds
+that it can't write to <code>OUTPUT</code>, or if <code>OUTPUT</code> is one of the input files.</p>
+<h3 id="set-the-catalog-directory-once">Set the catalog directory once<a class="headerlink" href="#set-the-catalog-directory-once" title="Permanent link">&para;</a></h3>
+<p>To leave out <code>--ucac4</code>, set the <code>FAYDE_UCAC4</code> environment variable to the path to the catalog
+directory. Each <code>fayde</code> command that has a <code>--ucac4</code> option uses the variable when you leave out
+the option. A <code>--ucac4</code> option on the command line takes precedence. In Python, <code>fayde.Solver()</code>
+without a catalog directory also uses the variable.</p>
+<p>On Linux or macOS, set the variable for the current terminal session:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">FAYDE_UCAC4</span><span class="o">=</span><span class="s2">"UCAC4_DIR"</span>
+</code></pre></div>
+<p>On Windows, set the variable for the current PowerShell session:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">$env:FAYDE_UCAC4</span> <span class="p">=</span> <span class="s2">"UCAC4_DIR"</span>
+</code></pre></div>
+<p>Replace <code>UCAC4_DIR</code> with the path to the directory that contains <code>u4b</code>.</p>
 <h3 id="use-your-own-source-list">Use your own source list<a class="headerlink" href="#use-your-own-source-list" title="Permanent link">&para;</a></h3>
 <p>If you detect the stars yourself, pass a source list with <code>--sources</code> in place of the image. A
 source list is a FITS binary table with <code>X</code> and <code>Y</code> columns. For the columns that Fayde reads,
@@ -1230,22 +1374,102 @@ only the header from the file at <code>FRAME</code>.</p>
 <p>To find the stars in an image and write them as a source list, use <code>fayde detect</code>:</p>
 <div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>detect<span class="w"> </span>--image<span class="w"> </span>FRAME<span class="w"> </span>-o<span class="w"> </span>SOURCES
 </code></pre></div>
-<p>Fayde prints a JSON report with the background, the noise, the width of the stars, and every
-source that it found. The report also lists the streaks that cross the image, such as satellite
-trails, and the hot pixels and cosmic-ray hits that Fayde set aside. With <code>-o</code>, Fayde also
-writes the sources to <code>SOURCES</code>, in the format that <code>--sources</code> reads.</p>
-<p>When the stars' full width at half maximum (FWHM) is about one pixel or less at full
-resolution, Fayde keeps point sources that are too sharp for the usual shape checks. A star
-this narrow can put nearly all its light in one pixel, so the source list can also include
-hot pixels and compact cosmic-ray hits.</p>
-<p>If background subtraction clipped many sky pixels to the same minimum value, such as zero,
-Fayde accounts for the clipping when estimating the background and setting the detection
-threshold. The clipped-sky model requires floor pixels mixed with sky noise across most of the
-image's sky tiles. Frames with a constant border and ordinary sky use the standard background
-estimate.</p>
+<p>Fayde prints a JSON report with the background, the noise, the width of the stars, and every source
+that it found. The report also lists the streaks that cross the image, such as satellite streaks,
+and the hot pixels and cosmic-ray hits that Fayde set aside. With <code>-o</code>, Fayde also writes the
+sources to <code>SOURCES</code>, in the format that <code>--sources</code> reads. For more information about the report
+fields, see <a href="#read-the-detection-report">Read the detection report</a>.</p>
+<p>When Fayde measures stars as points and their full width at half maximum (FWHM) is about
+1 pixel or less at full resolution, it keeps sources that are too sharp for the usual shape
+checks. A star this narrow can put nearly all its light in one pixel, so the source list can
+also include hot pixels and compact cosmic-ray hits.</p>
 <p>To list the detection options and their default values, run <code>fayde detect --help</code>. The same
 options work with <code>fayde solve --image</code>. The <code>--detect-threshold</code> option sets the peak threshold
 in σ of the filtered image, and its value must be at least 1.5.</p>
+<p>If background subtraction clipped many sky pixels to the same minimum value, such as
+zero, Fayde accounts for the clipping when estimating the background and setting detection
+thresholds. The clipped-sky model requires floor pixels mixed with sky noise across most
+of the image's sky tiles. Frames with a constant border and ordinary sky use the standard
+background estimate.</p>
+<p>Tracking a satellite, slewing, or rolling a camera can smear every star during an exposure.
+Fayde checks each image for this motion and reports its decision in <code>mode</code>, which has one of
+the following values:</p>
+<ul>
+<li><code>points</code>: The stars are points, or trails too short to measure as trails.</li>
+<li><code>trails</code>: Every star is a straight trail of the same length and direction. The <code>trail</code> field
+  gives the length and direction, and each source has a position error along the trail
+  (<code>sigma_along_px</code>) and across it (<code>sigma_across_px</code>). Point-like sources, such as the tracked
+  object, have the class <code>point</code> and aren't used to solve the frame.</li>
+<li><code>kernel</code>: Fayde measures the stars with a template learned from the image. A shared
+  curved path uses one template. Field rotation uses templates that vary with position in
+  the image. Each reported position is the center of the star's light over the exposure.</li>
+<li><code>refused</code>: Fayde finds evidence of trails but can't establish a consistent model, so it
+  measures the stars as points. The <code>census</code> field gives the reason.</li>
+</ul>
+<p>To measure every star as a point, add <code>--no-trails</code> to <code>fayde detect</code> or <code>fayde solve</code>.</p>
+<p>If an image measured in <code>trails</code> or <code>kernel</code> mode gives no solution before the time and hypothesis
+limits are reached, <code>fayde solve</code> retries with point detections. The <code>retried_as_points</code> field
+records the retry outcome in <code>solved</code> and the original census in <code>trails_census</code>. If the retry fails
+to read the catalog, the report carries the error and its reason, plus the first attempt's search
+trace and hypothesis count.</p>
+<p>The <code>fayde solve --image</code> command passes a measured trail to the solver. With <code>-o</code>,
+<code>fayde detect</code> records the measured trail in the source list, and <code>fayde solve --sources</code>
+passes that trail to the solver. For more information about the keywords that hold the trail,
+see <a href="../source-list/#trail-keywords">Trail keywords</a>.</p>
+<p>If an image shows star trails in more than one direction, give the expected direction with
+<code>--trail-angle</code>, in degrees from +x toward +y. Fayde uses the angle to choose a direction and
+measures the trail from the image. The <code>fayde detect</code> command accepts <code>--trail-angle</code> alone. It
+reports an error if you give <code>--trail-length</code> without <code>--trail-angle</code>.</p>
+<p>With <code>fayde solve</code>, <code>fayde verify</code>, or <code>fayde refit</code>, give <code>--trail-length</code> in pixels and
+<code>--trail-angle</code> together, or neither. With <code>--image</code>, the angle also guides detection. The two
+values replace the measured or recorded trail in the solve.</p>
+<h3 id="detect-streaks-without-a-catalog">Detect streaks without a catalog<a class="headerlink" href="#detect-streaks-without-a-catalog" title="Permanent link">&para;</a></h3>
+<p>To find streaks in an image and save the detection report to a file, use <code>fayde detect</code>:</p>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>detect<span class="w"> </span>--image<span class="w"> </span>frame.fits<span class="w"> </span>&gt;<span class="w"> </span>frame.detections.json
+</code></pre></div>
+<p>Read the JSON report's <code>streaks</code> array for straight streak candidates, longest first. This
+command works without a star catalog or WCS. The optional <code>-o</code> FITS output contains the
+stars used for solving, so read streak measurements from the JSON report.</p>
+<p>Each candidate has these fields.</p>
+<table>
+<thead>
+<tr>
+<th>Fields</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x0</code>, <code>y0</code>, <code>x1</code>, <code>y1</code></td>
+<td>Estimated visible endpoints in FITS 1-based pixel coordinates</td>
+</tr>
+<tr>
+<td><code>length_px</code>, <code>angle_deg</code></td>
+<td>Visible length in pixels and line orientation from +x toward +y, modulo 180°</td>
+</tr>
+<tr>
+<td><code>width_sigma_px</code>, <code>flux</code></td>
+<td>Cross-streak Gaussian width in pixels and integrated signal above the background</td>
+</tr>
+<tr>
+<td><code>photometry_masked</code></td>
+<td>A recognized crossing star was masked. Flux estimates the missing samples at the median ridge height. SNR uses the unmasked samples only.</td>
+</tr>
+<tr>
+<td><code>snr</code>, <code>coverage</code></td>
+<td>Integrated signal-to-noise ratio of the unmasked ridge and fraction of the visible length above the tracing threshold</td>
+</tr>
+<tr>
+<td><code>touches_edge</code>, <code>cosmic_ray</code></td>
+<td>An endpoint reaches the image edge, or the candidate is narrow enough to be flagged as a possible detector track, respectively</td>
+</tr>
+</tbody>
+</table>
+<p>The tracer starts from a detectable elongated peak, so it can miss a faint streak that becomes
+visible only when integrated along its length. In trailed-star frames, Fayde
+uses the shared stellar trails as astrometric sources and reports the remaining streak
+candidates in <code>streaks</code>. Treat <code>cosmic_ray</code> as a shape flag and the endpoint order as a
+geometric convention. Object identity and direction of motion require other evidence.</p>
 <h3 id="specify-the-pointing-and-scale">Specify the pointing and scale<a class="headerlink" href="#specify-the-pointing-and-scale" title="Permanent link">&para;</a></h3>
 <p>Command-line values take precedence over the instrument profile, which takes precedence over
 the frame header. To solve an image whose header lacks the pointing or the pixel scale, specify
@@ -1272,7 +1496,7 @@ the following:</p>
 <tbody>
 <tr>
 <td>Pointing</td>
-<td><code>CRVAL1</code> and <code>CRVAL2</code> of a header WCS, <code>RA</code> and <code>DEC</code>, or <code>OBJCTRA</code> and <code>OBJCTDEC</code></td>
+<td>Image center projected through a supported header WCS, otherwise its reference coordinates (<code>CRVAL1</code>, <code>CRVAL2</code>), <code>RA</code> and <code>DEC</code>, or <code>OBJCTRA</code> and <code>OBJCTDEC</code></td>
 </tr>
 <tr>
 <td>Pixel scale</td>
@@ -1288,13 +1512,14 @@ the following:</p>
 </tr>
 </tbody>
 </table>
-<p>If the header has no observation time, Fayde uses the epoch 2000. To set the epoch, use
-<code>--epoch</code>.</p>
+<p>If the header has no observation time and you don't set the epoch, Fayde uses the catalog
+positions at epoch J2000.0 and adds a warning that starts with <code>no observation time</code> to the
+report. To set the epoch, use <code>--epoch</code>.</p>
 <p>Fayde searches within 2° of the pointing. To change the limit, use <code>--radius</code>. To specify the
-pointing accuracy, use <code>--pointing-sigma</code> with the 1-sigma error in degrees. When
-that error is at most a sixth of the limit and the pixel scale is known to within 3%, Fayde
-first searches within 3 sigma of the pointing. It widens the search to the limit only when it
-finds no solution there.</p>
+pointing accuracy, use <code>--pointing-sigma</code> with the 1σ error in degrees. When that error is at
+most a sixth of the limit and the pixel scale is known to within 3%, Fayde first searches
+within 3σ of the pointing. It widens the search to the limit only when it finds no solution
+there.</p>
 <p>To ignore the pointing and pixel scale from a WCS in the frame header, for example a WCS that
 another plate solver wrote, add <code>--no-header-wcs</code>. Fayde then reads the header pointing only
 from <code>RA</code> and <code>DEC</code>, or from <code>OBJCTRA</code> and <code>OBJCTDEC</code>.</p>
@@ -1306,6 +1531,59 @@ accuracy in the frame headers. To use a profile, add <code>--instrument</code>:<
 <div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>solve<span class="w"> </span>--image<span class="w"> </span>FRAME<span class="w"> </span>--instrument<span class="w"> </span>PROFILE<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>-o<span class="w"> </span>OUTPUT
 </code></pre></div>
 <p>Replace <code>PROFILE</code> with the path to the profile file.</p>
+<p>All of the following profile fields are optional:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>A name for the profile. The report shows it in <code>priors.instrument</code>.</td>
+</tr>
+<tr>
+<td><code>scale_arcsec</code></td>
+<td>The pixel scale of an unbinned frame, in arcseconds per pixel</td>
+</tr>
+<tr>
+<td><code>scale_sigma_arcsec</code></td>
+<td>The 1σ uncertainty of <code>scale_arcsec</code>, in arcseconds per pixel. The default is 0.5% of <code>scale_arcsec</code>.</td>
+</tr>
+<tr>
+<td><code>parity</code></td>
+<td><code>negative</code> for an image that shows the sky as seen, with east to the left when north is up, or <code>positive</code> for a mirrored image</td>
+</tr>
+<tr>
+<td><code>roll</code></td>
+<td>The rule that gives the roll from a header keyword, with these fields: <code>keyword</code>, the header keyword that holds the instrument's roll in degrees; <code>offset_deg</code> and <code>sign</code>, which give the roll as <code>offset_deg</code> + <code>sign</code> × the keyword's value; <code>sigma_deg</code>, the 1σ error of that roll; and <code>max_dev_deg</code>, the hard limit on its deviation. <code>sign</code> is 1 or -1, and the angles are in degrees.</td>
+</tr>
+<tr>
+<td><code>binning</code></td>
+<td>The header keywords that hold the binning factors, with these fields: <code>x_keyword</code> along x and <code>y_keyword</code> along y. Fayde multiplies the scale and its uncertainty by the square root of the product of the two factors. Without <code>y_keyword</code>, Fayde uses the x factor for both axes.</td>
+</tr>
+<tr>
+<td><code>pointing_sigma_deg</code></td>
+<td>The 1σ error of the pointing in the frame headers, for each axis, in degrees</td>
+</tr>
+<tr>
+<td><code>pointing_radius_deg</code></td>
+<td>The search limit around the pointing, in degrees, in place of the default of 2°</td>
+</tr>
+<tr>
+<td><code>header_wcs</code></td>
+<td>When <code>false</code>, has the same effect as <code>--no-header-wcs</code> on every frame</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td>A description of where the values come from. Fayde doesn't read this field.</td>
+</tr>
+</tbody>
+</table>
+<p>The roll is the position angle of the image +y axis, measured east of north:
+<code>atan2(CD1_2, CD2_2)</code>. The report's <code>roll_deg</code> field uses the same convention.</p>
 <p>The repository contains an example profile, <code>profiles/example.json</code>. A release archive has the
 same file in the extracted archive's <code>profiles</code> directory. The example's values are
 illustrative. To create a profile for your instrument, follow these steps:</p>
@@ -1313,7 +1591,13 @@ illustrative. To create a profile for your instrument, follow these steps:</p>
 <li>Copy <code>profiles/example.json</code>.</li>
 <li>Edit the copy with your instrument's values. The <code>source</code> field of the example explains the
    scale and roll values.</li>
+<li>If your frame headers lack the keywords that <code>binning</code> names, delete <code>binning</code> from the copy.</li>
 </ol>
+<p>Without those keywords, Fayde doesn't use the profile's pixel scale for the frame.</p>
+<ol>
+<li>If your frame headers lack the keyword that <code>roll</code> names, delete <code>roll</code> from the copy.</li>
+</ol>
+<p>Without that keyword, Fayde doesn't use the profile's roll for the frame.</p>
 <p>If you don't know your instrument's values, use Fayde to measure them from its solved frames.</p>
 <h3 id="calibrate-an-instrument-profile">Calibrate an instrument profile<a class="headerlink" href="#calibrate-an-instrument-profile" title="Permanent link">&para;</a></h3>
 <p>You don't need another plate solver to calibrate a profile. For the initial solves, you need
@@ -1334,7 +1618,7 @@ these solutions, follow these steps:</p>
    More frames give a better profile.</p>
 <ol>
 <li>
-<p>List only the frames whose report has <code>solved</code> set to <code>true</code> in a text file, with one frame
+<p>In a text file, list only the frames whose report has <code>solved</code> set to <code>true</code>, with one frame
    per line. Each line contains the path to the FITS image, a tab character, and the path to
    its WCS file, in that order.</p>
 </li>
@@ -1364,7 +1648,7 @@ these solutions, follow these steps:</p>
 <tbody>
 <tr>
 <td><code>scale_arcsec</code>, <code>scale_sigma_arcsec</code></td>
-<td>The median pixel scale of the solutions and its 1-sigma uncertainty, in arcseconds per pixel. With <code>--binning</code>, this is the scale of an unbinned frame.</td>
+<td>The median pixel scale of the solutions and its 1σ uncertainty, in arcseconds per pixel. With <code>--binning</code>, this is the scale of an unbinned frame.</td>
 </tr>
 <tr>
 <td><code>parity</code></td>
@@ -1372,7 +1656,7 @@ these solutions, follow these steps:</p>
 </tr>
 <tr>
 <td><code>roll</code></td>
-<td>With <code>--roll-keyword</code>, the rule that gives the roll from the roll keyword, with its 1-sigma error and hard limit in degrees</td>
+<td>With <code>--roll-keyword</code>, the rule that gives the roll from the roll keyword, with its 1σ error and hard limit in degrees</td>
 </tr>
 <tr>
 <td><code>binning</code></td>
@@ -1380,7 +1664,7 @@ these solutions, follow these steps:</p>
 </tr>
 <tr>
 <td><code>pointing_sigma_deg</code></td>
-<td>The 1-sigma error of the pointing in the headers, in degrees. Fayde omits this field when fewer than five headers have a pointing.</td>
+<td>The 1σ error of the pointing in the headers, in degrees. Fayde omits this field when fewer than five headers have a pointing.</td>
 </tr>
 <tr>
 <td><code>calibration</code></td>
@@ -1388,17 +1672,16 @@ these solutions, follow these steps:</p>
 </tr>
 </tbody>
 </table>
-<p>You can add two optional fields manually. The <code>pointing_radius_deg</code> field sets the search limit
-around the pointing in degrees, in place of <code>--radius</code>. The <code>header_wcs</code> field, when set to
-<code>false</code>, has the same effect as <code>--no-header-wcs</code> on every frame. To include <code>header_wcs</code> in the
-profile during calibration, add <code>--no-header-wcs</code> to the <code>fayde calibrate</code> command.</p>
+<p>You can add the <code>pointing_radius_deg</code> and <code>header_wcs</code> fields manually. To include
+<code>header_wcs</code> in the profile during calibration, add <code>--no-header-wcs</code> to the <code>fayde calibrate</code>
+command.</p>
 <h3 id="solve-without-a-pointing-or-scale">Solve without a pointing or scale<a class="headerlink" href="#solve-without-a-pointing-or-scale" title="Permanent link">&para;</a></h3>
 <p>When you know the pointing and have a precise pixel scale, Fayde needs only the catalog. In
 that case, omit <code>--index</code>. Fayde searches a pattern index only if it finds no solution around
-the pointing. This extra search delays the report when a frame has no solution. When
-the pointing or scale is uncertain or unknown, Fayde also needs a pattern index, which you
-build once from the catalog. To build the recommended indexes, see the
-<a href="../index-set/">index guide</a>.</p>
+the pointing. This extra search delays the report when a frame has no solution. When the
+pointing or scale is uncertain or unknown, Fayde also needs a pattern index, which you build
+once from the catalog. To build the recommended indexes, see
+<a href="../index-set/">Build pattern indexes</a>.</p>
 <p>To solve with a pattern index and ignore all priors, use <code>--index</code> and <code>--no-priors</code>:</p>
 <div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>solve<span class="w"> </span>--image<span class="w"> </span>FRAME<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>--index<span class="w"> </span>INDEX<span class="w"> </span>--no-priors<span class="w"> </span>-o<span class="w"> </span>OUTPUT
 </code></pre></div>
@@ -1406,8 +1689,8 @@ build once from the catalog. To build the recommended indexes, see the
 several indexes, add <code>--index</code> once for each file.</p>
 <h3 id="limit-the-search-time">Limit the search time<a class="headerlink" href="#limit-the-search-time" title="Permanent link">&para;</a></h3>
 <p>Search time increases with the area within the pointing radius. The following measurements
-show exhausted searches on a 32-core x86_64 Linux computer. The frames had a pixel scale of
-3 arcseconds per pixel, a scale uncertainty of 0.1%, and unconstrained roll:</p>
+show exhausted searches of real frames on a 32-core x86_64 Linux computer, with the pixel
+scale known to 0.1% and the roll unconstrained:</p>
 <table>
 <thead>
 <tr>
@@ -1444,24 +1727,349 @@ show exhausted searches on a 32-core x86_64 Linux computer. The frames had a pix
 </tr>
 </tbody>
 </table>
-<p>Frames with hundreds of sources took more than 18 s at an 8° radius. To limit a search, use
-these options:</p>
+<p>A search with a 1° radius takes about 50 times less work than one with an 8° radius. Frames
+with hundreds of sources took more than 18 s at an 8° radius. To limit a search, use these
+options:</p>
 <ul>
 <li>Use <code>--max-hypotheses</code> to limit the work independently of the computer's speed.</li>
-<li>Use <code>--deadline</code> to limit wall-clock time from the start of the request.</li>
+<li>Use <code>--deadline</code> to limit elapsed search time. For image input the clock starts after the
+  initial source detection. A retry with point detections shares the remaining time and
+  hypothesis budget. Fayde checks the deadline again after measuring the points.</li>
 </ul>
 <p>Each <code>search</code> stage in the report ends with an <code>outcome</code>: <code>solved</code>, <code>exhausted</code>, <code>deadline</code>, or
-<code>hypothesis limit</code>. When Fayde finds no solution, the report names the stage that a limit
-stopped. A search with a 1° radius takes about 50 times less work than one with an 8° radius.</p>
+<code>hypothesis limit</code>. When Fayde finds no solution, the report names the stage that a limit stopped.</p>
+<h2 id="read-the-report">Read the report<a class="headerlink" href="#read-the-report" title="Permanent link">&para;</a></h2>
+<p>The <code>fayde solve</code> and <code>fayde refit</code> commands use the same report fields. The fields present
+depend on the outcome:</p>
+<ul>
+<li>With a solution, the report has <code>solved</code> set to <code>true</code> and the fields in the following table,
+  except <code>reason</code>, <code>error</code>, <code>best_log_odds</code>, <code>warnings</code>, and <code>detection</code>.</li>
+<li>When a search finishes without a solution, the report has <code>solved</code> set to <code>false</code>, <code>reason</code>,
+  <code>best_log_odds</code>, <code>hypotheses_tested</code>, <code>search</code>, <code>priors</code>, and <code>identity</code>.</li>
+<li>After a solver error, the report has <code>solved</code> set to <code>false</code>, <code>error</code> set to <code>true</code>, <code>reason</code>,
+  <code>priors</code>, and <code>identity</code>.</li>
+</ul>
+<p>Each report also has <code>warnings</code> when there are warnings, and <code>detection</code> when you give an image
+with <code>--image</code>. Pixel positions in the report are 1-based, as in FITS.</p>
+<p>To state the uncertainty of a solution, quote <code>worst_sigma_arcsec</code>. It's the largest predicted
+position error at the sampled positions across the frame.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>solved</code></td>
+<td><code>true</code> when Fayde found a solution that passed verification</td>
+</tr>
+<tr>
+<td><code>reason</code></td>
+<td>Why Fayde found no solution, or the error</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td><code>true</code> when the solver failed</td>
+</tr>
+<tr>
+<td><code>crval_deg</code></td>
+<td>The right ascension and declination of the image center, in degrees. The WCS has its reference pixel at the image center.</td>
+</tr>
+<tr>
+<td><code>pixel_scale_arcsec</code></td>
+<td>The pixel scale at the image center, in arcseconds per pixel</td>
+</tr>
+<tr>
+<td><code>roll_deg</code></td>
+<td>The position angle of the image +y axis, measured east of north, in degrees from −180° to 180°: <code>atan2(CD1_2, CD2_2)</code></td>
+</tr>
+<tr>
+<td><code>parity</code></td>
+<td><code>Negative</code> for an image that shows the sky as seen, with east to the left when north is up, or <code>Positive</code> for a mirrored image</td>
+</tr>
+<tr>
+<td><code>centre_sigma_arcsec</code></td>
+<td>The predicted radial 1σ position error at the image center, in arcseconds</td>
+</tr>
+<tr>
+<td><code>worst_sigma_arcsec</code></td>
+<td>The largest predicted radial 1σ position error on a 5 × 5 grid that covers the frame, corners included, in arcseconds</td>
+</tr>
+<tr>
+<td><code>rms_px</code></td>
+<td>The root mean square (RMS) residual of the matched sources, weighted by their inlier probability, in pixels</td>
+</tr>
+<tr>
+<td><code>loo_rms_px</code></td>
+<td>The leave-one-out RMS residual of the confident matches, in pixels: each match's residual from a fit without it. The value is <code>null</code> when there are too few matches.</td>
+</tr>
+<tr>
+<td><code>error_scale</code></td>
+<td>The factor that the fit applies to the source position errors. A value greater than 1 means that the errors were too small.</td>
+</tr>
+<tr>
+<td><code>matches</code></td>
+<td>The number of matched sources</td>
+</tr>
+<tr>
+<td><code>log_odds</code></td>
+<td>The natural logarithm of the odds of the solution against sources at random positions</td>
+</tr>
+<tr>
+<td><code>best_log_odds</code></td>
+<td>Without a solution, the highest <code>log_odds</code> that a hypothesis reached, or <code>null</code></td>
+</tr>
+<tr>
+<td><code>nfa</code></td>
+<td>Model-based false-alarm score, <code>hypotheses_tested × exp(−log_odds)</code>. Calibration of the adaptive search requires null trials.</td>
+</tr>
+<tr>
+<td><code>method</code></td>
+<td>How Fayde found the solution: <code>PairSeeds</code> from star pairs around the pointing, <code>PatternHash</code> from a pattern index, or <code>Refit</code> from the WCS that you gave</td>
+</tr>
+<tr>
+<td><code>index_hash</code></td>
+<td>The content hash of the pattern index that found the solution, or <code>null</code></td>
+</tr>
+<tr>
+<td><code>solved_by_stage</code></td>
+<td>The name of the search stage that found the solution</td>
+</tr>
+<tr>
+<td><code>sip_order</code></td>
+<td>The order of the SIP distortion polynomial, or 1 when the solution has no distortion terms</td>
+</tr>
+<tr>
+<td><code>priors</code></td>
+<td>The priors that Fayde used, and in each prior's <code>origin</code> field, where the prior came from: the command line, the instrument profile, or a header keyword. It also gives the instrument profile's name, the trail, the number of truncated sources, and the default position error.</td>
+</tr>
+<tr>
+<td><code>warnings</code></td>
+<td>Header values that Fayde didn't use, and options that <code>--no-priors</code> or <code>--no-pointing</code> dropped. When the header has no observation time and you don't set the epoch, a warning starts with <code>no observation time</code>, and Fayde uses the catalog positions at epoch J2000.0.</td>
+</tr>
+<tr>
+<td><code>prior_violated</code>, <code>violated_priors</code></td>
+<td>Whether the solution breaks a hard limit of the priors, and which: <code>pointing</code>, <code>scale</code>, <code>roll</code>, or <code>parity</code>. This can happen only with <code>--search-outside-pointing</code> or <code>--relax-priors-on-failure</code>.</td>
+</tr>
+<tr>
+<td><code>relaxed_priors</code></td>
+<td><code>true</code> when the solution comes from the retry with wider limits that <code>--relax-priors-on-failure</code> allows</td>
+</tr>
+<tr>
+<td><code>hypotheses_tested</code></td>
+<td>The number of hypotheses tested</td>
+</tr>
+<tr>
+<td><code>search</code></td>
+<td>The search stages in order. Each stage has <code>stage</code>, <code>hypotheses</code>, <code>seconds</code>, and <code>outcome</code>.</td>
+</tr>
+<tr>
+<td><code>seconds</code></td>
+<td>The wall-clock time of the solve, in seconds</td>
+</tr>
+<tr>
+<td><code>wcs_cards</code></td>
+<td>The solution as 80-character FITS header cards, including <code>IMAGEW</code> and <code>IMAGEH</code></td>
+</tr>
+<tr>
+<td><code>pairs</code></td>
+<td>The matched sources. Each pair has the source's index in the source list (<code>source</code>) and position (<code>x</code>, <code>y</code>), the catalog star's UCAC4 running number (<code>star_id</code>), position at the solve epoch (<code>ra_deg</code>, <code>dec_deg</code>), and magnitude (<code>mag</code>), the star's predicted position (<code>predicted_x</code>, <code>predicted_y</code>), the source position minus the predicted position in pixels (<code>residual_px</code>), and the probability that the match is real (<code>inlier_prob</code>).</td>
+</tr>
+<tr>
+<td><code>covariance</code></td>
+<td>The covariance of the fitted coefficients, the same for each tangent-plane axis. <code>matrix_rad2</code> is the matrix row by row, in square radians. <code>terms</code> gives the powers of the pixel offsets from <code>crpix_fits</code>, divided by <code>norm_px</code>, that the coefficients multiply.</td>
+</tr>
+<tr>
+<td><code>detection</code></td>
+<td>The detection report without its source lists or its separate <code>identity</code> field. For more information about its fields, see <a href="#read-the-detection-report">Read the detection report</a>.</td>
+</tr>
+<tr>
+<td><code>identity</code></td>
+<td>The Fayde version and commit, the catalog and the solve epoch, and the pattern indexes with their content hashes</td>
+</tr>
+</tbody>
+</table>
+<p>In a <code>fayde verify</code> report, <code>accepted</code> is <code>true</code> when <code>log_odds</code> reaches <code>threshold</code>. The report
+also has <code>matches</code>, <code>confident_matches</code>, <code>rms_px</code>, <code>references</code>,
+<code>sources</code>, <code>pairs</code>, <code>priors</code>, and <code>identity</code>.</p>
+<h3 id="read-the-detection-report">Read the detection report<a class="headerlink" href="#read-the-detection-report" title="Permanent link">&para;</a></h3>
+<p>The <code>fayde detect</code> command prints a detection report. The <code>detection</code> field in a
+<code>fayde solve --image</code> report omits the <code>sources</code> and <code>rejected</code> lists and the detection
+report's separate <code>identity</code> field.</p>
+<p>The <code>mode</code> field is <code>points</code>, <code>trails</code>, <code>kernel</code>, or <code>refused</code>. For more information about these values,
+see <a href="#detect-stars-without-solving">Detect stars without solving</a>. The <code>census</code> field holds
+the evidence for the decision. Its <code>reason</code> field has one of the following values:</p>
+<table>
+<thead>
+<tr>
+<th><code>reason</code></th>
+<th><code>mode</code></th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>no elongated sources</code></td>
+<td><code>points</code></td>
+<td>No bright source is elongated.</td>
+</tr>
+<tr>
+<td><code>no common trail direction</code></td>
+<td><code>points</code></td>
+<td>Too few elongated sources share one direction.</td>
+</tr>
+<tr>
+<td><code>trails shorter than 7 FWHM</code></td>
+<td><code>points</code></td>
+<td>The trails are shorter than seven times the stars' full width at half maximum (FWHM) across the trail.</td>
+</tr>
+<tr>
+<td><code>one straight trail</code></td>
+<td><code>trails</code></td>
+<td>Every star is a straight trail of one length and direction.</td>
+</tr>
+<tr>
+<td><code>shared curved star path</code></td>
+<td><code>kernel</code></td>
+<td>The template learned from the stars has a measurable bend.</td>
+</tr>
+<tr>
+<td><code>star paths vary with field rotation</code></td>
+<td><code>kernel</code></td>
+<td>The star trails are tangential to a common center and grow longer with distance from it.</td>
+</tr>
+<tr>
+<td><code>point stars as well as trails (...)</code></td>
+<td><code>refused</code></td>
+<td>The image has round stars as well as trails. The reason gives the number of each.</td>
+</tr>
+<tr>
+<td><code>two trail populations</code></td>
+<td><code>refused</code></td>
+<td>The trails have two directions. To choose one, use <code>--trail-angle</code>.</td>
+</tr>
+<tr>
+<td><code>trails longer than the frame</code></td>
+<td><code>refused</code></td>
+<td>Most trails touch the frame edge, so Fayde can't measure their length.</td>
+</tr>
+<tr>
+<td><code>too little light for the second estimate</code></td>
+<td><code>refused</code></td>
+<td>The image has too little light for a second, independent estimate of the trail.</td>
+</tr>
+<tr>
+<td><code>the two estimates disagree</code></td>
+<td><code>refused</code></td>
+<td>Two independent estimates of the trail disagree.</td>
+</tr>
+<tr>
+<td><code>the trails change across the frame</code></td>
+<td><code>refused</code></td>
+<td>The trail direction or length differs between regions of the frame.</td>
+</tr>
+<tr>
+<td><code>too few trails to check that they are straight</code></td>
+<td><code>refused</code></td>
+<td>Fayde fitted too few trails to check that they're straight.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>trail</code> field is <code>null</code> except in <code>trails</code> mode, when it contains the following fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>length_px</code></td>
+<td>The full length of the trail, in pixels</td>
+</tr>
+<tr>
+<td><code>angle_deg</code></td>
+<td>The direction of the trail, in degrees from +x toward +y, from −90° to 90°</td>
+</tr>
+<tr>
+<td><code>width_sigma_px</code></td>
+<td>The Gaussian σ of the stars across the trail, in pixels</td>
+</tr>
+<tr>
+<td><code>sigma_length_px</code></td>
+<td>The 1σ error of <code>length_px</code>, in pixels</td>
+</tr>
+<tr>
+<td><code>sigma_angle_deg</code></td>
+<td>The 1σ error of <code>angle_deg</code>, in degrees</td>
+</tr>
+<tr>
+<td><code>fitted</code></td>
+<td>The number of trails that Fayde fitted to measure the trail. When the value is 0, Fayde uses the census values.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>kernel</code> field contains the following measurements in <code>kernel</code> mode. Its value is
+<code>null</code> in the other modes.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>width_px</code>, <code>height_px</code></td>
+<td>Bounding dimensions of the correlation taps. For field rotation, these are the maximum dimensions over the regions.</td>
+</tr>
+<tr>
+<td><code>stacked</code></td>
+<td>Number of stars that contributed to the template or common transverse profile.</td>
+</tr>
+<tr>
+<td><code>path_length_px</code></td>
+<td>Estimated path length. For field rotation, this is the median over the regions.</td>
+</tr>
+<tr>
+<td><code>bend_px</code></td>
+<td>RMS deviation of the path from its best straight line. For field rotation, this is the median over the regions.</td>
+</tr>
+<tr>
+<td><code>regions</code></td>
+<td>Number of regions with distinct templates.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>sources</code> field lists the stars that Fayde passes to the solver, and the <code>rejected</code> field
+lists the detections that it set aside. Each detection has a 1-based position (<code>x</code>, <code>y</code>), a
+1σ position error (<code>sigma_px</code>), and 1σ errors along the trail (<code>sigma_along_px</code>) and across it
+(<code>sigma_across_px</code>). In <code>trails</code> mode, a star's <code>sigma_px</code> is the larger of <code>sigma_along_px</code>
+and <code>sigma_across_px</code>. In <code>kernel</code> mode, the errors are along and across the template's
+major axis, and <code>sigma_px</code> is the largest 1σ error over all directions. When the stars are
+points, the three errors are equal. The <code>class</code> field describes each detection.</p>
+<ul>
+<li>In <code>sources</code>: <code>star</code>, <code>saturated</code> for a star with saturated pixels, or <code>extended</code> for a
+  source that is wider than the stars</li>
+<li>In <code>rejected</code>: <code>sharp</code> for a hot pixel or cosmic-ray hit, <code>streak</code> for a detection on a traced
+  streak, or <code>point</code> for a point-like source in an image whose stars are trails, such as the
+  tracked object</li>
+</ul>
 <h2 id="check-or-refit-an-existing-wcs">Check or refit an existing WCS<a class="headerlink" href="#check-or-refit-an-existing-wcs" title="Permanent link">&para;</a></h2>
-<p>Replace <code>WCS</code> with the path to the WCS file to check, for example <code>frame.wcs</code>. <code>OUTPUT</code> must be
-a different file from <code>WCS</code>.</p>
 <p>To check a WCS from any solver against the catalog, use <code>fayde verify</code>:</p>
 <div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>verify<span class="w"> </span>--image<span class="w"> </span>FRAME<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>--wcs<span class="w"> </span>WCS
 </code></pre></div>
 <p>To fit the WCS again from the matched stars and write the result, use <code>fayde refit</code>:</p>
 <div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>refit<span class="w"> </span>--image<span class="w"> </span>FRAME<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>--wcs<span class="w"> </span>WCS<span class="w"> </span>-o<span class="w"> </span>OUTPUT
 </code></pre></div>
+<p>Replace the following:</p>
+<ul>
+<li><code>WCS</code>: The path to the WCS file to check, for example <code>frame.wcs</code></li>
+<li><code>OUTPUT</code>: The path to the WCS file to write, which must differ from <code>WCS</code></li>
+</ul>
 <p>Both commands also accept a source list: use <code>--sources SOURCES --header FRAME</code> in place of
 <code>--image FRAME</code>.</p>
 <h2 id="find-catalog-stars-at-a-position">Find catalog stars at a position<a class="headerlink" href="#find-catalog-stars-at-a-position" title="Permanent link">&para;</a></h2>
@@ -1473,6 +2081,8 @@ positions with <code>--at</code>, sky positions with <code>--at-sky</code>, or a
 <p>To check a pixel position and a sky position at a specified epoch, use <code>--at</code> and <code>--at-sky</code>:</p>
 <div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>verify<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>--wcs<span class="w"> </span>WCS<span class="w"> </span>--epoch<span class="w"> </span><span class="m">2020</span>.89<span class="w"> </span>--at<span class="w"> </span><span class="m">412</span>.3,88.1<span class="w"> </span>--at-sky<span class="w"> </span><span class="m">172</span>.5,1.6
 </code></pre></div>
+<p>Pixel positions are 1-based, as in FITS: the center of the first pixel is at (1, 1). Sky
+positions are the right ascension and declination in degrees.</p>
 <p>For each position, the report lists the following:</p>
 <ul>
 <li>The nearest stars at the observation epoch and their separations</li>

@@ -16,7 +16,7 @@
         <link rel="prev" href="../plate-solver/">
       
       
-        <link rel="next" href="../../research/literature-review/">
+        <link rel="next" href="../streak-detection/">
       
       
         
@@ -1036,6 +1036,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../research/literature-review/" class="md-nav__link">
         
   
@@ -1310,14 +1338,14 @@ saturated stars, stray light. Output: what the solver's input contract asks of a
 </tbody>
 </table>
 <p>Streaks are traced and reported (ends, angle, width, flux), and every detection on one is kept
-out of the star list. Frames whose stars are trailed (tracking a satellite) are out of scope:
-their star list still comes from the host's own detector, as before.</p>
+out of the star list. Frames whose stars are trailed (tracking a satellite) are handled by a
+second pass, designed in <a href="../streak-detection/"><code>streak-detection.md</code></a>.</p>
 <p>Design targets, in order: no parameter the user must know (star width, noise and threshold
 are measured or derived; gain is read from the header when it is there); robust to cosmic rays
 by the hundred and to stray light; position errors that the solver's verification and fit can
-trust; speed; and the same bits on every machine (<code>fayde_core::Portable</code>, no platform maths).</p>
+trust; speed; and the same bits on every machine (<code>fayde_core::Portable</code>, no platform math).</p>
 <h2 id="2-why-not-an-existing-detector">2. Why not an existing detector<a class="headerlink" href="#2-why-not-an-existing-detector" title="Permanent link">&para;</a></h2>
-<p>From the survey (literature review §7), what is in use today:</p>
+<p>From the survey (literature review §7) of the detectors in use:</p>
 <ul>
 <li>None measures the star width and adapts its filter. astrometry.net's <code>simplexy</code> smooths with
   a fixed σ = 1 px; DAOFIND and photutils need the FWHM from the user; SExtractor a fixed 3 × 3
@@ -1327,9 +1355,9 @@ trust; speed; and the same bits on every machine (<code>fayde_core::Portable</co
   effect of size or shape gates, and astrometry.net removes only horizontal and vertical lines.</li>
 <li>Hot pixels and cosmic rays are handled by minimum-area or sharpness heuristics that conflict
   with undersampled stars.</li>
-<li>Licences: SExtractor GPL, SEP LGPL, astrometry.net GPL as distributed, cedar-detect
+<li>Licenses: SExtractor GPL, SEP LGPL, astrometry.net GPL as distributed, cedar-detect
   source-available but not open source. Everything here is written from the papers, so no other
-  project's code, and none of its licence terms, enters Fayde.</li>
+  project's code, and none of its license terms, enters Fayde.</li>
 </ul>
 <h2 id="3-method">3. Method<a class="headerlink" href="#3-method" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>image
@@ -1360,37 +1388,38 @@ noise correlation.</p>
 <li>Noise: <code>1.4826 × MAD / √2</code> of the differences of pixel pairs separated by more than the
   kernel's reach, clipped up to three times. A difference cancels the background and its
   gradient, which a spread of values would count as noise.</li>
-<li>A tile standing above what its neighbours predict (a bright star, a galaxy) is replaced by the
+<li>A tile standing above what its neighbors predict (a bright star, a galaxy) is replaced by the
   prediction: the largest, over the four lines through the tile, of the mean of its two
-  neighbours on that line. SExtractor's 3 × 3 median flattens the corner of a frame lit from
+  neighbors on that line. SExtractor's 3 × 3 median flattens the corner of a frame lit from
   outside; this filter does not (the glow of stray light curves up along the direction to its
   source and down across it, and the line nearest that direction predicts at least the tile).</li>
-<li>Between tile centres the values are bilinear; beyond the outermost centres the background is
+<li>Between tile centers the values are bilinear; beyond the outermost centers the background is
   extrapolated in a straight line, so a gradient running off the frame is followed to the edge.</li>
 </ul>
-<p><strong>Clipped sky.</strong> If at least a quarter of the valid raw pixels equal the frame minimum, Fayde
-checks the distribution of those pixels in each tile. A tile is padding if at least 99% of its
-valid pixels equal the floor, or if transitions between floor and above-floor pixels occur at
-most a quarter as often as in a random mix. The detector checks the transition rate in tiles
+<p>If at least a quarter of the valid raw pixels equal the frame minimum, Fayde checks the
+distribution of those pixels in each tile. A tile is padding if at least 99% of its valid
+pixels equal the floor, or if transitions between floor and above-floor pixels occur at most
+a quarter as often as in a random mix. The detector checks the transition rate in tiles
 with at least eight floor pixels.</p>
-<p>Fayde uses the clipped-sky model when more than half of the sky tiles with at least 24 valid
-pixels yield a fit. To fit a tile, at least a quarter of its valid pixels must be at the floor
-and at least 16 must be above it. The singly left-censored normal fit uses the floor fraction
-and an empirical quantile near the middle of the surviving values. Tiles without a fit use the
-frame's typical fit. When the model applies, floor pixels in padding tiles are undefined for
-detection. Otherwise, Fayde uses the standard filtered mesh.</p>
-<p>The fit estimates the sky before clipping. Its clipped moments give the background and noise of
-the recorded pixels. Fayde propagates these through the point filter and accounts for the skew
-of the filtered noise when setting the peak threshold. On a simulated frame of 100 stars with
-90% of the sky clipped at zero, 95 of 579 detections were stars before; with the model, 100 of
-100, and every star is found. On 35 real frames with 25–36% of their pixels at zero, every frame
-still solves and the fit residual fell on 31 of them (median 0.40 to 0.35 px).</p>
+<p>Fayde uses the clipped-sky model when more than half of the sky tiles with at least 24
+valid pixels yield a fit. To fit a tile, at least a quarter of its valid pixels must be
+at the floor and at least 16 must be above it. The singly left-censored normal fit uses
+the floor fraction and an empirical quantile near the middle of the surviving values.
+Tiles without a fit use the frame's typical fit. When the model applies, floor pixels in
+padding tiles are undefined for detection. Otherwise, Fayde uses the standard filtered
+mesh.</p>
+<p>The fit estimates the sky before clipping. Its clipped moments give the background and noise
+of the recorded pixels. Fayde propagates these through the point filter and accounts for the
+skew of the filtered noise when setting peak and census thresholds. The trail pass uses the
+same sky model for raw-pixel fits and to set a minimum noise scale for the aimed filter. On a
+clipped frame, the automatic trail threshold is at least 5σ, and a trail center must be on the
+frame and have an along-trail uncertainty within one FWHM across the trail.</p>
 <h3 id="33-star-width">3.3 Star width<a class="headerlink" href="#33-star-width" title="Permanent link">&para;</a></h3>
 <p>For a peak of the filtered image, the variance of the star's profile is the fitted variance
 (§3.4) less the kernel's. The frame's star width is taken from bright, round peaks, but they
 are not all stars: on a warm or irradiated detector hot pixels and cosmic-ray hits outnumber
 stars ten to one or more. Nothing that came through the optics is sharper than the optics allow,
-and stars share one width where artefacts have many. So the stars are the <strong>widest distinct
+and stars share one width where artifacts have many. So the stars are the <strong>widest distinct
 mode</strong> of the size distribution: in a histogram of ln(size), the widest local maximum holding at
 least 5% of the tallest one's count and separated from narrower sizes by a dip to half its
 height. Blends and galaxies form a tail, not a mode.</p>
@@ -1412,9 +1441,9 @@ around the maximum. For an elliptical Gaussian this is exact, and it gives at on
 <p>Cost: nine logarithms and about 40 multiplications per peak.</p>
 <h3 id="35-local-test">3.5 Local test<a class="headerlink" href="#35-local-test" title="Permanent link">&para;</a></h3>
 <p>The mesh follows the frame on the scale of its tiles. Stray light and halos change faster, and
-what the mesh misses is left as broad bumps. A star is narrow: three widths from its centre
+what the mesh misses is left as broad bumps. A star is narrow: three widths from its center
 nothing of it is left, so its height above the median of a ring of that radius (eight samples,
-robust to a neighbour or a streak crossing the ring) is its height; a bump two or more
+robust to a neighbor or a streak crossing the ring) is its height; a bump two or more
 star-widths across falls short. Where the ring agrees with the mesh, the mesh (less noisy)
 stands; elsewhere the ring is the background and the peak must exceed it by the threshold less
 one σ. Saturated stars are exempt.</p>
@@ -1430,7 +1459,7 @@ one σ. Saturated stars are exempt.</p>
 <tbody>
 <tr>
 <td><code>sharp</code></td>
-<td>Narrowest axis under 0.4 of the stars' narrow-axis variance, beyond the fit's noise; or, in the unfiltered pixels, the second faintest of the four neighbours of the brightest pixel under half of <code>exp(−1/σ²)</code> of it (light through the optics reaches all four; charge deposited in the detector does not)</td>
+<td>Narrowest axis under 0.4 of the stars' narrow-axis variance, beyond the fit's noise; or, in the unfiltered pixels, the second faintest of the four neighbors of the brightest pixel under half of <code>exp(−1/σ²)</code> of it (light through the optics reaches all four; charge deposited in the detector does not)</td>
 <td>no</td>
 </tr>
 <tr>
@@ -1449,16 +1478,21 @@ one σ. Saturated stars are exempt.</p>
 <td>no</td>
 </tr>
 <tr>
+<td><code>point</code></td>
+<td>Point-like in a frame whose stars are trails (the tracked object): <a href="../streak-detection/"><code>streak-detection.md</code></a></td>
+<td>no</td>
+</tr>
+<tr>
 <td><code>star</code></td>
 <td>The rest</td>
 <td>yes</td>
 </tr>
 </tbody>
 </table>
-<p>A saturated star's centre is the mean position of the <em>core</em> of its saturated region: the
+<p>A saturated star's center is the mean position of the <em>core</em> of its saturated region: the
 pixels whose runs of saturated pixels along the row and along the column are each at least half
 the longest. A bleed trail, a few pixels wide, has short runs across it and does not move the
-centre. A saturated region that is a line of even width is a streak, not a star.</p>
+center. A saturated region that is a line of even width is a streak, not a star.</p>
 <p>The work is bounded whatever the frame and the settings: each saturated pixel is flooded once
 per frame, a region is followed for at most 200,000 pixels, a saturation level within 20σ of
 the background is ignored, at most 200,000 peaks are measured and 1,000 streaks traced, and
@@ -1509,7 +1543,7 @@ variance proportional to the star's profile gives</p>
 <div class="highlight"><pre><span></span><code>Var = σp² · σt⁸ / (N · σk⁴ · (σk² + 2σp²)²)     = (16/9) · σp² / N  for a matched kernel
 </code></pre></div>
 <p>the known result for a Gaussian-weighted centroid (Mortensen et al. 2010, eq. 6). Without a gain
-it is not modelled, and a floor of 0.05 px stands in. Saturated stars: 0.1 px + 3% of the radius
+it is not modeled, and a floor of 0.05 px stands in. Saturated stars: 0.1 px + 3% of the radius
 of the saturated core (measured on synthetic frames).</p>
 <h2 id="5-measured">5. Measured<a class="headerlink" href="#5-measured" title="Permanent link">&para;</a></h2>
 <p>Synthetic frames (<code>fayde_detect::synth</code>: pixel-integrated Gaussian or Moffat stars, sky and read
@@ -1573,7 +1607,7 @@ core.</p>
 </tr>
 <tr>
 <td>Saturated stars, 3 to 300 × saturation, with bleed trails</td>
-<td>centre within 0.6 px; one detection each</td>
+<td>center within 0.6 px; one detection each</td>
 </tr>
 </tbody>
 </table>
@@ -1600,7 +1634,7 @@ header pointing (2° radius) and a scale prior:</p>
 </tr>
 <tr>
 <td>Detection time</td>
-<td>2.0 ms per frame (median)</td>
+<td>2.0 ms per frame (median). A later run measured 2.2 ms, and 3.0 ms with the trail census (<a href="../streak-detection/"><code>streak-detection.md</code></a> §7)</td>
 </tr>
 <tr>
 <td>Matched stars</td>
@@ -1624,12 +1658,12 @@ header pointing (2° radius) and a scale prior:</p>
   narrowness judged against the stars' mean width, its 36 brightest stars were classed as
   cosmic rays (117 "sharp" sources; 7 once judged against the stars' narrow axis), and with the
   brightest stars missing the solver's search, which starts from them, found nothing although
-  417 of the remaining sources matched the catalogue. It now solves with 451 matched stars.</li>
+417 of the remaining sources matched the catalog. It now solves with 451 matched stars.</li>
 </ul>
 <p>The detector this one replaced (after SExtractor: clipped-mode mesh, pixel cleaning, matched
 filter, connected pixels, windowed centroids) was run on the same 109 frames with the same
 solver and priors: 105 solved, median residual 0.79 px, error scale 2.65, about 20 ms per
-frame. On the 105 frames both solve, the field centres agree to 0.19″ (median); on the one
+frame. On the 105 frames both solve, the field centers agree to 0.19″ (median); on the one
 where they differ by 10″, this detector's solution has a residual of 1.5 px and the other's 5 px.</p>
 <h2 id="6-limits">6. Limits<a class="headerlink" href="#6-limits" title="Permanent link">&para;</a></h2>
 <ol>
@@ -1645,8 +1679,8 @@ where they differ by 10″, this detector's solution has a residual of 1.5 px an
 <li>Undersampled stars (σ under 0.7 px): errors about 1.3 times the claim.</li>
 <li>One thread. The filter and the scan split into strips without changing the result.</li>
 <li>FITS images only (8 to 64-bit integers and floats); tile-compressed images are not read.</li>
-<li>Trailed stars (tracking a satellite) are out of scope here. The streak tracer does find star
-   trails, and turning them into sources with <code>Frame::trail</code> is a possible extension.</li>
+<li>Trailed stars (from a telescope tracking a satellite) are handled by a second pass:
+   <a href="../streak-detection/"><code>streak-detection.md</code></a> §7.</li>
 </ol>
 
 

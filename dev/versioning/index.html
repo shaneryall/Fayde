@@ -909,6 +909,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../design/streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../research/literature-review/" class="md-nav__link">
         
   
@@ -1025,6 +1053,8 @@ a breaking change increases the minor number, and anything else increases the pa
 <li>Removing a command-line or Python option, or changing its meaning</li>
 <li>Removing or renaming a JSON report field</li>
 <li>Changing the index file format or the bytes of an index, including its <code>content_hash</code></li>
+<li>Changing a published crate's public Rust API so that existing code no longer compiles
+  (for example, adding a field to a public struct without <code>#[non_exhaustive]</code>)</li>
 </ul>
 <p>Adding a report field isn't a breaking change. If a release changes indexes, you must rebuild
 your indexes as directed in the release notes.</p>

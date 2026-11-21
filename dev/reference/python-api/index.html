@@ -713,6 +713,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#fayde.Solver.solve_detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        solve_detection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fayde.Solver.solve_image" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1020,6 +1031,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../design/streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../research/literature-review/" class="md-nav__link">
         
   
@@ -1147,6 +1186,17 @@
     <span class="md-ellipsis">
       
         solve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fayde.Solver.solve_detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        solve_detection
       
     </span>
   </a>
@@ -1503,8 +1553,9 @@ with <code>"error": True</code> and <code>reason</code>, as the command line pri
 
 
         <p>A UCAC4 catalogue and pattern indexes, opened once and reused.</p>
-<p><code>ucac4</code> is the UCAC4 directory (holding <code>u4b/</code>, optionally <code>u4i/</code>); <code>indexes</code> the
-<code>.fidx</code> files used by :meth:<code>solve</code>. Thread-safe: the GIL is released while solving.</p>
+<p><code>ucac4</code> is the UCAC4 directory (holding <code>u4b/</code>, optionally <code>u4i/</code>); by default the
+<code>FAYDE_UCAC4</code> environment variable. <code>indexes</code> are the <code>.fidx</code> files used by
+:meth:<code>solve</code>. Thread-safe: the GIL is released while solving.</p>
 
 
 
@@ -1540,6 +1591,27 @@ with <code>"error": True</code> and <code>reason</code>, as the command line pri
 
         <p>Solve a source list. Returns the report; <code>report["solved"]</code> says whether it solved
 (an abstention has <code>reason</code>, <code>best_log_odds</code>, <code>hypotheses_tested</code>, <code>search</code>).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="fayde.Solver.solve_detection" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">solve_detection</span><span class="p">(</span><span class="n">detection</span><span class="p">,</span> <span class="o">**</span><span class="n">options</span><span class="p">)</span></code>
+
+<a href="#fayde.Solver.solve_detection" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Solve the sources of a :func:<code>detect</code> report: their 1-based positions, fluxes,
+errors, star probabilities and truncation, and the stars' trail when the report found
+one (unless <code>trail_length</code> and <code>trail_angle</code> are given). Takes :meth:<code>solve</code>'s
+options; pass the image's <code>header</code> for its priors.</p>
 
 
     </div>
@@ -1648,13 +1720,19 @@ arbitrary position) and <code>consistent</code>.</p>
     <div class="doc doc-contents ">
 
         <p>Find stars in an image: a FITS path, a 2-D array (row 0 = FITS row 1) or an Astropy HDU.</p>
-<p>Options: <code>fwhm</code> (px; default measured), <code>detect_threshold</code> (σ of a peak; default: the
-level that lets one noise peak through per frame, about 5), <code>saturation</code> and <code>gain</code>
-(default: the header's <code>SATURATE</code>, <code>GAIN</code>/<code>EGAIN</code>), <code>max_sources</code> (default 2000),
-<code>header</code> (dict or cards, for an array). Returns the report <code>fayde detect</code> prints:
-settings, background, noise, <code>sources</code> (the stars, with FITS 1-based <code>x</code>, <code>y</code>,
-<code>sigma_px</code>, <code>flux</code>, <code>p_star</code> and <code>class</code>), <code>streaks</code> (ends, angle, width, flux)
-and <code>rejected</code> (hot pixels, cosmic-ray hits, anything on a streak).</p>
+<p>Options: <code>fwhm</code> (px; default measured), <code>detect_threshold</code> (σ of a peak, at least 1.5;
+default: the level that lets one noise peak through per frame, about 5), <code>saturation</code> and
+<code>gain</code> (default: the header's <code>SATURATE</code>, <code>GAIN</code>/<code>EGAIN</code>), <code>max_sources</code> (default
+2000), <code>trail_angle</code> (degrees from +x towards +y: the expected direction of star trails,
+to choose among directions), <code>no_trails</code> (measure every star as a point, even when the
+stars are trails) and <code>header</code> (dict or cards, for an array). Returns the report
+<code>fayde detect</code> prints: settings, background, noise, <code>mode</code> (<code>"points"</code>, <code>"trails"</code>,
+<code>"kernel"</code>, or <code>"refused"</code>) with <code>census</code>, <code>trail</code>, and <code>kernel</code>, <code>sources</code> (the stars, with FITS 1-based
+<code>x</code>, <code>y</code>, <code>sigma_px</code>, <code>flux</code>, <code>p_star</code> and <code>class</code>), <code>streaks</code> (ends, angle,
+width, flux) and <code>rejected</code> (hot pixels, cosmic-ray hits, anything on a streak, point-like
+objects in a trailed frame).</p>
+<p>To solve the sources, pass the report to :meth:<code>Solver.solve_detection</code>; its positions are
+1-based, which :meth:<code>Solver.solve</code> takes only with <code>origin=1</code>.</p>
 
 
     </div>

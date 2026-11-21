@@ -920,6 +920,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../design/streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../research/literature-review/" class="md-nav__link">
         
   
@@ -1049,8 +1077,8 @@ provide. To cover a wider range of scales, follow these steps:</p>
 <li>Pass each index to <code>fayde solve</code> with a separate <code>--index</code> option.</li>
 </ol>
 <h2 id="build-the-recommended-indexes">Build the recommended indexes<a class="headerlink" href="#build-the-recommended-indexes" title="Permanent link">&para;</a></h2>
-<p>The two recommended indexes cover the whole sky at epoch 2025.0. You need the full UCAC4 catalog,
-with all 900 zone files, and at least 32 GB of free memory.</p>
+<p>The two recommended indexes cover the whole sky at epoch 2025.0, for fields of about 1° and somewhat
+wider. You need the full UCAC4 catalog, with all 900 zone files, and at least 32 GB of free memory.</p>
 <p>Replace <code>UCAC4_DIR</code> with the path to the directory that contains <code>u4b</code>. To cover both field
 sizes, build both indexes:</p>
 <ol>
@@ -1063,8 +1091,8 @@ sizes, build both indexes:</p>
 </ol>
 <div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>index<span class="w"> </span>build<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>--fov<span class="w"> </span><span class="m">1</span>.3<span class="w"> </span>--stars-per-fov<span class="w"> </span><span class="m">40</span><span class="w"> </span>--pattern-stars-per-fov<span class="w"> </span><span class="m">20</span><span class="w"> </span>--stars-per-field<span class="w"> </span><span class="m">12</span><span class="w"> </span>--mag-limit<span class="w"> </span><span class="m">15</span>.5<span class="w"> </span>--min-edge<span class="w"> </span><span class="m">0</span>.05<span class="w"> </span>--epoch<span class="w"> </span><span class="m">2025</span><span class="w"> </span>-o<span class="w"> </span>allsky-1.3.fidx
 </code></pre></div>
-<p>The builds used the version 0.1.0 binary on a 32-core x86_64 Linux computer. Other jobs ran on
-the computer during the builds, with a load of about 38. The table lists the build results:</p>
+<p>The builds used the version 0.1.0 binary on a 32-core x86_64 Linux computer. The table lists
+the build results:</p>
 <table>
 <thead>
 <tr>
@@ -1081,7 +1109,7 @@ the computer during the builds, with a load of about 38. The table lists the bui
 <td><code>allsky-1.0.fidx</code></td>
 <td style="text-align: right;">1,572,824</td>
 <td style="text-align: right;">259,900,180</td>
-<td style="text-align: right;">17,211,606,974 bytes</td>
+<td style="text-align: right;">17.2 GB</td>
 <td style="text-align: right;">30 min 26 s</td>
 <td style="text-align: right;">22.7 GB</td>
 </tr>
@@ -1089,7 +1117,7 @@ the computer during the builds, with a load of about 38. The table lists the bui
 <td><code>allsky-1.3.fidx</code></td>
 <td style="text-align: right;">1,572,824</td>
 <td style="text-align: right;">153,951,343</td>
-<td style="text-align: right;">10,218,984,414 bytes</td>
+<td style="text-align: right;">10.2 GB</td>
 <td style="text-align: right;">21 min 50 s</td>
 <td style="text-align: right;">13.6 GB</td>
 </tr>
@@ -1133,7 +1161,7 @@ damage. The hash isn't a cryptographic signature. Fayde records each index's has
 <div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>index<span class="w"> </span>info<span class="w"> </span>allsky-1.0.fidx
 </code></pre></div>
 <ol>
-<li>Compare the <code>content_hash</code> field in the output with the table below.</li>
+<li>Compare the <code>content_hash</code> field in the output with the following table.</li>
 </ol>
 <p>An index's bytes and hash don't depend on the platform or build profile. Fayde uses
 <code>fayde_core::Portable</code> for all its math. Builds from the full UCAC4 catalog with the commands
@@ -1162,7 +1190,7 @@ the release notes describe the change, and this page lists the new hashes.</p>
 gigabytes of memory and about half an hour.</p>
 <h2 id="index-build-options">Index build options<a class="headerlink" href="#index-build-options" title="Permanent link">&para;</a></h2>
 <p>To list every option and its default value, run <code>fayde index build --help</code>. The table describes
-the options used in the recommended commands:</p>
+the options used in the recommended commands, and <code>--region</code>:</p>
 <table>
 <thead>
 <tr>
@@ -1201,11 +1229,11 @@ the options used in the recommended commands:</p>
 </tr>
 <tr>
 <td><code>--region RA,DEC,RADIUS</code></td>
-<td>Builds a regional index, in degrees, instead of an all-sky index. A regional build takes minutes, which makes it useful for tests</td>
+<td>Builds a regional index instead of an all-sky index, with <code>RA</code>, <code>DEC</code>, and <code>RADIUS</code> in degrees. A regional build takes minutes, which makes it useful for tests</td>
 </tr>
 </tbody>
 </table>
-<p>For more information about the algorithms, see the <a href="../references/">references</a>.</p>
+<p>For more information about the algorithms, see <a href="../references/">References</a>.</p>
 
 
 

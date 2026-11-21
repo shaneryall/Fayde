@@ -839,6 +839,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../design/streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../research/literature-review/" class="md-nav__link">
         
   
@@ -910,8 +938,9 @@
 files. Fayde doesn't include the catalog. The Strasbourg astronomical Data Center (CDS)
 publishes it as <a href="https://vizier.cfa.harvard.edu/ftp/cats/I/322A/">catalog I/322A</a>.
 The download is about 8.9 GB.</p>
-<p>To download the catalog, use a terminal on Linux or macOS, or PowerShell on Windows. In the
-download commands, use <code>curl.exe</code> in place of <code>curl</code> on Windows:</p>
+<p>Use a terminal on Linux or macOS, or PowerShell on Windows. On Windows, use <code>curl.exe</code> in place
+of <code>curl</code> in the download commands.</p>
+<p>To download the catalog, follow these steps:</p>
 <ol>
 <li>On Linux or macOS, create the catalog directories:</li>
 </ol>
@@ -972,6 +1001,9 @@ download commands, use <code>curl.exe</code> in place of <code>curl</code> on Wi
 <p>When a Fayde command has a <code>--ucac4</code> option, give it the path to the <code>UCAC4</code> directory, which
 is the directory that contains <code>u4b</code>. Download all 900 zone files, because Fayde reports an
 error when a zone that it needs is missing.</p>
+<p>To leave out <code>--ucac4</code>, set the <code>FAYDE_UCAC4</code> environment variable to the path to the <code>UCAC4</code>
+directory. For more information about this variable, see
+<a href="../usage/#set-the-catalog-directory-once">Set the catalog directory once</a>.</p>
 
 
 

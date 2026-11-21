@@ -1019,6 +1019,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../design/streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../research/literature-review/" class="md-nav__link">
         
   
@@ -1234,7 +1262,7 @@
 
 
 <h1 id="command-line-reference">Command-line reference<a class="headerlink" href="#command-line-reference" title="Permanent link">&para;</a></h1>
-<p>Each command's options and defaults, as printed by its <code>--help</code> option in <code>fayde 0.3.3 (c3f04a273daf)</code>. For tasks and examples, see <a href="../../usage/">Use the command line</a>.</p>
+<p>Each command's options and defaults, as printed by its <code>--help</code> option in <code>fayde 0.4.0 (197bf29c9425)</code>. For tasks and examples, see <a href="../../usage/">Use the command line</a>.</p>
 <h2 id="fayde">fayde<a class="headerlink" href="#fayde" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>usage:
   fayde index build --ucac4 &lt;dir&gt; --fov &lt;deg&gt; -o &lt;file&gt; [--epoch &lt;year&gt;] [--mag-limit &lt;m&gt;]
@@ -1252,7 +1280,7 @@
   fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
                [-o &lt;out.wcs&gt;]
      detection options (with --image): --fwhm &lt;px&gt; --detect-threshold &lt;sigma&gt; --saturation &lt;adu&gt;
-       --gain &lt;e/adu&gt; --max-sources &lt;n&gt;
+       --gain &lt;e/adu&gt; --max-sources &lt;n&gt; (--trail-angle also guides detection)
      request options: --header &lt;frame.fits&gt; --instrument &lt;profile.json&gt; --width &lt;px&gt; --height &lt;px&gt;
        --ra &lt;deg&gt; --dec &lt;deg&gt; --radius &lt;deg&gt; --pointing-sigma &lt;deg&gt;
        --scale &lt;arcsec/px&gt; --scale-sigma &lt;fraction&gt;
@@ -1267,6 +1295,8 @@
                 [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
   fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
               [--image-mag &lt;m&gt;] [--deadline &lt;s&gt;] [--pattern-sources &lt;n&gt;]
+  --ucac4 &lt;dir&gt; may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.
 </code></pre></div>
 <h2 id="fayde-solve">fayde solve<a class="headerlink" href="#fayde-solve" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>fayde solve  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; [options] [--index &lt;a.fidx&gt;]...
@@ -1335,11 +1365,13 @@ verify --at
 <h2 id="fayde-detect">fayde detect<a class="headerlink" href="#fayde-detect" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>fayde detect --image &lt;frame.fits&gt; [-o &lt;frame.sources.fits&gt;] [options]
 
-Finds stars (point sources: sidereal tracking or stare) in a FITS image and prints a JSON
-report: the settings used, the stars' width, background and noise, every source with its
-position (FITS 1-based), error, flux, star probability and class, the streaks traced (ends,
-angle, width, flux), and what was set aside (hot pixels, cosmic-ray hits, anything on a
-streak). -o also writes the sources as a source list for --sources.
+Finds stars in a FITS image as points, straight trails, or stars smeared along curved
+paths. Prints a JSON report with the settings, mode (points, trails, kernel, refused),
+census, trail or kernel measurements, stars' width, background, noise, and sources with
+position (FITS 1-based), error (along and across the trail too), flux, star probability and
+class, the streaks traced (ends, angle, width, flux), and what was set aside (hot pixels,
+cosmic-ray hits, anything on a streak, point-like objects in a trailed frame). -o also writes
+the sources as a source list for --sources, with the trail.
 The same detection runs inside `fayde solve|verify|refit --image &lt;frame.fits&gt;`, which also
 reads the frame's header from the image unless --header is given.
 
@@ -1352,6 +1384,10 @@ reads the frame's header from the image unless --header is given.
                               level of flat-topped stars
   --gain &lt;e/adu&gt;              gain, for the stars' own noise   default: GAIN or EGAIN, else none
   --max-sources &lt;n&gt;           brightest sources kept           default 2000
+  --trail-angle &lt;deg&gt;         expected direction of star       default: none; the trail used
+                              trails, from +x towards +y       is measured from the image
+  --no-trails                 measure every star as a point, even when the stars are
+                              trails (skips the trail census)
   -o &lt;frame.sources.fits&gt;     also write the sources as a source list (Fayde's FITS table:
                               X, Y, FLUX, SIGMA, P_STAR, TRUNCATED); name it after the frame
 </code></pre></div>
@@ -1542,7 +1578,7 @@ content hash.
   fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
                [-o &lt;out.wcs&gt;]
      detection options (with --image): --fwhm &lt;px&gt; --detect-threshold &lt;sigma&gt; --saturation &lt;adu&gt;
-       --gain &lt;e/adu&gt; --max-sources &lt;n&gt;
+       --gain &lt;e/adu&gt; --max-sources &lt;n&gt; (--trail-angle also guides detection)
      request options: --header &lt;frame.fits&gt; --instrument &lt;profile.json&gt; --width &lt;px&gt; --height &lt;px&gt;
        --ra &lt;deg&gt; --dec &lt;deg&gt; --radius &lt;deg&gt; --pointing-sigma &lt;deg&gt;
        --scale &lt;arcsec/px&gt; --scale-sigma &lt;fraction&gt;
@@ -1557,6 +1593,8 @@ content hash.
                 [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
   fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
               [--image-mag &lt;m&gt;] [--deadline &lt;s&gt;] [--pattern-sources &lt;n&gt;]
+  --ucac4 &lt;dir&gt; may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.
 </code></pre></div>
 <h2 id="fayde-catalog-download">fayde catalog download<a class="headerlink" href="#fayde-catalog-download" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>usage:
@@ -1575,7 +1613,7 @@ content hash.
   fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
                [-o &lt;out.wcs&gt;]
      detection options (with --image): --fwhm &lt;px&gt; --detect-threshold &lt;sigma&gt; --saturation &lt;adu&gt;
-       --gain &lt;e/adu&gt; --max-sources &lt;n&gt;
+       --gain &lt;e/adu&gt; --max-sources &lt;n&gt; (--trail-angle also guides detection)
      request options: --header &lt;frame.fits&gt; --instrument &lt;profile.json&gt; --width &lt;px&gt; --height &lt;px&gt;
        --ra &lt;deg&gt; --dec &lt;deg&gt; --radius &lt;deg&gt; --pointing-sigma &lt;deg&gt;
        --scale &lt;arcsec/px&gt; --scale-sigma &lt;fraction&gt;
@@ -1590,6 +1628,8 @@ content hash.
                 [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
   fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
               [--image-mag &lt;m&gt;] [--deadline &lt;s&gt;] [--pattern-sources &lt;n&gt;]
+  --ucac4 &lt;dir&gt; may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.
 </code></pre></div>
 <h2 id="fayde-catalog-check">fayde catalog check<a class="headerlink" href="#fayde-catalog-check" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>usage:
@@ -1608,7 +1648,7 @@ content hash.
   fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
                [-o &lt;out.wcs&gt;]
      detection options (with --image): --fwhm &lt;px&gt; --detect-threshold &lt;sigma&gt; --saturation &lt;adu&gt;
-       --gain &lt;e/adu&gt; --max-sources &lt;n&gt;
+       --gain &lt;e/adu&gt; --max-sources &lt;n&gt; (--trail-angle also guides detection)
      request options: --header &lt;frame.fits&gt; --instrument &lt;profile.json&gt; --width &lt;px&gt; --height &lt;px&gt;
        --ra &lt;deg&gt; --dec &lt;deg&gt; --radius &lt;deg&gt; --pointing-sigma &lt;deg&gt;
        --scale &lt;arcsec/px&gt; --scale-sigma &lt;fraction&gt;
@@ -1623,6 +1663,8 @@ content hash.
                 [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
   fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
               [--image-mag &lt;m&gt;] [--deadline &lt;s&gt;] [--pattern-sources &lt;n&gt;]
+  --ucac4 &lt;dir&gt; may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.
 </code></pre></div>
 <h2 id="fayde-catalog-import">fayde catalog import<a class="headerlink" href="#fayde-catalog-import" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>usage:
@@ -1641,7 +1683,7 @@ content hash.
   fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
                [-o &lt;out.wcs&gt;]
      detection options (with --image): --fwhm &lt;px&gt; --detect-threshold &lt;sigma&gt; --saturation &lt;adu&gt;
-       --gain &lt;e/adu&gt; --max-sources &lt;n&gt;
+       --gain &lt;e/adu&gt; --max-sources &lt;n&gt; (--trail-angle also guides detection)
      request options: --header &lt;frame.fits&gt; --instrument &lt;profile.json&gt; --width &lt;px&gt; --height &lt;px&gt;
        --ra &lt;deg&gt; --dec &lt;deg&gt; --radius &lt;deg&gt; --pointing-sigma &lt;deg&gt;
        --scale &lt;arcsec/px&gt; --scale-sigma &lt;fraction&gt;
@@ -1656,6 +1698,8 @@ content hash.
                 [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
   fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
               [--image-mag &lt;m&gt;] [--deadline &lt;s&gt;] [--pattern-sources &lt;n&gt;]
+  --ucac4 &lt;dir&gt; may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.
 </code></pre></div>
 <h2 id="fayde-compare">fayde compare<a class="headerlink" href="#fayde-compare" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>usage:
@@ -1674,7 +1718,7 @@ content hash.
   fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
                [-o &lt;out.wcs&gt;]
      detection options (with --image): --fwhm &lt;px&gt; --detect-threshold &lt;sigma&gt; --saturation &lt;adu&gt;
-       --gain &lt;e/adu&gt; --max-sources &lt;n&gt;
+       --gain &lt;e/adu&gt; --max-sources &lt;n&gt; (--trail-angle also guides detection)
      request options: --header &lt;frame.fits&gt; --instrument &lt;profile.json&gt; --width &lt;px&gt; --height &lt;px&gt;
        --ra &lt;deg&gt; --dec &lt;deg&gt; --radius &lt;deg&gt; --pointing-sigma &lt;deg&gt;
        --scale &lt;arcsec/px&gt; --scale-sigma &lt;fraction&gt;
@@ -1689,6 +1733,8 @@ content hash.
                 [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
   fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
               [--image-mag &lt;m&gt;] [--deadline &lt;s&gt;] [--pattern-sources &lt;n&gt;]
+  --ucac4 &lt;dir&gt; may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.
 </code></pre></div>
 <h2 id="fayde-bench">fayde bench<a class="headerlink" href="#fayde-bench" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>usage:
@@ -1707,7 +1753,7 @@ content hash.
   fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
                [-o &lt;out.wcs&gt;]
      detection options (with --image): --fwhm &lt;px&gt; --detect-threshold &lt;sigma&gt; --saturation &lt;adu&gt;
-       --gain &lt;e/adu&gt; --max-sources &lt;n&gt;
+       --gain &lt;e/adu&gt; --max-sources &lt;n&gt; (--trail-angle also guides detection)
      request options: --header &lt;frame.fits&gt; --instrument &lt;profile.json&gt; --width &lt;px&gt; --height &lt;px&gt;
        --ra &lt;deg&gt; --dec &lt;deg&gt; --radius &lt;deg&gt; --pointing-sigma &lt;deg&gt;
        --scale &lt;arcsec/px&gt; --scale-sigma &lt;fraction&gt;
@@ -1722,6 +1768,8 @@ content hash.
                 [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
   fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
               [--image-mag &lt;m&gt;] [--deadline &lt;s&gt;] [--pattern-sources &lt;n&gt;]
+  --ucac4 &lt;dir&gt; may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.
 </code></pre></div>
 
 

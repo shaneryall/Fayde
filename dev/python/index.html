@@ -839,6 +839,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../design/streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../research/literature-review/" class="md-nav__link">
         
   
@@ -917,37 +945,74 @@ find the stars in an image and solve it, create the solver and call <code>solve_
     <span class="n">cards</span> <span class="o">=</span> <span class="n">report</span><span class="p">[</span><span class="s2">"wcs_cards"</span><span class="p">]</span>
 </code></pre></div>
 <p>Replace <code>/path/to/UCAC4</code> with the path to your catalog directory and <code>frame.fits</code> with the path
-to your FITS image.</p>
+to your FITS image. If the <code>FAYDE_UCAC4</code> environment variable contains the path to the catalog
+directory, you can omit the catalog argument: <code>fayde.Solver()</code>.</p>
 <p>The <code>image</code> argument accepts the path to a FITS file, a 2-D NumPy array, or an Astropy HDU. For
 an array, pass the frame's header with <code>header</code>. You can use Fayde without NumPy or Astropy.</p>
 <p>If you detect the stars yourself, pass their positions to <code>solve</code>. In this example, <code>x</code>, <code>y</code>,
 and <code>flux</code> are sequences of the source positions and fluxes from your detector, and <code>hdr</code> is
-the image header. The <code>indexes</code> and <code>instrument</code> arguments are optional. To solve the source
-list, check the WCS, and find catalog stars at the source positions, use these methods:</p>
+the image header. The <code>indexes</code> and <code>instrument</code> arguments are optional. To solve the frame
+from these positions, check the WCS, fit the WCS again, and find catalog stars at the source
+positions, use these methods:</p>
 <div class="highlight"><pre><span></span><code><span class="n">solver</span> <span class="o">=</span> <span class="n">fayde</span><span class="o">.</span><span class="n">Solver</span><span class="p">(</span><span class="s2">"/path/to/UCAC4"</span><span class="p">,</span> <span class="n">indexes</span><span class="o">=</span><span class="p">[</span><span class="s2">"allsky-1.0.fidx"</span><span class="p">])</span>
 <span class="n">report</span> <span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">flux</span><span class="o">=</span><span class="n">flux</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">hdr</span><span class="p">,</span> <span class="n">instrument</span><span class="o">=</span><span class="s2">"profiles/example.json"</span><span class="p">,</span>
                       <span class="n">deadline</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">report</span><span class="p">[</span><span class="s2">"solved"</span><span class="p">]:</span>
     <span class="n">cards</span> <span class="o">=</span> <span class="n">report</span><span class="p">[</span><span class="s2">"wcs_cards"</span><span class="p">]</span>
     <span class="n">check</span> <span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">cards</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">hdr</span><span class="p">)</span>
+    <span class="n">refit</span> <span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">refit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">cards</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">hdr</span><span class="p">)</span>
     <span class="n">stars</span> <span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">stars_at</span><span class="p">(</span><span class="n">cards</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">hdr</span><span class="p">)</span>
 </code></pre></div>
+<p>The <code>verify</code> method checks the WCS against the catalog without changing it. The <code>refit</code> method
+fits the WCS again from the matched stars. It returns the same report fields as <code>solve</code>,
+including <code>wcs_cards</code> when it finds a solution.</p>
+<p>The <code>solve</code>, <code>verify</code>, and <code>refit</code> methods take <code>x</code> and <code>y</code> as 0-based positions, as NumPy and
+Astropy index pixels. If your positions are 1-based, as in FITS, pass <code>origin=1</code>. These methods
+also accept the following optional sequences, with one value for each source:</p>
+<ul>
+<li><code>flux</code>: The integrated flux in any linear unit</li>
+<li><code>sigma_px</code>: The 1σ position error in pixels</li>
+<li><code>p_star</code>: The prior probability that the source is a real star, from 0 to 1</li>
+<li><code>truncated</code>: Whether the frame edge or a mask cuts the source, as booleans or as 0 and 1</li>
+</ul>
+<p>Fayde ignores <code>sigma_px</code> values that aren't positive and <code>p_star</code> values outside that range.
+In <code>flux</code>, <code>sigma_px</code>, and <code>p_star</code>, NaN means that the source has no value.</p>
 <p>To find the stars in an image without solving it, use <code>fayde.detect</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="n">detection</span> <span class="o">=</span> <span class="n">fayde</span><span class="o">.</span><span class="n">detect</span><span class="p">(</span><span class="s2">"frame.fits"</span><span class="p">)</span>
 <span class="n">sources</span> <span class="o">=</span> <span class="n">detection</span><span class="p">[</span><span class="s2">"sources"</span><span class="p">]</span>
 </code></pre></div>
+<p>The <code>x</code> and <code>y</code> positions in the detection report are 1-based, as in FITS. To solve these
+sources, pass the report to <code>solve_detection</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">report</span> <span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">solve_detection</span><span class="p">(</span><span class="n">detection</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">hdr</span><span class="p">)</span>
+</code></pre></div>
+<p>The <code>solve_detection</code> method passes the image size and each source's position, flux,
+<code>sigma_px</code>, <code>p_star</code>, and <code>truncated</code> value to the solver. If the report identifies star
+trails, the method also passes the measured trail unless you give <code>trail_length</code> and
+<code>trail_angle</code>. It doesn't read the image header, so pass the header with <code>header</code>. If you pass
+the detection report's positions to <code>solve</code> without <code>origin=1</code>, Fayde interprets each coordinate
+as 1 pixel larger than its actual value.</p>
+<p>If an image shows star trails in more than one direction, give the expected direction to
+<code>fayde.detect</code> with <code>trail_angle</code>, in degrees from +x toward +y. Fayde still measures the
+trail from the image. With <code>solve_image</code>, give <code>trail_length</code> and <code>trail_angle</code> together. The
+angle guides detection, and the two values replace the measured trail in the solve.</p>
 <p>The Python interface follows the command line:</p>
 <ul>
-<li>The <code>solve</code>, <code>solve_image</code>, and <code>verify</code> methods take the command-line options under the same
-  names with underscores, such as <code>pointing_sigma</code> and <code>relax_priors_on_failure</code>. In Python, run
-  <code>help(fayde)</code> to list them. The <code>detect</code> and <code>stars_at</code> functions have their own options. To
-  list those options, run <code>help(fayde.detect)</code> and <code>help(fayde.Solver.stars_at)</code>.</li>
-<li>Input coordinates <code>x</code> and <code>y</code> are 0-based unless you pass <code>origin=1</code>. Pixel fields in the
-  report are 1-based, as in FITS and in the command-line report.</li>
+<li>The <code>solve</code>, <code>solve_detection</code>, <code>solve_image</code>, <code>verify</code>, and <code>refit</code> methods take the
+  command-line options under the same names with underscores, such as <code>pointing_sigma</code> and
+  <code>relax_priors_on_failure</code>. In Python, run <code>help(fayde)</code> to list them. The <code>detect</code> function
+  and the <code>stars_at</code> method have their own options. To list those options, run
+  <code>help(fayde.detect)</code> and <code>help(fayde.Solver.stars_at)</code>.</li>
+<li>The <code>solve_image</code> method also takes the options of <code>detect</code>, such as <code>detect_threshold</code>,
+  which must be at least 1.5.</li>
+<li>Input coordinates <code>x</code> and <code>y</code> of <code>solve</code>, <code>verify</code>, <code>refit</code>, and <code>stars_at</code> are 0-based unless
+  you pass <code>origin=1</code>. Pixel fields in the reports, including the source positions from
+  <code>detect</code>, are 1-based, as in FITS and in the command-line report.</li>
 <li>The <code>header</code> argument accepts a dictionary, a list of header cards, or an
-  <code>astropy.io.fits.Header</code>.</li>
+  <code>astropy.io.fits.Header</code>. The WCS argument of <code>verify</code>, <code>refit</code>, and <code>stars_at</code> accepts the
+  same types.</li>
 <li>The <code>instrument</code> argument accepts a profile dictionary or the path to a profile file.</li>
-<li>The report is a dictionary with the same fields as the command-line JSON report.</li>
+<li>The report is a dictionary with the same fields as the command-line JSON report. For more
+  information about these fields, see <a href="../usage/#read-the-report">Read the report</a>.</li>
 <li>An invalid option raises <code>ValueError</code>. A solver failure raises <code>fayde.FaydeError</code>, which
   stores the report in its <code>report</code> attribute.</li>
 <li>Fayde releases the global interpreter lock (GIL) while it solves, so threads can share one
