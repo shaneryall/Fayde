@@ -48,6 +48,20 @@ Fayde works as follows:
 - Fayde runs from the command line and from Python, prebuilt for Linux, macOS, and Windows. Its
   numerical results are the same on every platform, so you can repeat a solve anywhere.
 
+## Limits
+
+Fayde has the following limits:
+
+- The `fayde` command reads FITS images only, and not ones compressed with `fpack`. From Python,
+  you can also pass a NumPy array.
+- Fayde measures stars as points, as straight trails that share one length and direction, or as
+  trails that follow one curved path or turn with field rotation. It measures the stars in other
+  trailed frames as points.
+- Fayde fits lens distortion as a SIP polynomial, up to order 3 by default and order 9 at most.
+  It doesn't fit other distortion models, such as TPV or lookup tables.
+- A pattern index serves fields near the width it's built for, so blind solving needs indexes
+  that cover the range of field widths that you solve.
+
 ## Quick start
 
 > [!IMPORTANT]
@@ -79,6 +93,32 @@ To install Fayde and solve a frame, follow these steps:
    Replace `frame.fits` with your image, `UCAC4` with your catalog directory, and `frame.wcs`
    with the file to write. Fayde prints a JSON report. When its `solved` field is `true`,
    `frame.wcs` holds the solution as FITS WCS header cards.
+
+   <!-- scripts/make_readme_example.py makes the frame, solves it and prints these fields. -->
+
+   For a synthetic frame 0.7° wide, drawn from UCAC4 stars, the report includes the following
+   fields:
+
+   ```json
+   {
+     "crval_deg": [
+       149.9999971516236,
+       19.99999978402278
+     ],
+     "log_odds": 2521.65448665474,
+     "matches": 239,
+     "pixel_scale_arcsec": 2.46094126975958,
+     "rms_px": 0.10597098640061972,
+     "roll_deg": 11.999766562157799,
+     "solved": true,
+     "worst_sigma_arcsec": 0.04628264135700312
+   }
+   ```
+
+   `crval_deg` is the right ascension and declination of the image center, `log_odds` the
+   natural logarithm of the odds of the match against chance, and `worst_sigma_arcsec` the
+   largest predicted 1σ position error on a 5 × 5 grid that covers the frame. For every field,
+   see [Read the report](docs/usage.md#read-the-report).
 
 The image needs a header with the pointing and pixel scale. If the header lacks them, [give them
 on the command line](docs/usage.md#specify-the-pointing-and-scale).
