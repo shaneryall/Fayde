@@ -19,36 +19,32 @@
 Give Fayde a star-field image. It finds the stars, matches them against the UCAC4 catalog, and
 returns a world coordinate system (WCS) solution with its measured accuracy.
 
-Fayde detects the stars itself and sets aside hot pixels, cosmic-ray hits, and satellite
-streaks. The stars can be points, as from sidereal tracking, or trails of one length and
-direction, as when the telescope tracks a satellite. If you have your own detector, pass a source
-list instead.
+<!-- scripts/make_readme_figures.py makes both animations; its docstring gives the commands. -->
 
-Fayde accepts a solution only after it tests the match against the catalog. The report gives the
-odds of the match against chance and the residuals of the fit. When the header gives the date of
-the image, catalog positions are moved to that date by their proper motions.
+Both animations show `fayde detect` on a synthetic frame, with every mark drawn from its report.
+On the left the stars are points, among cosmic-ray hits and three satellite streaks. On the right
+every star trails.
 
-With a pointing and a precise pixel scale from the header, Fayde needs only the catalog. Without
-them, it uses a pattern index that you build once.
+<p align="center">
+  <img src="docs/images/detect-point-stars.gif" width="49%" alt="A synthetic star field. Fayde
+    marks the stars it keeps, the hits it sets aside, and three satellite streaks.">
+  <img src="docs/images/detect-trailed-stars.gif" width="49%" alt="A synthetic frame in which
+    every star is a short parallel trail, with the trails, point sources and streak candidate
+    that Fayde reports.">
+</p>
 
-Fayde runs from the command line and from Python, prebuilt for Linux, macOS, and Windows. Its
-numerical results are the same on every platform, so a solve can be repeated anywhere.
-
-The following animation, made by `scripts/make_readme_figures.py`, shows `fayde detect` on a
-synthetic frame. Every mark comes from the command's report: green rings for the stars it keeps,
-red crosses for hits too sharp to be stars, orange for detections on a streak or extended, and
-colored lines for the three satellite streaks it traces.
-
-![A synthetic star field. Fayde marks the stars it keeps, the hits it sets aside, and three
-satellite streaks.](docs/images/detect-point-stars.gif)
-
-On a frame where every star trails, Fayde fits one trail length and direction for the whole frame
-and reports a position for each trail it finds. In the next animation, cyan lines mark those
-trails, yellow rings mark the two detections it reports as point sources, and a green line marks a
-streak candidate:
-
-![A synthetic frame in which every star is a short parallel trail, with the trails, point sources
-and streak candidate that Fayde reports.](docs/images/detect-trailed-stars.gif)
+- Fayde detects the stars itself and sets aside hot pixels, cosmic-ray hits, and satellite
+  streaks. The stars can be points, as from sidereal tracking, or trails of one length and
+  direction, as when the telescope tracks a satellite. If you have your own detector, pass a
+  source list instead.
+- Fayde accepts a solution only after it tests the match against the catalog. The report gives
+  the odds of the match against chance and the residuals of the fit.
+- When the header gives the date of the image, catalog positions are moved to that date by their
+  proper motions.
+- With a pointing and a precise pixel scale from the header, Fayde needs only the catalog.
+  Without them, it uses a pattern index that you build once.
+- Fayde runs from the command line and from Python, prebuilt for Linux, macOS, and Windows. Its
+  numerical results are the same on every platform, so a solve can be repeated anywhere.
 
 ## Quick start
 
