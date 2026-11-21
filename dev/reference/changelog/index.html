@@ -1,0 +1,1506 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Verified astrometric plate solving for FITS images.">
+      
+      
+      
+        <link rel="canonical" href="https://shaneryall.github.io/Fayde/dev/reference/changelog/">
+      
+      
+        <link rel="prev" href="../../references/">
+      
+      
+        <link rel="next" href="../../design/plate-solver/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
+    
+    
+      
+        <title>Changelog - Fayde</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#changelog" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Fayde" class="md-header__button md-logo" aria-label="Fayde" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Fayde
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Changelog
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/shaneryall/Fayde" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shaneryall/Fayde
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Fayde" class="md-nav__button md-logo" aria-label="Fayde" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Fayde
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/shaneryall/Fayde" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shaneryall/Fayde
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-to guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-to guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install Fayde
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose and connect a star catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use the command line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../python/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Fayde from Python
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../index-set/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build pattern indexes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command-line reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../source-list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source list format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Versioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Algorithm sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#033-2026-11-21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.3.3 (2026-11-21)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.3.3 (2026-11-21)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#032-2026-11-19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.3.2 (2026-11-19)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#031-2026-11-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.3.1 (2026-11-17)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#030-2026-11-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.3.0 (2026-11-16)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#021-2026-11-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.2.1 (2026-11-16)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#020-2026-11-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.2.0 (2026-11-16)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#011-2026-11-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.1.1 (2026-11-16)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#010-2026-11-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.1.0 (2026-11-16)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explanation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Explanation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/plate-solver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plate solver design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Star detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/literature-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Literature review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#033-2026-11-21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.3.3 (2026-11-21)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.3.3 (2026-11-21)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#032-2026-11-19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.3.2 (2026-11-19)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#031-2026-11-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.3.1 (2026-11-17)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#030-2026-11-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.3.0 (2026-11-16)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#021-2026-11-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.2.1 (2026-11-16)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#020-2026-11-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.2.0 (2026-11-16)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#011-2026-11-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.1.1 (2026-11-16)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#010-2026-11-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.1.0 (2026-11-16)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
+<p>Versioning rules: <code>docs/versioning.md</code>.</p>
+<p>Versions up to 0.2.1 were development versions and were not published; their notes are kept
+because the index files and their hashes date from 0.1.0.</p>
+<h2 id="033-2026-11-21">0.3.3 (2026-11-21)<a class="headerlink" href="#033-2026-11-21" title="Permanent link">&para;</a></h2>
+<h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The README and <code>CITATION.cff</code> give the DOI of the archived releases,
+  <a href="https://doi.org/10.5281/zenodo.24379728">10.5281/zenodo.24379728</a>.</li>
+<li>Each release file has a build attestation from GitHub. To check that a download was built
+  from the tagged source by Fayde's release workflow, run <code>gh attestation verify</code> (see
+  <code>docs/install.md</code>).</li>
+</ul>
+<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Fayde 0.3.3 and later are licensed under the GNU General Public License, version 3 or later
+  (<code>GPL-3.0-or-later</code>). Versions 0.3.0 to 0.3.2 stay under the Apache License 2.0. Using Fayde
+  is unchanged; distributing a modified Fayde, or software that includes it, now requires the
+  GPL's terms. Contributions are accepted under the terms in <code>CONTRIBUTING.md</code>.</li>
+</ul>
+<h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>fayde calibrate</code> takes each frame's header pointing at the centre of the image it solved,
+  using the image's size when the header does not give it, as image and source-list solves
+  have done since 0.3.2.</li>
+</ul>
+<h2 id="032-2026-11-19">0.3.2 (2026-11-19)<a class="headerlink" href="#032-2026-11-19" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Header coordinates whose last field reads exactly 60, such as <code>RA = '20:29:60.0'</code> (59.96 s
+  rounded up by the writer), are read as the next minute instead of being rejected; an RA of
+  exactly 24 hours is 0. Before, such a frame lost its header pointing and, without an index, was
+  not searched at all: 80 of 46,219 frames in a real archive. A decimal RA or DEC written with
+  padding, such as <code>RA = ' 12.5'</code>, is read as degrees; before, the padding made it read as
+  hours.</li>
+<li>Distortion is fitted only where the stars support it. A SIP order is kept only if no lower
+  order predicts held-out cells of the frame as well. When the hint has a scale or roll, a
+  solution with distortion is fitted again as TAN with its scale and roll free; a TAN outside
+  the hint's limits that fits the sources at least as well means no solution, and one inside
+  them is kept if its posterior odds are higher. Before, a hint whose scale was wrong by more
+  than its limits, or matches with errors in one region, could give a solution bent by up to
+  146 px in the corners.</li>
+<li>Image and source-list solves use the WCS position of the delivered frame centre, including
+  for cropped images. <code>--header</code> and <code>fayde calibrate</code> read the metadata of image extensions.
+  North-pole TAN headers use the FITS default orientation. Eighth- and ninth-order SIP
+  solutions write inverse polynomials that Fayde can read back.</li>
+<li>Streak photometry masks bright stars that cross a streak. The report marks affected streaks
+  with <code>photometry_masked</code>; their flux includes an estimate for the covered ridge, and their SNR
+  uses only unmasked samples. For Rust users, <code>fayde_detect::Streak</code> gains the field
+  <code>photometry_masked</code>.</li>
+<li>Distortion tune-ups honour the hypothesis cap, an expired pair-seed search stops before
+  reading the catalogue, and relaxed-prior timings include both attempts. Legacy indexes keep
+  their verified file hash in the solution provenance. <code>fayde verify</code> ignores the request's
+  priors, as documented.</li>
+<li><code>-o</code> may not name any input: <code>fayde detect</code> refuses its <code>--image</code>, and <code>fayde calibrate</code>
+  its <code>--solved</code> list and every frame and WCS the list names. <code>fayde calibrate -o</code> writes the
+  profile atomically.</li>
+<li>A detection threshold below 1.5σ is refused: it kept noise peaks with no light, reported as
+  stars with negative flux.</li>
+<li>When the stars' FWHM is at most one pixel at full resolution, Fayde keeps bright sources
+  that are too sharp for the usual shape checks; hot pixels and compact cosmic-ray hits can then
+  reach the source list. On simulated frames of FWHM 0.45 and 0.6 px, completeness rose from
+  0.23–0.84 to 0.98–1.00 with purity 0.98–1.00. Source lists for 2 px FWHM frames are
+  unchanged.</li>
+<li>Detection estimates the sky background of frames that background subtraction clipped at a
+  floor, such as zero, by fitting each tile as a left-censored normal. On a simulated frame with
+  90% of the sky at the floor, 95 of 579 detections were stars before and 100 of 100 after.
+  On 35 real frames with 25–36% of their pixels at zero, all still solve; the fit residual
+  fell on 31 (median 0.40 to 0.35 px) and solutions moved by at most 0.14″. Constant padding
+  alone leaves the standard background estimate in use.</li>
+<li>The stars' width is no longer taken from a crowd of cosmic-ray hits: in the histogram of
+  sizes, a mode at least three quarters as tall as the tallest counts as the stars' when it is
+  the widest, dip or not.</li>
+<li>A warning when no observation time is found (catalogue positions at J2000.0). The
+  <code>IMAGEW</code>/<code>IMAGEH</code> cards of <code>wcs_cards</code> are whole 80-character cards, so the cards join into a
+  header.</li>
+<li>Python: an image passed with <code>header=None</code> uses the header of its HDU, and arrays are
+  converted to 32-bit floats once instead of through a 64-bit copy.</li>
+<li>Comments that restated the code are removed from the source, scripts and workflows.</li>
+<li>All 109 real point-source frames of the test set solve with 0.3.1 and with 0.3.2.</li>
+</ul>
+<h2 id="031-2026-11-17">0.3.1 (2026-11-17)<a class="headerlink" href="#031-2026-11-17" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>pip install fayde</code> also installs the <code>fayde</code> command. It runs the same code as the release
+  binary (<code>fayde-cli</code> is now a library as well, with <code>fayde_cli::run</code>), so a solve finds the same
+  solution either way; only the timings in the report differ.</li>
+<li>Solving is faster, with the same results to the last bit. Measured on 109 real frames, one
+  thread: a solve with a pointing and a scale takes 6.0 ms on average, from 22.5 ms; with a
+  pattern index and a pointing, 2.3 ms from 18.8 ms; with no priors, 1.9 ms from 3.7 ms.</li>
+<li>The catalogue stars of a pointing prior are read as hypotheses need them. Only the brightest
+    stars of the prior's cone are read for seeding; the fainter ones are read around each
+    hypothesis that passes the pre-filter. A 2° prior around a 0.6° frame is 46 frame areas, and
+    reading all of it was most of a solve. A consequence: a missing zone file is an error when a
+    seed or a hypothesis needs it, no longer whenever it lies inside the prior.</li>
+<li>The UCAC4 cone search works out each star's direction once, not three times, and decides
+    the cone from it; the exact separation is computed only for a star at the cone's edge.</li>
+<li>The pair-seed table is sorted only where a lookup reaches it; sources are matched to
+    reference stars on a grid of cells; a fit projects each star from its unit vector.</li>
+<li>A pointing known better than its hard limit is searched close in first. When the pointing's
+  1σ (<code>--pointing-sigma</code>, or the instrument profile) is at most a sixth of the limit, pair seeds
+  look within 3σ of the pointing and widen to the limit only when that finds nothing. Measured
+  on 146 real source lists: 8.7 ms per list at a 2° limit, 1.1 ms at 0.25°. With the default σ
+  (a quarter of the limit) nothing changes.</li>
+<li><code>fayde calibrate</code> writes an instrument profile from frames Fayde has solved: scale, parity,
+  the roll rule for a header keyword, and the pointing's 1σ. A profile needs no other solver:
+  solve some frames with their header pointing and a nominal <code>--scale</code>, then calibrate.</li>
+<li>Instrument profiles can carry <code>pointing_sigma_deg</code>, <code>pointing_radius_deg</code> (the hard limit, in
+  place of <code>--radius</code>) and <code>header_wcs</code> (<code>false</code>: do not read the pointing or scale from a WCS
+  in the header).</li>
+<li><code>--no-header-wcs</code> (Python: <code>no_header_wcs=True</code>) reads the pointing from <code>RA</code>/<code>DEC</code> or
+  <code>OBJCTRA</code>/<code>OBJCTDEC</code> only, for headers whose WCS may be another solver's solution.</li>
+<li><code>fayde compare</code> builds its requests as <code>fayde solve</code> does and takes <code>--instrument</code>,
+  <code>--no-header-wcs</code> and <code>--hinted-only</code>. It reports how far apart Fayde's solutions with priors
+  and blind are; another solver's WCS in the frame file is a second opinion.</li>
+<li>A UCAC4 copy without <code>u4i/u4index.unf</code> is searched by RA in each zone file, which is in RA
+  order, instead of read whole: a solve that took 350 ms takes 6 ms, as with the index. Keep
+  <code>u4hpm.dat</code>, which holds the proper motions of the fastest stars.</li>
+<li>New in the library: <code>Catalog::cone_brightest</code> (the n brightest stars of a cone; a catalogue
+  can override it to rank by magnitude before working out positions), <code>brightest_first</code>,
+  <code>Ucac4Catalog::cone_hits_ra_search</code>, <code>TanWcs::vector_to_pixel</code>, <code>Wcs::vector_to_pixel</code>,
+  <code>TangentPlane</code>, <code>KdTree::any_within</code>, <code>Header::without_wcs</code>, <code>calibrate_profile</code> and
+  <code>RequestOptions::no_header_wcs</code>.</li>
+</ul>
+<h2 id="030-2026-11-16">0.3.0 (2026-11-16)<a class="headerlink" href="#030-2026-11-16" title="Permanent link">&para;</a></h2>
+<p>The first public release: on GitHub, PyPI and crates.io.</p>
+<ul>
+<li>
+<p>Giving neither <code>--sources</code> nor <code>--image</code> (or both) is reported before anything else runs, so
+  like every command-line mistake it leaves an existing <code>-o</code> file in place. <code>--help</code> now says
+  which errors come with a JSON report (from the moment the inputs are read) and which are on
+  stderr only.</p>
+</li>
+<li>
+<p>Source lists are Fayde's own format, named for what they are: <code>--sources</code> (and
+  <code>--at-sources</code>) replace <code>--xyls</code> (and <code>--at-xyls</code>), which are still accepted. The file is
+  unchanged in substance, a FITS binary table with <code>X</code>, <code>Y</code> and optional columns, so earlier
+  files still read; by convention it is named after its frame, <code>frame.sources.fits</code>. Lists that
+  Fayde writes are labelled <code>EXTNAME = 'SOURCES'</code>, and giving an image where a source list is
+  expected (or the reverse) is reported as such. In the library, <code>read_xylist</code>/<code>write_xylist</code>/
+  <code>Xylist</code> are <code>read_sources</code>/<code>write_sources</code>/<code>SourceList</code>.</p>
+</li>
+<li>
+<p>Fayde finds the stars itself when given a FITS image instead of a source list:
+  <code>fayde solve|verify|refit --image frame.fits</code> (the image's header is used for the priors
+  unless <code>--header</code> is given), <code>fayde detect --image frame.fits [-o frame.sources.fits]</code>, and
+  <code>fayde.detect(...)</code> / <code>Solver.solve_image(...)</code> in Python (a path, a 2-D array or an Astropy
+  HDU). For point sources (sidereal tracking or stare). FITS images of every <code>BITPIX</code> are read
+  (not fpack-compressed ones). Detection options: <code>--fwhm</code>, <code>--detect-threshold</code>,
+  <code>--saturation</code>, <code>--gain</code>, <code>--max-sources</code>; <code>SATURATE</code> and <code>GAIN</code>/<code>EGAIN</code> are read from the
+  header.</p>
+</li>
+<li>
+<p>The detector (crate <code>fayde-detect</code>) is Fayde's own design, <code>docs/design/detection.md</code>. It
+  needs no settings: it measures the stars' width and matches its filter to it (wide stars are
+  binned), and sets its threshold from one noise peak per frame. Each star gets a position, a
+  1σ position error and a star probability from one closed-form fit at its peak. Hot pixels
+  and cosmic-ray hits are set aside, saturated stars are centred from their clipped region, and
+  streaks are traced and reported with their ends, angle, width and flux; nothing on a streak
+  is handed to the solver. It is built for difficult frames: the star width is the widest
+  distinct size among compact sources (radiation hits can outnumber stars), each peak is tested
+  against a ring around it (stray light), and narrowness is judged against the stars' own
+  narrow axis (frames smeared by a drift). 2 to 7 ms per megapixel on one core, the same bits
+  on every machine. Its work is bounded on hostile input (a width far larger than the frame,
+  a saturation level in the background, a frame saturated all over). The detection report gains <code>classes</code>, <code>streaks</code>, <code>rejected</code> (what was set
+  aside) and, per source, <code>p_star</code> and <code>class</code>; <code>sources</code> is the list handed to the solver.</p>
+</li>
+<li>
+<p><code>fayde verify</code> no longer touches the path given with <code>-o</code>. It names the option as unused, as
+  before; 0.2.0 and 0.2.1 then went on to delete a file at that path when the check failed or
+  produced no solution.</p>
+</li>
+<li>Solved <code>.wcs</code> files name the commit as well as the version in their comment cards.</li>
+<li>Releases are built by GitHub Actions: the <code>fayde</code> command and Python wheels for Linux, macOS
+  and Windows, every file run on its platform before it is published, with <code>SHA256SUMS</code>.</li>
+<li><code>THIRD-PARTY-LICENSES.md</code> holds the licences of the Rust crates compiled into binaries and
+  wheels; both carry it.</li>
+<li>Metadata for crates.io and PyPI. The Fayde crates require exactly their own version of each
+  other, and each carries <code>LICENSE</code>, <code>NOTICE</code> and a README.</li>
+</ul>
+<h2 id="021-2026-11-16">0.2.1 (2026-11-16)<a class="headerlink" href="#021-2026-11-16" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>-o</code>: any failed run (an unreadable input, a wrong catalogue directory, a solver error, no
+  solution, a failed write) leaves no file at the output path. An error before the solve used to
+  leave an earlier run's WCS there, where it would pass for this frame's.</li>
+<li><code>-o</code> naming one of the run's inputs (<code>--wcs</code>, <code>--xyls</code>, <code>--header</code>, <code>--instrument</code>,
+  <code>--ucac4</code>, an <code>--index</code>) is refused before anything runs. <code>fayde refit --wcs a.wcs -o a.wcs</code>
+  with no solution used to delete the WCS it was given.</li>
+<li><code>fayde_core::fsutil</code> is internal (hidden from the documentation, not covered by the
+  versioning rules).</li>
+</ul>
+<h2 id="020-2026-11-16">0.2.0 (2026-11-16)<a class="headerlink" href="#020-2026-11-16" title="Permanent link">&para;</a></h2>
+<p>Fixes from a review with hostile inputs. Several change what Fayde does with input it used to
+accept, so this is a minor release (see the versioning rules). Index bytes and content hashes are
+unchanged from 0.1.0. On a real 146-frame comparison set the header-prior solve rate and
+agreement are identical to 0.1.1.</p>
+<ul>
+<li>No panic on extreme or non-finite WCS and pixel values (<code>fayde verify --at 1e308,1e308</code>, a
+  <code>NaN</code> SIP coefficient): <code>pixel_to_sky</code> is defined for every input, and a non-finite header
+  number is an error naming the keyword.</li>
+<li>A damaged <code>u4i/u4index.unf</code> is reported as such instead of crashing a cone search.</li>
+<li><code>fayde index build</code> checks its parameters and its output path before the catalogue scan.
+  Rejected now: a lattice of more than 1e9 fields (<code>--oversampling 1e12</code>), a non-finite
+  <code>--mag-limit</code>, an epoch outside 1800 to 2200.</li>
+<li>A closed stdout pipe (<code>fayde solve ... | head -1</code>) ends quietly instead of panicking.</li>
+<li><code>CROTA2</code> (with <code>CDELT</code>, no CD or PC matrix) is applied; such a WCS was read unrotated.</li>
+<li>Epochs outside 1800 to 2200 are clock errors: from a header (<code>MJD-OBS</code> holding a Julian Date,
+  an unset <code>DATE-OBS</code>) they are skipped with a warning; from <code>--epoch</code> they are an error.</li>
+<li><code>-o</code>: the output path is checked before solving, the report is printed before the file is
+  written, a failed write leaves no temporary file, and a run that finds no solution removes a
+  file already at that path instead of leaving an earlier WCS there.</li>
+<li>Header pointing: coordinates the header declares as FK4 or of another equinox are not used
+  (with a warning); a right ascension out of range is rejected instead of wrapped; the first
+  card of a repeated keyword is used, as in cfitsio and Astropy (it was the last).</li>
+<li>Options dropped by <code>--no-priors</code> or <code>--no-pointing</code>, and options <code>fayde verify</code> and
+  <code>fayde refit</code> do not use, are named in <code>warnings</code> or on stderr instead of ignored in silence.</li>
+<li><code>--max-sip-order</code> above 9 is an error (the SIP convention's limit).</li>
+<li>Error messages name the file they are about.</li>
+<li>Temporary files (the <code>-o</code> write check, <code>.wcs</code> and index writes) are created with
+  <code>O_CREAT|O_EXCL</code> under unpredictable names: an existing file or symlink at that name is never
+  followed or truncated, and a failed write removes only the file Fayde created.</li>
+<li>The example instrument profile is <code>profiles/example.json</code>; the catalogue cross-check reads
+  <code>ucac4_oracle.json</code>.</li>
+</ul>
+<h2 id="011-2026-11-16">0.1.1 (2026-11-16)<a class="headerlink" href="#011-2026-11-16" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Licence: Apache-2.0 (was <code>MIT OR Apache-2.0</code>, provisional). <code>LICENSE</code>, <code>NOTICE</code> and
+  <code>CITATION.cff</code> added; wheels and binary archives carry them.</li>
+<li>Index set built and its content hashes published (<code>docs/index-set.md</code>):
+  1.0° <code>1ddf14fa50ad59dd</code>, 1.3° <code>4ad74722223054e1</code>. Index bytes unchanged from 0.1.0: the
+  builder identity stored in an index (<code>fayde_index::BUILDER</code>) now changes only when the
+  index-building code does, not with every crate version, so a patch release keeps every hash.</li>
+<li>Python: <code>py.typed</code>, typed reports (<code>fayde.Report</code>, <code>fayde.AtReport</code>), checked with
+  <code>mypy --strict</code> in CI.</li>
+<li><code>fayde solve|verify|refit --help</code> and <code>fayde index build --help</code> list options with defaults.</li>
+<li>The commit id is recorded in builds from <code>git archive</code> source archives (<code>.git_archival.txt</code>).</li>
+<li><code>fayde compare</code> reads headers as <code>fayde solve --header</code> does.</li>
+<li>Solved <code>.wcs</code> files ask for a citation in their comment cards.</li>
+</ul>
+<h2 id="010-2026-11-16">0.1.0 (2026-11-16)<a class="headerlink" href="#010-2026-11-16" title="Permanent link">&para;</a></h2>
+<p>First release: solve, verify (including <code>--at</code>), refit; Python bindings; identical index bytes
+on macOS, Linux and Windows; Linux binaries and wheels.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy", "navigation.sections", "navigation.top", "search.highlight"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>

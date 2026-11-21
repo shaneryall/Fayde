@@ -1,0 +1,1545 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Verified astrometric plate solving for FITS images.">
+      
+      
+      
+        <link rel="canonical" href="https://shaneryall.github.io/Fayde/dev/usage/">
+      
+      
+        <link rel="prev" href="../catalog/">
+      
+      
+        <link rel="next" href="../python/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
+    
+    
+      
+        <title>Use the command line - Fayde</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#use-the-command-line" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Fayde" class="md-header__button md-logo" aria-label="Fayde" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Fayde
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Use the command line
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/shaneryall/Fayde" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shaneryall/Fayde
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Fayde" class="md-nav__button md-logo" aria-label="Fayde" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Fayde
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/shaneryall/Fayde" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shaneryall/Fayde
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-to guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-to guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install Fayde
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose and connect a star catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use the command line
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use the command line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#solve-a-frame" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solve a frame
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Solve a frame">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#use-your-own-source-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use your own source list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detect-stars-without-solving" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detect stars without solving
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#specify-the-pointing-and-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Specify the pointing and scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-an-instrument-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use an instrument profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#calibrate-an-instrument-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Calibrate an instrument profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#solve-without-a-pointing-or-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solve without a pointing or scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limit-the-search-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limit the search time
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#check-or-refit-an-existing-wcs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check or refit an existing WCS
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#find-catalog-stars-at-a-position" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Find catalog stars at a position
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Fayde from Python
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index-set/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build pattern indexes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command-line reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../source-list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source list format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Versioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Algorithm sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explanation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Explanation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/plate-solver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plate solver design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Star detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../research/literature-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Literature review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#solve-a-frame" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solve a frame
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Solve a frame">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#use-your-own-source-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use your own source list
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#detect-stars-without-solving" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Detect stars without solving
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#specify-the-pointing-and-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Specify the pointing and scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#use-an-instrument-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use an instrument profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#calibrate-an-instrument-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Calibrate an instrument profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#solve-without-a-pointing-or-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solve without a pointing or scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limit-the-search-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limit the search time
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#check-or-refit-an-existing-wcs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check or refit an existing WCS
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#find-catalog-stars-at-a-position" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Find catalog stars at a position
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="use-the-command-line">Use the command line<a class="headerlink" href="#use-the-command-line" title="Permanent link">&para;</a></h1>
+<p>To install the <code>fayde</code> command, see <a href="../install/">Install Fayde</a>. To download the catalog for
+solving, see <a href="../catalog/">Get the UCAC4 catalog</a>.</p>
+<h2 id="solve-a-frame">Solve a frame<a class="headerlink" href="#solve-a-frame" title="Permanent link">&para;</a></h2>
+<p>To solve an image with the local catalog and check the result, follow these steps:</p>
+<ol>
+<li>In a terminal, pass the FITS image and the catalog to <code>fayde solve</code>:</li>
+</ol>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>solve<span class="w"> </span>--image<span class="w"> </span>FRAME<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>-o<span class="w"> </span>OUTPUT
+</code></pre></div>
+<p>Replace the following:</p>
+<ul>
+<li><code>FRAME</code>: The path to the FITS image, for example <code>frame.fits</code></li>
+<li><code>UCAC4_DIR</code>: The path to the directory that contains <code>u4b</code></li>
+<li><code>OUTPUT</code>: The path to the WCS file to write, for example <code>frame.wcs</code></li>
+</ul>
+<p>The directory of <code>OUTPUT</code> must exist, and <code>OUTPUT</code> can't be one of the input files. If a
+   path contains spaces, enclose it in quotation marks.</p>
+<p>Fayde finds the stars in the image and reads the pointing, pixel scale, observation time,
+   and image size from its header. Fayde then prints a JSON report to standard output.</p>
+<ol>
+<li>
+<p>Check the report's <code>solved</code> field:</p>
+</li>
+<li>
+<p>When <code>solved</code> is <code>true</code>, Fayde writes the solution to <code>OUTPUT</code> as FITS WCS header cards.</p>
+</li>
+<li>When <code>solved</code> is <code>false</code>, Fayde writes no solution, and the report's <code>reason</code> field says
+     why.</li>
+</ol>
+<p>Fayde returns an exit status of 0 when the run completes, with or without a solution. If the
+   run fails, Fayde returns an exit status of 1 and prints the error to standard error.</p>
+<p>When a run writes no solution, Fayde removes any file that already exists at <code>OUTPUT</code>. Fayde
+keeps the file if it rejects the command before the run starts, if it can't write to <code>OUTPUT</code>, or if
+<code>OUTPUT</code> is one of the input files.</p>
+<h3 id="use-your-own-source-list">Use your own source list<a class="headerlink" href="#use-your-own-source-list" title="Permanent link">&para;</a></h3>
+<p>If you detect the stars yourself, pass a source list with <code>--sources</code> in place of the image. A
+source list is a FITS binary table with <code>X</code> and <code>Y</code> columns. For the columns that Fayde reads,
+see the <a href="../source-list/">source list format</a>.</p>
+<p>To solve a source list, pass it together with the FITS file that has the frame's header:</p>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>solve<span class="w"> </span>--sources<span class="w"> </span>SOURCES<span class="w"> </span>--header<span class="w"> </span>FRAME<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>-o<span class="w"> </span>OUTPUT
+</code></pre></div>
+<p>Replace <code>SOURCES</code> with the path to the source list, for example <code>frame.sources.fits</code>. Fayde uses
+only the header from the file at <code>FRAME</code>.</p>
+<h3 id="detect-stars-without-solving">Detect stars without solving<a class="headerlink" href="#detect-stars-without-solving" title="Permanent link">&para;</a></h3>
+<p>To find the stars in an image and write them as a source list, use <code>fayde detect</code>:</p>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>detect<span class="w"> </span>--image<span class="w"> </span>FRAME<span class="w"> </span>-o<span class="w"> </span>SOURCES
+</code></pre></div>
+<p>Fayde prints a JSON report with the background, the noise, the width of the stars, and every
+source that it found. The report also lists the streaks that cross the image, such as satellite
+trails, and the hot pixels and cosmic-ray hits that Fayde set aside. With <code>-o</code>, Fayde also
+writes the sources to <code>SOURCES</code>, in the format that <code>--sources</code> reads.</p>
+<p>When the stars' full width at half maximum (FWHM) is about one pixel or less at full
+resolution, Fayde keeps point sources that are too sharp for the usual shape checks. A star
+this narrow can put nearly all its light in one pixel, so the source list can also include
+hot pixels and compact cosmic-ray hits.</p>
+<p>If background subtraction clipped many sky pixels to the same minimum value, such as zero,
+Fayde accounts for the clipping when estimating the background and setting the detection
+threshold. The clipped-sky model requires floor pixels mixed with sky noise across most of the
+image's sky tiles. Frames with a constant border and ordinary sky use the standard background
+estimate.</p>
+<p>To list the detection options and their default values, run <code>fayde detect --help</code>. The same
+options work with <code>fayde solve --image</code>. The <code>--detect-threshold</code> option sets the peak threshold
+in σ of the filtered image, and its value must be at least 1.5.</p>
+<h3 id="specify-the-pointing-and-scale">Specify the pointing and scale<a class="headerlink" href="#specify-the-pointing-and-scale" title="Permanent link">&para;</a></h3>
+<p>Command-line values take precedence over the instrument profile, which takes precedence over
+the frame header. To solve an image whose header lacks the pointing or the pixel scale, specify
+them:</p>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>solve<span class="w"> </span>--image<span class="w"> </span>FRAME<span class="w"> </span>--ra<span class="w"> </span>RA<span class="w"> </span>--dec<span class="w"> </span>DEC<span class="w"> </span>--scale<span class="w"> </span>SCALE<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>-o<span class="w"> </span>OUTPUT
+</code></pre></div>
+<p>Replace the following:</p>
+<ul>
+<li><code>RA</code> and <code>DEC</code>: The right ascension and declination of the image center in degrees</li>
+<li><code>SCALE</code>: The pixel scale in arcseconds per pixel</li>
+</ul>
+<p>When you solve a source list without a frame header, Fayde also needs the image size. Add
+<code>--width</code> and <code>--height</code>, in pixels, unless the source list has the <code>IMAGEW</code> and <code>IMAGEH</code>
+keywords.</p>
+<p>To decide whether you need these options, check the frame header. Fayde reads keywords such as
+the following:</p>
+<table>
+<thead>
+<tr>
+<th>Information</th>
+<th>Header keywords</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pointing</td>
+<td><code>CRVAL1</code> and <code>CRVAL2</code> of a header WCS, <code>RA</code> and <code>DEC</code>, or <code>OBJCTRA</code> and <code>OBJCTDEC</code></td>
+</tr>
+<tr>
+<td>Pixel scale</td>
+<td><code>XPIXSZ</code> with <code>FOCALLEN</code>, the <code>CD</code> matrix, <code>CDELT1</code> and <code>CDELT2</code>, <code>PIXSCALE</code>, or <code>SECPIX</code></td>
+</tr>
+<tr>
+<td>Observation time</td>
+<td><code>JD-OBS</code>, <code>MJD-OBS</code>, or <code>DATE-OBS</code>, with <code>EXPTIME</code> or <code>EXPOSURE</code></td>
+</tr>
+<tr>
+<td>Image size</td>
+<td><code>NAXIS1</code> and <code>NAXIS2</code></td>
+</tr>
+</tbody>
+</table>
+<p>If the header has no observation time, Fayde uses the epoch 2000. To set the epoch, use
+<code>--epoch</code>.</p>
+<p>Fayde searches within 2° of the pointing. To change the limit, use <code>--radius</code>. To specify the
+pointing accuracy, use <code>--pointing-sigma</code> with the 1-sigma error in degrees. When
+that error is at most a sixth of the limit and the pixel scale is known to within 3%, Fayde
+first searches within 3 sigma of the pointing. It widens the search to the limit only when it
+finds no solution there.</p>
+<p>To ignore the pointing and pixel scale from a WCS in the frame header, for example a WCS that
+another plate solver wrote, add <code>--no-header-wcs</code>. Fayde then reads the header pointing only
+from <code>RA</code> and <code>DEC</code>, or from <code>OBJCTRA</code> and <code>OBJCTDEC</code>.</p>
+<p>To list every option and its default value, run <code>fayde solve --help</code>.</p>
+<h3 id="use-an-instrument-profile">Use an instrument profile<a class="headerlink" href="#use-an-instrument-profile" title="Permanent link">&para;</a></h3>
+<p>An instrument profile is a JSON file with settings that frames from one instrument share:
+the pixel scale, parity, a rule for deriving the roll from a header keyword, and the pointing
+accuracy in the frame headers. To use a profile, add <code>--instrument</code>:</p>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>solve<span class="w"> </span>--image<span class="w"> </span>FRAME<span class="w"> </span>--instrument<span class="w"> </span>PROFILE<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>-o<span class="w"> </span>OUTPUT
+</code></pre></div>
+<p>Replace <code>PROFILE</code> with the path to the profile file.</p>
+<p>The repository contains an example profile, <code>profiles/example.json</code>. A release archive has the
+same file in the extracted archive's <code>profiles</code> directory. The example's values are
+illustrative. To create a profile for your instrument, follow these steps:</p>
+<ol>
+<li>Copy <code>profiles/example.json</code>.</li>
+<li>Edit the copy with your instrument's values. The <code>source</code> field of the example explains the
+   scale and roll values.</li>
+</ol>
+<p>If you don't know your instrument's values, use Fayde to measure them from its solved frames.</p>
+<h3 id="calibrate-an-instrument-profile">Calibrate an instrument profile<a class="headerlink" href="#calibrate-an-instrument-profile" title="Permanent link">&para;</a></h3>
+<p>You don't need another plate solver to calibrate a profile. For the initial solves, you need
+the pointing in the frame headers and an approximate pixel scale. To create a profile from
+these solutions, follow these steps:</p>
+<ol>
+<li>In a terminal, solve at least five frames with an approximate pixel scale:</li>
+</ol>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>solve<span class="w"> </span>--image<span class="w"> </span>FRAME<span class="w"> </span>--scale<span class="w"> </span>SCALE<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>-o<span class="w"> </span>WCS
+</code></pre></div>
+<p>Replace the following:</p>
+<ul>
+<li><code>SCALE</code>: The pixel scale in arcseconds per pixel, correct to within 5%</li>
+<li><code>WCS</code>: The path to the WCS file to write, for example <code>frame.wcs</code>. Use a different path
+     for each frame.</li>
+</ul>
+<p>For each frame whose report has <code>solved</code> set to <code>true</code>, Fayde writes the solution to <code>WCS</code>.
+   More frames give a better profile.</p>
+<ol>
+<li>
+<p>List only the frames whose report has <code>solved</code> set to <code>true</code> in a text file, with one frame
+   per line. Each line contains the path to the FITS image, a tab character, and the path to
+   its WCS file, in that order.</p>
+</li>
+<li>
+<p>In a terminal, create the profile from the list with <code>fayde calibrate</code>:</p>
+</li>
+</ol>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>calibrate<span class="w"> </span>--solved<span class="w"> </span>LIST<span class="w"> </span>--roll-keyword<span class="w"> </span>ROLL_KEYWORD<span class="w"> </span>--binning<span class="w"> </span>XBINNING,YBINNING<span class="w"> </span>-o<span class="w"> </span>PROFILE
+</code></pre></div>
+<p>Replace the following:</p>
+<ul>
+<li><code>LIST</code>: The path to the text file from the previous step</li>
+<li><code>ROLL_KEYWORD</code>: The header keyword that holds the instrument's roll angle in degrees</li>
+<li><code>PROFILE</code>: The path to the profile to write, for example <code>camera.json</code></li>
+</ul>
+<p>If the headers have no roll keyword, omit <code>--roll-keyword</code>. If the headers don't record the
+   binning in <code>XBINNING</code> and <code>YBINNING</code>, omit <code>--binning</code> or name the keywords that they use.</p>
+<p>Fayde prints the profile and writes it to <code>PROFILE</code>.</p>
+<p>A calibrated profile has the following fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scale_arcsec</code>, <code>scale_sigma_arcsec</code></td>
+<td>The median pixel scale of the solutions and its 1-sigma uncertainty, in arcseconds per pixel. With <code>--binning</code>, this is the scale of an unbinned frame.</td>
+</tr>
+<tr>
+<td><code>parity</code></td>
+<td>The parity of the solutions. Fayde omits this field when the solutions disagree.</td>
+</tr>
+<tr>
+<td><code>roll</code></td>
+<td>With <code>--roll-keyword</code>, the rule that gives the roll from the roll keyword, with its 1-sigma error and hard limit in degrees</td>
+</tr>
+<tr>
+<td><code>binning</code></td>
+<td>With <code>--binning</code>, the binning keywords that you named</td>
+</tr>
+<tr>
+<td><code>pointing_sigma_deg</code></td>
+<td>The 1-sigma error of the pointing in the headers, in degrees. Fayde omits this field when fewer than five headers have a pointing.</td>
+</tr>
+<tr>
+<td><code>calibration</code></td>
+<td>The numbers behind these values: frames used, spreads, and largest deviations</td>
+</tr>
+</tbody>
+</table>
+<p>You can add two optional fields manually. The <code>pointing_radius_deg</code> field sets the search limit
+around the pointing in degrees, in place of <code>--radius</code>. The <code>header_wcs</code> field, when set to
+<code>false</code>, has the same effect as <code>--no-header-wcs</code> on every frame. To include <code>header_wcs</code> in the
+profile during calibration, add <code>--no-header-wcs</code> to the <code>fayde calibrate</code> command.</p>
+<h3 id="solve-without-a-pointing-or-scale">Solve without a pointing or scale<a class="headerlink" href="#solve-without-a-pointing-or-scale" title="Permanent link">&para;</a></h3>
+<p>When you know the pointing and have a precise pixel scale, Fayde needs only the catalog. In
+that case, omit <code>--index</code>. Fayde searches a pattern index only if it finds no solution around
+the pointing. This extra search delays the report when a frame has no solution. When
+the pointing or scale is uncertain or unknown, Fayde also needs a pattern index, which you
+build once from the catalog. To build the recommended indexes, see the
+<a href="../index-set/">index guide</a>.</p>
+<p>To solve with a pattern index and ignore all priors, use <code>--index</code> and <code>--no-priors</code>:</p>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>solve<span class="w"> </span>--image<span class="w"> </span>FRAME<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>--index<span class="w"> </span>INDEX<span class="w"> </span>--no-priors<span class="w"> </span>-o<span class="w"> </span>OUTPUT
+</code></pre></div>
+<p>Replace <code>INDEX</code> with the path to a pattern index, for example <code>allsky-1.0.fidx</code>. To use
+several indexes, add <code>--index</code> once for each file.</p>
+<h3 id="limit-the-search-time">Limit the search time<a class="headerlink" href="#limit-the-search-time" title="Permanent link">&para;</a></h3>
+<p>Search time increases with the area within the pointing radius. The following measurements
+show exhausted searches on a 32-core x86_64 Linux computer. The frames had a pixel scale of
+3 arcseconds per pixel, a scale uncertainty of 0.1%, and unconstrained roll:</p>
+<table>
+<thead>
+<tr>
+<th>Pointing radius</th>
+<th>Hypotheses until exhausted</th>
+<th>Time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.5°</td>
+<td>250–760</td>
+<td>0.01–0.02 s</td>
+</tr>
+<tr>
+<td>1°</td>
+<td>830–2,500</td>
+<td>0.02–0.05 s</td>
+</tr>
+<tr>
+<td>2°</td>
+<td>2,900–10,500</td>
+<td>0.07–0.16 s</td>
+</tr>
+<tr>
+<td>4°</td>
+<td>11,000–40,000</td>
+<td>0.24–0.62 s</td>
+</tr>
+<tr>
+<td>8°</td>
+<td>47,000–157,000</td>
+<td>0.9–2.3 s</td>
+</tr>
+</tbody>
+</table>
+<p>Frames with hundreds of sources took more than 18 s at an 8° radius. To limit a search, use
+these options:</p>
+<ul>
+<li>Use <code>--max-hypotheses</code> to limit the work independently of the computer's speed.</li>
+<li>Use <code>--deadline</code> to limit wall-clock time from the start of the request.</li>
+</ul>
+<p>Each <code>search</code> stage in the report ends with an <code>outcome</code>: <code>solved</code>, <code>exhausted</code>, <code>deadline</code>, or
+<code>hypothesis limit</code>. When Fayde finds no solution, the report names the stage that a limit
+stopped. A search with a 1° radius takes about 50 times less work than one with an 8° radius.</p>
+<h2 id="check-or-refit-an-existing-wcs">Check or refit an existing WCS<a class="headerlink" href="#check-or-refit-an-existing-wcs" title="Permanent link">&para;</a></h2>
+<p>Replace <code>WCS</code> with the path to the WCS file to check, for example <code>frame.wcs</code>. <code>OUTPUT</code> must be
+a different file from <code>WCS</code>.</p>
+<p>To check a WCS from any solver against the catalog, use <code>fayde verify</code>:</p>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>verify<span class="w"> </span>--image<span class="w"> </span>FRAME<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>--wcs<span class="w"> </span>WCS
+</code></pre></div>
+<p>To fit the WCS again from the matched stars and write the result, use <code>fayde refit</code>:</p>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>refit<span class="w"> </span>--image<span class="w"> </span>FRAME<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>--wcs<span class="w"> </span>WCS<span class="w"> </span>-o<span class="w"> </span>OUTPUT
+</code></pre></div>
+<p>Both commands also accept a source list: use <code>--sources SOURCES --header FRAME</code> in place of
+<code>--image FRAME</code>.</p>
+<h2 id="find-catalog-stars-at-a-position">Find catalog stars at a position<a class="headerlink" href="#find-catalog-stars-at-a-position" title="Permanent link">&para;</a></h2>
+<p>To find catalog stars at positions under a given WCS, use <code>fayde verify</code>. Specify pixel
+positions with <code>--at</code>, sky positions with <code>--at-sky</code>, or a source list with <code>--at-sources</code>.</p>
+<p>To check positions from a source list, use <code>--at-sources</code>:</p>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>verify<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>--wcs<span class="w"> </span>WCS<span class="w"> </span>--header<span class="w"> </span>FRAME<span class="w"> </span>--at-sources<span class="w"> </span>SOURCES
+</code></pre></div>
+<p>To check a pixel position and a sky position at a specified epoch, use <code>--at</code> and <code>--at-sky</code>:</p>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>verify<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>--wcs<span class="w"> </span>WCS<span class="w"> </span>--epoch<span class="w"> </span><span class="m">2020</span>.89<span class="w"> </span>--at<span class="w"> </span><span class="m">412</span>.3,88.1<span class="w"> </span>--at-sky<span class="w"> </span><span class="m">172</span>.5,1.6
+</code></pre></div>
+<p>For each position, the report lists the following:</p>
+<ul>
+<li>The nearest stars at the observation epoch and their separations</li>
+<li>The combined 1σ uncertainty of the position, catalog, and WCS (<code>--wcs-sigma</code>)</li>
+<li>The probability of an offset this large or larger if the position is the star (<code>p_consistent</code>)</li>
+<li>The probability that some star lies this close to an arbitrary position (<code>p_chance</code>)</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "navigation.sections", "navigation.top", "search.highlight"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>

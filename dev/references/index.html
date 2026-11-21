@@ -1,0 +1,1804 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Verified astrometric plate solving for FITS images.">
+      
+      
+      
+        <link rel="canonical" href="https://shaneryall.github.io/Fayde/dev/references/">
+      
+      
+        <link rel="prev" href="../versioning/">
+      
+      
+        <link rel="next" href="../reference/changelog/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
+    
+    
+      
+        <title>Algorithm sources - Fayde</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#references" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Fayde" class="md-header__button md-logo" aria-label="Fayde" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Fayde
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Algorithm sources
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/shaneryall/Fayde" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shaneryall/Fayde
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Fayde" class="md-nav__button md-logo" aria-label="Fayde" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Fayde
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/shaneryall/Fayde" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shaneryall/Fayde
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-to guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-to guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install Fayde
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose and connect a star catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use the command line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Fayde from Python
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index-set/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build pattern indexes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command-line reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../source-list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source list format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Versioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Algorithm sources
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Algorithm sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#implemented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implemented
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Implemented">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#faydes-own-choices-no-published-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fayde's own choices (no published source)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#considered-and-not-adopted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Considered and not adopted
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explanation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Explanation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/plate-solver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plate solver design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Star detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../research/literature-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Literature review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#implemented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implemented
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Implemented">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#faydes-own-choices-no-published-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fayde's own choices (no published source)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#considered-and-not-adopted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Considered and not adopted
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h1>
+<p>Every algorithm Fayde uses, where it comes from, and where it lives in the code. When an
+algorithm has no published source, the entry says so. Keep this file in step with the code: a
+change that adds or replaces an algorithm updates its entry here, and the implementing module's
+doc comment cites the same source.</p>
+<p>Wider survey and verdicts: <a href="../research/literature-review/"><code>docs/research/literature-review.md</code></a>.</p>
+<h2 id="implemented">Implemented<a class="headerlink" href="#implemented" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Source</th>
+<th>Used for</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FITS WCS, gnomonic (TAN) projection, <code>LONPOLE = 180°</code></td>
+<td>Greisen &amp; Calabretta 2002, A&amp;A 395, 1061 (Paper I); Calabretta &amp; Greisen 2002, A&amp;A 395, 1077 (Paper II)</td>
+<td>Pixel ↔ sky transform; reading and writing WCS cards</td>
+<td><code>crates/fayde-wcs/src/tan.rs</code>, <code>header.rs</code></td>
+</tr>
+<tr>
+<td>FITS header card format</td>
+<td>Pence et al. 2010, A&amp;A 524, A42 (FITS Standard 3.0)</td>
+<td>80-character cards, value syntax, <code>D</code> exponents</td>
+<td><code>crates/fayde-wcs/src/header.rs</code></td>
+</tr>
+<tr>
+<td>Older rotation keyword: with no CD or PC matrix, <code>CD = [[c1·cos ρ, −c2·sin ρ], [c1·sin ρ, c2·cos ρ]]</code> with <code>c = CDELT</code> and ρ = <code>CROTA2</code> (<code>CROTA1</code> if only that is given); a PC matrix takes precedence</td>
+<td>Calabretta &amp; Greisen 2002, A&amp;A 395, 1077, §6.1 (AIPS convention); precedence as in wcslib</td>
+<td>Reading a WCS written with <code>CDELT</code> and <code>CROTA2</code></td>
+<td><code>crates/fayde-wcs/src/header.rs</code> (<code>TanWcs::from_header</code>)</td>
+</tr>
+<tr>
+<td>Angular separation <code>atan2(|a×b|, a·b)</code></td>
+<td>Vincenty 1975, <em>Survey Review</em> 23(176), 88 (the well-conditioned form for all separations)</td>
+<td>Every sky distance</td>
+<td><code>crates/fayde-core/src/sky.rs</code>, <code>crates/fayde-index/src/pattern.rs</code></td>
+</tr>
+<tr>
+<td>UCAC4 record format, encodings and central epochs; zone files in RA order, tabulated per 0.25° bin by <code>u4index.unf</code></td>
+<td>Zacharias et al. 2013, AJ 145, 44; <code>readme_u4.txt</code> (USNO, 2012), notes 6, 8, 9. The RA order was checked on the catalogue itself: in all 900 zone files (113,780,093 records) a search by RA gives every one of the index's 1,296,000 entries</td>
+<td>Reading the catalogue in place; finding a cone's records with or without <code>u4index.unf</code></td>
+<td><code>crates/fayde-catalog/src/ucac4.rs</code></td>
+</tr>
+<tr>
+<td>Rigorous proper-motion propagation (zero parallax / radial velocity) and error growth</td>
+<td>Butkevich &amp; Lindegren 2014, A&amp;A 570, A62</td>
+<td>Star positions and position errors at the observation epoch</td>
+<td><code>crates/fayde-catalog/src/propagate.rs</code></td>
+</tr>
+<tr>
+<td>Elementary functions (sin, cos, atan2, log, exp, pow, hypot) with platform-independent results</td>
+<td>Sun Microsystems fdlibm (1993), via FreeBSD msun and musl libm, ported to Rust as the <code>libm</code> crate (rust-lang); built without its <code>arch</code> feature</td>
+<td>The same bits on macOS, Linux and Windows, so index bytes and content hashes match across machines. <code>powi</code> is binary exponentiation in a fixed order. Std methods are banned by <code>clippy.toml</code></td>
+<td><code>crates/fayde-core/src/math.rs</code></td>
+</tr>
+<tr>
+<td>Star/not-star test at a position: Rayleigh tail <code>exp(−d²/2σ²)</code> of a 2-D isotropic Gaussian offset, and Poisson nearest-neighbour chance <code>1 − exp(−ρπd²)</code></td>
+<td>Rayleigh distribution of the radius of a 2-D isotropic Gaussian; Chandrasekhar 1943, Rev. Mod. Phys. 15, 1, §III.7 (nearest-neighbour distribution for a uniform density). The 0.0027 cut (3σ two-sided, 1-D) is a convention, a Fayde choice</td>
+<td><code>fayde verify --at</code>, <code>Solver.stars_at</code></td>
+<td><code>crates/fayde-solve/src/at.rs</code></td>
+</tr>
+<tr>
+<td>Matched filter: smoothing with the PSF gives the highest signal-to-noise ratio for a point source in white noise; loss <code>2k/(k² + 1)</code> for a kernel <code>k</code> times too wide or narrow</td>
+<td><a href="https://arxiv.org/abs/1512.06872">Zackay &amp; Ofek 2017, ApJ 836, 187</a>, eqs. 21–22, 31; Stetson 1987, PASP 99, 191 (DAOFIND)</td>
+<td>Detection filter; when a second pass at another width is worth its cost</td>
+<td><code>crates/fayde-detect/src/filter.rs</code>, <code>lib.rs</code> (<code>MIN_EFFICIENCY</code>)</td>
+</tr>
+<tr>
+<td>Sources as local maxima of the filtered image above k·σ</td>
+<td>Stetson 1987, PASP 99, 191</td>
+<td>Candidate peaks</td>
+<td><code>crates/fayde-detect/src/peaks.rs</code> (<code>find</code>)</td>
+</tr>
+<tr>
+<td>Background on a mesh of tiles, interpolated</td>
+<td>Bertin &amp; Arnouts 1996, A&amp;AS 117, 393, §3 (SExtractor)</td>
+<td>Background and noise maps</td>
+<td><code>crates/fayde-detect/src/mesh.rs</code></td>
+</tr>
+<tr>
+<td>Noise from differences of separated pixel pairs</td>
+<td>Lang et al. 2010, AJ 139, 1782 (astrometry.net <code>dsigma</code>)</td>
+<td>Noise that a background gradient does not inflate</td>
+<td><code>crates/fayde-detect/src/mesh.rs</code> (<code>pair_noise</code>)</td>
+</tr>
+<tr>
+<td>Singly left-censored normal fit using two points on a normal probability plot</td>
+<td><a href="https://onlinelibrary.wiley.com/doi/10.1002/0471725234.ch3">Nelson 1982, <em>Applied Life Data Analysis</em>, §3</a>. Fayde uses the floor and the middle of the surviving values to limit the effect of bright sources</td>
+<td>Sky level and noise before clipping. The tile selection uses the floor fraction and transitions between neighboring pixels to identify padding</td>
+<td><code>crates/fayde-detect/src/mesh.rs</code> (<code>ClippedBackground::estimate</code>, <code>censored_normal</code>)</td>
+</tr>
+<tr>
+<td>Moments of the clipped normal and first-order skew correction at 5σ</td>
+<td>Moments from integrating the normal density above the floor. Quantile correction from <a href="https://digital.library.adelaide.edu.au/items/55888ee8-28e1-4405-8402-dc91b7467c62">Cornish &amp; Fisher 1937, Rev. Int. Stat. Inst. 5, 307</a></td>
+<td>Upper-tail scale for point detection on clipped frames</td>
+<td><code>crates/fayde-detect/src/mesh.rs</code> (<code>ClippedBackground::filtered</code>)</td>
+</tr>
+<tr>
+<td>Median absolute deviation as a robust scale, factor 1.4826</td>
+<td>Hampel 1974, JASA 69, 383; Rousseeuw &amp; Croux 1993, JASA 88, 1273</td>
+<td>Noise estimate; spreads of an instrument profile's scale and roll</td>
+<td><code>crates/fayde-detect/src/mesh.rs</code>, <code>crates/fayde-api/src/calibrate.rs</code></td>
+</tr>
+<tr>
+<td>Quadratic fitted to the logarithm of the samples around a peak: exact for a Gaussian, no pixel-phase bias</td>
+<td>Caruana et al. 1986, Anal. Chem. 58, 1162 (1-D); Naidu &amp; Fisher 1991, BMVC, doi:10.5244/C.5.28 (the "Gaussian estimator", bias compared with the parabola's); Anthony &amp; Granick 2009, Langmuir 25, 8152 (2-D)</td>
+<td>Position, size, shape and amplitude of each source in closed form</td>
+<td><code>crates/fayde-detect/src/peaks.rs</code> (<code>measure</code>)</td>
+</tr>
+<tr>
+<td>Least-squares quadratic surface on a 3 × 3 neighbourhood (facet model)</td>
+<td>Haralick 1984, IEEE TPAMI 6(1), 58</td>
+<td>The normal equations of that fit</td>
+<td><code>crates/fayde-detect/src/peaks.rs</code> (<code>measure</code>)</td>
+</tr>
+<tr>
+<td>A matched filter followed by a 3 × 3 peak fit reaches the Cramér–Rao bound for well-sampled stars</td>
+<td><a href="https://arxiv.org/abs/1610.05873">Vakili &amp; Hogg 2016, arXiv:1610.05873</a></td>
+<td>Why the cheap estimator is also the accurate one</td>
+<td><code>docs/design/detection.md</code> §3.4</td>
+</tr>
+<tr>
+<td>Cramér–Rao bound on a star's position: <code>√2·σ/SNR</code> background-limited, <code>σ/√N</code> source-limited</td>
+<td>King 1983, PASP 95, 163; Mendez, Silva &amp; Lobos 2013, PASP 125, 580; Gaussian-weighted centroid <code>(16/9)σ²/N</code>: Mortensen et al. 2010, Nature Methods 7, 377, eq. 6</td>
+<td>Check on the per-source position error</td>
+<td><code>crates/fayde-detect/src/lib.rs</code> (<code>finish</code>), <code>tests/synthetic.rs</code></td>
+</tr>
+<tr>
+<td>Line points from the Hessian of the smoothed image: direction along the eigenvector of the weaker curvature</td>
+<td>Steger 1998, IEEE TPAMI 20(2), 113; ratio of principal curvatures as an edge/ridge test: Lowe 2004, IJCV 60(2), 91, §4.1</td>
+<td>Ridge-like peaks seed the streak tracer</td>
+<td><code>crates/fayde-detect/src/peaks.rs</code>, <code>streak.rs</code></td>
+</tr>
+<tr>
+<td>Streak model: a line segment convolved with a Gaussian; an end is where the profile falls to half</td>
+<td>Vereš et al. 2012, PASP 124, 1197 (<a href="https://arxiv.org/abs/1209.6106">arXiv:1209.6106</a>)</td>
+<td>Streak ends at the half-level point; synthetic streaks</td>
+<td><code>crates/fayde-detect/src/streak.rs</code> (<code>fit</code>), <code>synth.rs</code></td>
+</tr>
+<tr>
+<td>Density of local maxima of a smoothed Gaussian noise field above a height: <code>u·φ(u)/(4π σk²)</code> for a Gaussian kernel</td>
+<td>Bond &amp; Efstathiou 1987, MNRAS 226, 655, eq. A1.12; Cheng &amp; Schwartzman 2017, Ann. Stat. 45(2), 529 (κ = 1 for a Gaussian kernel)</td>
+<td>Detection threshold from a false-alarm count; null model of <code>p_star</code></td>
+<td><code>crates/fayde-detect/src/stats.rs</code> (<code>noise_peaks_above</code>)</td>
+</tr>
+<tr>
+<td>Local false discovery rate: expected nulls over observed, per value</td>
+<td>Efron 2008, Stat. Sci. 23(1), 1; in astronomy: Miller et al. 2001, AJ 122, 3492</td>
+<td><code>p_star</code> of each source</td>
+<td><code>crates/fayde-detect/src/lib.rs</code> (<code>finish</code>)</td>
+</tr>
+<tr>
+<td>Sharpness: light through the optics reaches a peak's neighbours, a hot pixel's charge does not</td>
+<td>Stetson 1987, PASP 99, 191 (DAOFIND's sharpness statistic); the test on the second faintest neighbour is Fayde's</td>
+<td>Hot pixels and cosmic rays</td>
+<td><code>crates/fayde-detect/src/lib.rs</code> (<code>sharp_in_raw</code>)</td>
+</tr>
+<tr>
+<td>Moffat profile for seeing-limited stars</td>
+<td>Moffat 1969, A&amp;A 3, 455</td>
+<td>Synthetic test frames</td>
+<td><code>crates/fayde-detect/src/synth.rs</code></td>
+</tr>
+<tr>
+<td>FITS image arrays, <code>BSCALE</code>/<code>BZERO</code>/<code>BLANK</code></td>
+<td>Pence et al. 2010, A&amp;A 524, A42 (FITS Standard 3.0) §5.2, §4.4.2.5</td>
+<td>Reading images for detection</td>
+<td><code>crates/fayde-fits/src/image.rs</code></td>
+</tr>
+<tr>
+<td>HEALPix NESTED pixelization</td>
+<td>Górski et al. 2005, ApJ 622, 759</td>
+<td>Uniform star selection cells</td>
+<td><code>crates/fayde-index/src/healpix.rs</code></td>
+</tr>
+<tr>
+<td>Uniform catalogue selection (N brightest separated stars per HEALPix cell; default 10″ separation, brighter replacements across cell boundaries)</td>
+<td><a href="https://arxiv.org/abs/0910.2233">Lang et al. 2010, AJ 139, 1782</a> (astrometry.net <code>uniformize-catalog</code>); streaming replacement policy and 10″ default are Fayde choices</td>
+<td>Even dense-tier star density without close doubles occupying both slots</td>
+<td><code>crates/fayde-index/src/build.rs</code> (<code>Selector::push</code>, <code>select_stars</code>)</td>
+</tr>
+<tr>
+<td>Fibonacci lattice on the sphere (golden angle reduced to one turn before sin/cos)</td>
+<td>González 2010, <em>Math. Geosci.</em> 42, 49</td>
+<td>Pattern field centres</td>
+<td><code>crates/fayde-index/src/build.rs</code> (<code>lattice</code>)</td>
+</tr>
+<tr>
+<td>4-star patterns: sorted edge ratios, binned key, canonical order by distance from centroid</td>
+<td>Brown &amp; Stubis 2017, "TETRA: Star identification with hash tables", AIAA/USU Conference on Small Satellites; tetra3 (ESA, github.com/esa/tetra3)</td>
+<td>Pattern shape and hash key; pattern-hash hypotheses in the solver</td>
+<td><code>crates/fayde-index/src/pattern.rs</code>, <code>crates/fayde-solve/src/solve.rs</code> (<code>pattern_hash</code>)</td>
+</tr>
+<tr>
+<td>Two-tier index (selection v4): dense verification stars plus greedy brightest-first pattern thinning (ties by ID), minimum separation <code>r_min = 0.6 × fov / sqrt(N)</code>, N = <code>pattern_stars_per_fov</code>; pattern membership stored per star (file format v2)</td>
+<td><a href="https://github.com/esa/tetra3/blob/master/tetra3/tetra3.py">ESA tetra3</a> (<code>generate_database</code>, pattern/verification densities and separation rule); <a href="https://digitalcommons.usu.edu/smallsat/2017/all2017/124/">Brown &amp; Stubis 2017 / TETRA</a></td>
+<td>About N pattern stars per fov² without coarse-cell brightness artifacts; achieved density depends on input density</td>
+<td><code>crates/fayde-index/src/build.rs</code> (<code>select_pattern_stars</code>, <code>pattern_min_sep</code>, <code>build_selected</code>)</td>
+</tr>
+<tr>
+<td>Lattice fields with a fixed pattern budget, breadth-first brightest-first combinations, prime-sized table, linear probing, 16-bit key check, largest-edge prune, nearest-bin-first lookup</td>
+<td>cedar-solve (github.com/smroid/cedar-solve, fork of tetra3); no paper</td>
+<td>Index construction and lookup</td>
+<td><code>crates/fayde-index/src/build.rs</code>, <code>pattern.rs</code>, <code>lib.rs</code> (<code>lookup</code>)</td>
+</tr>
+<tr>
+<td>Multiplicative hashing (constant 2654435761 ≈ 2³²/φ) and linear probing</td>
+<td>Knuth 1998, <em>The Art of Computer Programming</em> vol. 3, 2nd ed., §6.4</td>
+<td>Pattern table addressing</td>
+<td><code>crates/fayde-index/src/pattern.rs</code></td>
+</tr>
+<tr>
+<td>k-d tree</td>
+<td>Bentley 1975, <em>Commun. ACM</em> 18(9), 509</td>
+<td>Radius searches over star vectors</td>
+<td><code>crates/fayde-index/src/kdtree.rs</code></td>
+</tr>
+<tr>
+<td>Radius search on a uniform grid of cells (the cell method for fixed-radius near neighbours)</td>
+<td>Bentley &amp; Friedman 1979, <em>ACM Comput. Surv.</em> 11(4), 397, a survey of range searching in which cells are one of the structures</td>
+<td>Matching sources to the reference stars of one hypothesis (the points change with every refit, so a structure filled in one pass beats one that is sorted)</td>
+<td><code>crates/fayde-solve/src/grid.rs</code></td>
+</tr>
+<tr>
+<td>Multiply-rotate hash for keys that are already numbers ("Fx hash")</td>
+<td>Firefox, and the Rust compiler's <code>rustc-hash</code> crate; no paper</td>
+<td>Hash maps keyed by grid cells and star identities, in place of SipHash</td>
+<td><code>crates/fayde-solve/src/hash.rs</code></td>
+</tr>
+<tr>
+<td>Bayesian log-odds verification (true star vs distractor mixture, unique reference claims, ranked sources)</td>
+<td>Lang et al. 2010, AJ 139, 1782, §2.4</td>
+<td>Accepting or rejecting a hypothesis</td>
+<td><code>crates/fayde-solve/src/verify.rs</code></td>
+</tr>
+<tr>
+<td>Score = largest cumulative log-odds over prefixes of the ranked list; the stars a hypothesis was built from are matched but not scored</td>
+<td>astrometry.net <code>solver/verify.c</code> (keeps the best index; takes the quad's stars out of its lists), the <code>bestlogodds</code> loop, and the quad's stars moved out of the test list. The prefix maximum is the quantity Ville's maximal inequality bounds for a non-negative supermartingale: Ville 1939, <em>Étude critique de la notion de collectif</em></td>
+<td>Source lists with many faint false detections; no evidence from matches that hold by construction</td>
+<td><code>crates/fayde-solve/src/verify.rs</code></td>
+</tr>
+<tr>
+<td>Pair-separation list with range lookup (k-vector idea; binary search instead of the k-vector's linear interpolation). The pairs are put in bins by squared chord length, and a bin's separations are worked out and sorted when a lookup first reaches it: a lookup returns what the fully sorted list would</td>
+<td>Mortari 1997, <em>J. Astronaut. Sci.</em> 45(2); Mortari &amp; Neta 2000, AAS 00-128; the bins and the deferred sort are Fayde's</td>
+<td>Pair seeds for hinted solving</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>PairTable</code>)</td>
+</tr>
+<tr>
+<td>Progressive sampling: seeds from the best-ranked sources first, ranking by <code>p_star</code> × flux</td>
+<td>Chum &amp; Matas 2005, CVPR (PROSAC); the scale-prior ordering below is a Fayde extension</td>
+<td>Source ordering, seed order</td>
+<td><code>crates/fayde-solve/src/solve.rs</code></td>
+</tr>
+<tr>
+<td>Local optimization: re-match and refit each promising hypothesis before scoring</td>
+<td>Chum, Matas &amp; Kittler 2003, DAGM, LNCS 2781 (LO-RANSAC)</td>
+<td><code>local_refit</code></td>
+<td><code>crates/fayde-solve/src/solve.rs</code></td>
+</tr>
+<tr>
+<td>Number of false alarms; threshold on log-odds − ln(hypotheses tested)</td>
+<td>Desolneux, Moisan &amp; Morel 2000 (a-contrario); Moisan &amp; Stival 2004, IJCV 57(3)</td>
+<td>Acceptance that does not loosen as the search grows</td>
+<td><code>crates/fayde-solve/src/solve.rs</code></td>
+</tr>
+<tr>
+<td>Similarity seeds from 2 or 4 correspondences: closed-form complex least squares, <code>z_c = α z_p + β</code> or <code>α conj(z_p) + β</code>, starting in the catalogue-centroid tangent plane and refitted with the tangent point at the fitted <code>CRVAL</code> (see Fayde's own choices)</td>
+<td>Planar equivalent of Umeyama 1991, IEEE TPAMI 13(4), 376–380 (least-squares similarity); related rotation fit: Kabsch 1976, <em>Acta Cryst.</em> A32, 922</td>
+<td>Rotation, isotropic scale, translation and both parities without affine shear; also local refits with fewer than 8 matches</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>similarity_seed</code>, <code>rematch_fit</code>)</td>
+</tr>
+<tr>
+<td>Cauchy IRLS weights <code>1 / (σ_tot² (1 + (r/r0)²))</code>, source and catalogue variance added in quadrature</td>
+<td>Holland &amp; Welsch 1977, <em>Commun. Stat.</em> 6(9); <code>r0 = 3 σ_tot</code> is Fayde's tuning choice</td>
+<td>Robust local refits before verification</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>local_refit</code>)</td>
+</tr>
+<tr>
+<td>IRLS with mixture-model inlier probabilities as weights</td>
+<td>Holland &amp; Welsch 1977, <em>Commun. Stat.</em> 6(9); Hogg, Bovy &amp; Lang 2010, arXiv:1008.4686</td>
+<td>Final WCS fit</td>
+<td><code>crates/fayde-solve/src/fit.rs</code>, <code>solve.rs</code> (<code>final_fit</code>)</td>
+</tr>
+<tr>
+<td>Error-scale factor (reduced χ², Birge ratio)</td>
+<td>Birge 1932, <em>Phys. Rev.</em> 40, 207</td>
+<td>Calibrates default centroid errors and detects under-reported producer errors; per-source floors are a Fayde choice below</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>final_fit</code>)</td>
+</tr>
+<tr>
+<td>SIP distortion convention (<code>A</code>, <code>B</code>, <code>AP</code>, <code>BP</code>)</td>
+<td>Shupe et al. 2005, ASP Conf. Ser. 347, 491</td>
+<td>Distortion model, FITS cards</td>
+<td><code>crates/fayde-wcs/src/sip.rs</code></td>
+</tr>
+<tr>
+<td>Distortion fit as a full polynomial in the tangent plane, decomposed into CD + SIP</td>
+<td>Lang et al. 2010 (astrometry.net <code>tweak</code>)</td>
+<td>Final fit at order ≥ 2</td>
+<td><code>crates/fayde-solve/src/fit.rs</code> (<code>fit_poly</code>)</td>
+</tr>
+<tr>
+<td>Model order by BIC with noise variance profiled out: <code>n·ln(χ²/n) + k·ln n</code>, <code>n = 2 Σ inlier_prob</code>, <code>k = 2 × polynomial terms</code></td>
+<td>Schwarz 1978, <em>Ann. Stat.</em> 6(2), 461; soft effective sample size is a Fayde choice</td>
+<td>Choosing TAN vs SIP order 2–3 independently of a common centroid-sigma rescaling</td>
+<td><code>crates/fayde-solve/src/fit.rs</code> (<code>fit_best_order</code>)</td>
+</tr>
+<tr>
+<td>Scale and roll priors as terms of the final fit: a Gaussian prior on a linear-model parameter as one more weighted observation</td>
+<td>Gelman et al. 2013, <em>Bayesian Data Analysis</em> 3rd ed., ch. 14 (prior information as additional data points); the linearisation along CD₀ and ∂CD₀/∂θ, leaving skew and anisotropy free, is Fayde's</td>
+<td>Holding sparse (5–15 star) fits near the instrument scale and roll</td>
+<td><code>crates/fayde-solve/src/fit.rs</code> (<code>LinearPrior</code>, <code>solve_with_prior</code>), <code>solve.rs</code> (<code>linear_prior</code>)</td>
+</tr>
+<tr>
+<td>Parameter covariance of weighted least squares, (AᵀWA)⁻¹ scaled by the reduced χ²</td>
+<td>Press et al. 2007, <em>Numerical Recipes</em> 3rd ed., §15.4</td>
+<td><code>Solution::covariance</code>, predicted position errors</td>
+<td><code>crates/fayde-solve/src/fit.rs</code> (<code>WcsCovariance</code>)</td>
+</tr>
+<tr>
+<td>Index series in scale bands (√2 field-size steps), best-matched band first</td>
+<td>Lang et al. 2010, AJ 139, 1782</td>
+<td>Blind solving across unknown pixel scales</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>solve_with_indexes</code>)</td>
+</tr>
+<tr>
+<td>FITS file structure, binary tables (<code>TFORMn</code>, big-endian), header-only WCS files</td>
+<td>Pence et al. 2010, A&amp;A 524, A42 (FITS 3.0); IAU FITS Working Group 2016, FITS Standard 4.0</td>
+<td>Reading source lists, images and headers, writing source lists and <code>.wcs</code></td>
+<td><code>crates/fayde-fits/src/lib.rs</code>, <code>sources.rs</code>, <code>image.rs</code></td>
+</tr>
+<tr>
+<td>Source-list format (<code>frame.sources.fits</code>): a FITS binary table with <code>X</code>/<code>Y</code> in FITS pixels, optional <code>FLUX</code>, <code>SIGMA</code>/<code>SIGMA_PX</code>, <code>P_STAR</code>, <code>TRUNCATED</code>, and <code>IMAGEW</code>/<code>IMAGEH</code></td>
+<td>Fayde's own (<code>docs/source-list.md</code>). The <code>X</code>/<code>Y</code> columns and <code>IMAGEW</code>/<code>IMAGEH</code> match the tables astrometry.net reads and writes (Lang et al. 2010), so those files read unchanged</td>
+<td>Input from any detector; output of <code>fayde detect</code></td>
+<td><code>crates/fayde-fits/src/sources.rs</code></td>
+</tr>
+<tr>
+<td>Civil date → day number</td>
+<td>Hinnant, "chrono-compatible low-level date algorithms" (2013, howardhinnant.github.io/date_algorithms.html)</td>
+<td><code>DATE-OBS</code> → MJD</td>
+<td><code>crates/fayde-fits/src/priors.rs</code> (<code>mjd_from_iso</code>)</td>
+</tr>
+<tr>
+<td>FNV-1a 64-bit hash</td>
+<td>Fowler, Noll &amp; Vo; <a href="https://www.rfc-editor.org/rfc/rfc9923">Noll, Vo, Eastlake &amp; Hansen 2026, RFC 9923</a></td>
+<td>Index content hash for provenance and corruption checks</td>
+<td><code>crates/fayde-index/src/file.rs</code></td>
+</tr>
+</tbody>
+</table>
+<p>The detection entries (<code>fayde-detect</code>) come from the survey in the literature review, §7, which
+says how much of each source was read.</p>
+<h3 id="faydes-own-choices-no-published-source">Fayde's own choices (no published source)<a class="headerlink" href="#faydes-own-choices-no-published-source" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Choice</th>
+<th>Rationale</th>
+<th>Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Incremental Cartesian unit-vector buckets of side at least the separation chord, searching 27 neighbouring buckets and checking exact distances</td>
+<td>Bounded local searches for streaming insertion/replacement and pattern thinning, without rebuilding the static k-d tree; independent of HEALPix boundaries</td>
+<td><code>crates/fayde-index/src/build.rs</code> (<code>SeparationGrid</code>)</td>
+</tr>
+<tr>
+<td>High-proper-motion cut: drop a star from patterns if <code>|μ| × 25 yr &gt; 0.5 × pattern_max_error × fov/2</code></td>
+<td>A shift δ changes ratios by ≈ δ / (largest edge); keeps motion-induced ratio error within half a bin over the index lifetime</td>
+<td><code>crates/fayde-index/src/build.rs</code></td>
+</tr>
+<tr>
+<td>Default proper-motion error 50 mas/yr where UCAC4 has none</td>
+<td>Value UCAC4 itself uses for "no data" in output tables (readme note 9)</td>
+<td><code>crates/fayde-catalog/src/ucac4.rs</code></td>
+</tr>
+<tr>
+<td>Strict-by-default catalogue queries (missing zone = error)</td>
+<td>An empty cone must never be mistaken for empty sky</td>
+<td><code>crates/fayde-catalog/src/lib.rs</code></td>
+</tr>
+<tr>
+<td>Pre-filter: ≥ 2 of the next 12 ranked sources must land on seed-list catalogue stars within <code>3σ + 2 px + 1% of distance from the seed pair</code></td>
+<td>Tolerance grows with distance because a 2-star seed's rotation/scale error does</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>prefilter</code>)</td>
+</tr>
+<tr>
+<td>Reference count per hypothesis: brightest <code>clamp(round(1.5 × Σ p_star), 10, 2000)</code> catalogue stars in the frame, using usable sources after duplicate demotion (<code>p_star</code> defaults to 1)</td>
+<td>Effective real-source count prevents low-probability detections from inflating background density; placeholder until <code>detection_limit</code> is supported (design doc §6.2)</td>
+<td><code>crates/fayde-solve/src/solve.rs</code></td>
+</tr>
+<tr>
+<td>Local-refit radii 12 → 6 → 3 px; similarity fit below 8 matches, affine from 8</td>
+<td>Tuned on synthetic fields; four to seven stars cannot constrain shear and anisotropy</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>local_refit</code>, <code>rematch_fit</code>)</td>
+</tr>
+<tr>
+<td>A polynomial order above 1 is a BIC candidate only with four observations per parameter, n ≥ 4k (24 matches for order 2, 40 for order 3); n ≥ 2k while a tune-up is still collecting matches, whose result is refitted under the strict rule</td>
+<td>The profiled BIC has no floor: as k approaches n the fit interpolates, χ² → 0 and <code>n·ln(χ²/n)</code> → −∞. Measured without a rule, hinted solves of sparse frames: 43 of 60 frames with 6 stars and 52 of 60 with 10 stars returned a WCS wrong by ≥ 15″ at the corners. Short of interpolation it stays too liberal with outliers among a few dozen matches: on 1,200 undistorted frames of 12–50 stars, n ≥ 2k chose distortion 16 times (corner errors up to 107″), n ≥ 3k 5 times, n ≥ 4k once (3″); a BIC margin of up to 50 instead of a count still left 3</td>
+<td><code>crates/fayde-solve/src/fit.rs</code> (<code>fit_best_order</code>)</td>
+</tr>
+<tr>
+<td>Similarity fits are repeated with the tangent point moved to the fitted <code>CRVAL</code> until it stops moving</td>
+<td>A transform found in another point's tangent plane is rotated by (east offset × tan δ) at <code>CRVAL</code> (convergence of the meridians). Measured: median hypotheses per hinted solve at Dec 86–89° fell from 607 to 6, the same as at low declination</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>similarity_seed</code>)</td>
+</tr>
+<tr>
+<td>Distortion tune-up: a hypothesis that is not conclusive under a linear model, or that matches over 1.25× (+3) as many stars at 12 px as inside its own gates, is re-matched at 12 px with the order chosen by BIC until no more stars join, then at 6 and 3 px; the better-scoring of the linear and tuned models is kept, and the tune-up counts as one more hypothesis</td>
+<td>Fayde's own. With lens distortion a linear model leaves the outer stars outside the match gate. astrometry.net also refits a promising match before deciding (tune-up in <code>solver.c</code>, recalled from the source), without distortion. Measured: 5% distortion with 0.3 px centroids went from 18/30 solved (4 of them wrong by &gt; 3″) to 30/30, none wrong</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>tune</code>, <code>try_hypothesis</code>)</td>
+</tr>
+<tr>
+<td>A distortion polynomial is kept only if its confident matches cover the sources: in a 3 × 3 grid, every cell with ≥ 6 sources must have a matched fraction ≥ 0.25 × the frame's overall matched fraction; otherwise TAN, or no solution if the hypothesis only passed with distortion</td>
+<td>A polynomial locked onto part of the frame was wrong by up to 80 px in the rest (10% distortion test). Good fits had a lowest cell ratio of 0.47, partial locks ≤ 0.13</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>covers_sources</code>, <code>final_fit</code>)</td>
+</tr>
+<tr>
+<td>The fitted WCS must itself clear the acceptance threshold; the final IRLS runs until the match set and error scale repeat (at most 20 iterations, at least 4)</td>
+<td>The returned solution should be the one that passed, at a converged fit</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>final_fit</code>)</td>
+</tr>
+<tr>
+<td>SIP inverse <code>AP</code>/<code>BP</code> of order forward + 2, fitted on a 25×25 grid; Fayde itself inverts by fixed-point iteration on <code>A</code>/<code>B</code> (exact to 1e-10 px)</td>
+<td>A quartic leaves 0.03 px at the corners of a cubic barrel; order + 2 gives &lt; 0.01 px for external FITS readers</td>
+<td><code>crates/fayde-wcs/src/sip.rs</code></td>
+</tr>
+<tr>
+<td>Settle the match set with two TAN iterations before letting BIC consider SIP</td>
+<td>Avoids fitting distortion to a match set chosen by a wrong model</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>final_fit</code>)</td>
+</tr>
+<tr>
+<td>A distortion order is kept only if no lower order predicts held-out cells of the frame (3 × 3, each left out in turn, training sets at n ≥ 2k) within 5% of its squared error; the lowest such order is used. Matches in fewer than 4 cells allow no distortion; when the order itself cannot be scored, BIC's order stands</td>
+<td>Spatial block cross-validation: Roberts et al. 2017, <em>Ecography</em> 40, 913. On simulated undistorted frames whose matches carry errors in one region, BIC took order 3 and the polynomial ran up to 146 px off in the corners</td>
+<td><code>crates/fayde-solve/src/fit.rs</code> (<code>held_out_order</code>), <code>crates/fayde-solve/src/solve.rs</code> (<code>supported_order</code>)</td>
+</tr>
+<tr>
+<td>When the request has a scale or roll prior, a final fit that ends with distortion is converged again as TAN with scale and roll free of the priors, matching afresh. Both are scored on the same sources at the distortion fit's error scale. A TAN outside the hint's hard limits replaces the distortion fit if it explains the sources at least as well (the hard limits then refuse it); a TAN inside them replaces it only with higher posterior odds, priors included</td>
+<td>Fayde's own. With the hint's scale wrong by more than its limits, the scale stopped inside them and distortion made up the rest with partly wrong matches (42.7 px off in the corners, log-odds 394); a trailed frame with smear did the same (30.7 px). With both checks the first gives no solution and the second solves to 0.03 px; of 106 simulated frames solved with distortion, 8 more are correct and none worse; 178 of 186 real-frame solutions stay bit-identical and the other 8 move closer to the Gaia references</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>converge</code>)</td>
+</tr>
+<tr>
+<td>Header priors order: <code>XPIXSZ</code>/<code>FOCALLEN</code>, then a unit-checked linear WCS (CD, or PC × CDELT), then <code>PIXSCALE</code>/<code>SECPIX</code>; headers with both CD and PC give no scale; pointing from <code>CRVAL</code> then <code>RA</code>/<code>DEC</code> then <code>OBJCTRA</code>/<code>OBJCTDEC</code>; time from <code>JD-OBS</code>, <code>MJD-OBS</code>, then <code>DATE-OBS</code> (+<code>TIME-OBS</code>), all + <code>EXPTIME</code>/2 for mid-exposure</td>
+<td>No published source; <code>CUNIT = 'degree(s)'</code> accepted alongside FITS <code>deg</code> because some real headers use it</td>
+<td><code>crates/fayde-fits/src/priors.rs</code></td>
+</tr>
+<tr>
+<td>Tangent-plane inverse defined for every input: beyond 1e150 rad the reference-point term is dropped and only the direction of the offset is kept (the limit of the gnomonic inverse, 90° from the reference point); a NaN offset gives the reference point</td>
+<td>A WCS or pixel at the edge of the f64 range gave a panic; the limit is the mathematically defined answer</td>
+<td><code>crates/fayde-wcs/src/tan.rs</code> (<code>Basis::deproject</code>)</td>
+</tr>
+<tr>
+<td>Header numbers must be finite: <code>NaN</code>, <code>inf</code> and exponents past the f64 range are kept as text, so a numeric read of that keyword is an error naming it</td>
+<td>A non-finite WCS or SIP value must not reach the arithmetic, and must not be read as an absent term</td>
+<td><code>crates/fayde-wcs/src/header.rs</code> (<code>parse_value</code>), <code>crates/fayde-wcs/src/sip.rs</code></td>
+</tr>
+<tr>
+<td>Repeated keyword: the first card is the one looked up</td>
+<td>Matches the lookup of cfitsio and Astropy, so a header that repeats a keyword gives the same WCS in each</td>
+<td><code>crates/fayde-wcs/src/header.rs</code> (<code>Header::get</code>)</td>
+</tr>
+<tr>
+<td>Plausible epoch range, Julian years 1800 to 2200: a header clock outside it is reported and skipped, a request or index epoch outside it is an error</td>
+<td>A Julian Date in <code>MJD-OBS</code> or an unset camera clock otherwise moves every star by centuries of proper motion and fails with an unrelated message</td>
+<td><code>crates/fayde-core/src/epoch.rs</code>, <code>crates/fayde-fits/src/priors.rs</code>, <code>crates/fayde-solve/src/solve.rs</code> (<code>validate</code>)</td>
+</tr>
+<tr>
+<td>Header pointing is used only when the header does not declare another frame: <code>RADESYS</code> other than ICRS or FK5, or <code>EQUINOX</code> other than 2000, drops it with a warning (a bare <code>EPOCH</code> is not consulted: it is also written for the observation date); right ascension outside [0°, 360°) or 24 h is rejected, not wrapped</td>
+<td>No precession is applied, so B1950 or equinox-of-date coordinates are up to about 0.7° from ICRS; a prior must not be those coordinates read as ICRS</td>
+<td><code>crates/fayde-fits/src/priors.rs</code> (<code>foreign_frame</code>, <code>header_priors</code>)</td>
+</tr>
+<tr>
+<td>Blind hypotheses whose implied frame exceeds twice the index field size are skipped before any catalogue query</td>
+<td>An index cannot hold patterns larger than its fields; such hypotheses produced sky-sized cones (found in a comparison run on real frames)</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>pattern_hash</code>)</td>
+</tr>
+<tr>
+<td>Catalogue cones cached per (HEALPix cell of the field centre, √2 field-radius bucket)</td>
+<td>Avoids one catalogue query per blind hypothesis</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>pattern_hash</code>)</td>
+</tr>
+<tr>
+<td>Catalogue stars of a pointing prior read as hypotheses need them: only the brightest stars of the prior's cone for seeding (<code>Catalog::cone_brightest</code>), and every star in a cone of 1.25 × the frame's radius around a hypothesis that passes the pre-filter; after 6 such reads the rest of the prior's cone is read in one go</td>
+<td>A 2° prior around a 0.6° frame covers 46 frame areas, and reading, propagating and sorting all of it was three quarters of a hinted solve. A hypothesis sees the stars it would see with the whole cone in memory, in the same order: results on 109 real frames are unchanged to the last bit. Of those solves, 62 needed one read and 1 the whole cone</td>
+<td><code>crates/fayde-solve/src/refset.rs</code>, <code>solve.rs</code> (<code>pair_seeds</code>, <code>prior_cone</code>)</td>
+</tr>
+<tr>
+<td>Cone test that computes the exact separation only at the edge: a star whose J2000 direction is farther from the centre than the radius plus the largest proper motion is rejected on a dot product; the others are decided by the chord from the vector the propagation produced, and <code>centre.separation(position) &gt; radius</code> is evaluated only within 1e-9 rad of the edge (and for cones wider than 1 rad)</td>
+<td>The exact form costs two sines, two cosines and an arctangent per star on top of the propagation. Compared with a record-by-record scan: 1.7 million stars in 720 cones equal, including 5,565 cones whose edge passes through or beside a star</td>
+<td><code>crates/fayde-catalog/src/ucac4.rs</code> (<code>ConeTest</code>)</td>
+</tr>
+<tr>
+<td>Pair seeds within 3σ of the pointing before the whole prior cone, when 3σ is at most half the hard radius</td>
+<td>A pointing is usually known far better than the limit set on it, and the work of a pair-seed stage grows with its cone's area. 3σ holds 98.9% of a two-dimensional Gaussian. The first look is skipped when it would be more than half the limit (the default σ is a quarter of it): it would then cost nearly as much as the search it spares, and a frame it cannot solve would pay twice. Measured on 146 real source lists: 8.7 ms per list at a 2° limit, 1.1 ms at 0.25°</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>plan</code>, <code>pair_seeds</code>)</td>
+</tr>
+<tr>
+<td>Instrument profile from solved frames (<code>fayde calibrate</code>): median fitted scale, with 1σ = 1.5 × its robust spread and at least 0.1% of the scale; parity when every solution agrees; roll rule <code>offset + sign × keyword</code> for the sign whose offsets scatter less, offset the median about the mean direction, 1σ = 2 × the robust spread (at least 0.05°), hard limit 10σ (at least 1°); pointing 1σ = median offset between the header pointing and the solved frame centre, divided by √(2 ln 2)</td>
+<td>Medians and median absolute deviations, so that poor solutions among the frames do not move the profile. The 0.1% floor: the solver's hard limit is 3σ on the scale fitted to one frame, and fits to a dozen stars scatter by 0.1 to 0.2% (a σ of 0.0013″ on 2.994″ lost a frame). √(2 ln 2) is the median of a Rayleigh distribution in units of its σ: the radial offset of a pointing with a Gaussian error σ per axis. A profile needs no other solver: 66 cold solutions gave 2.99361″/px and roll = 90.015° − keyword, scatter 0.039°</td>
+<td><code>crates/fayde-api/src/calibrate.rs</code></td>
+</tr>
+<tr>
+<td>Header read without its WCS (<code>--no-header-wcs</code>, profile <code>header_wcs: false</code>): the cards of a world coordinate system are dropped before the priors are read, so the pointing comes from <code>RA</code>/<code>DEC</code> or <code>OBJCTRA</code>/<code>OBJCTDEC</code> and no scale from <code>CD</code> or <code>CDELT</code></td>
+<td>A header WCS may be another plate solver's solution, which a test of Fayde alone must not use and which later frames may not have</td>
+<td><code>crates/fayde-wcs/src/header.rs</code> (<code>without_wcs</code>), <code>crates/fayde-api/src/lib.rs</code> (<code>build_request</code>)</td>
+</tr>
+<tr>
+<td>Cone search without <code>u4index.unf</code>: binary search of each zone file by RA; the records it leads to are checked for RA order</td>
+<td>A catalogue copy without <code>u4i/</code> read whole zones: 350 ms per hinted solve, where a copy with the index took 22 ms. The search reads the records the index gives (see the UCAC4 entry above)</td>
+<td><code>crates/fayde-catalog/src/ucac4.rs</code> (<code>ra_range</code>)</td>
+</tr>
+<tr>
+<td>Pattern search depth: top 16 ranked sources, breadth-first</td>
+<td>Dense synthetic fields abstained with 10 (all-sky benchmark); breadth-first order keeps the cost on frames the smaller depth could not solve</td>
+<td><code>crates/fayde-solve/src/request.rs</code> (<code>Policy::pattern_sources</code>)</td>
+</tr>
+<tr>
+<td>Adaptive search plan from request metadata (pair seeds / ringed region hash / scale-pruned hash / blind / opt-in out-of-prior), shared hypothesis count across stages</td>
+<td>Fayde's own</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>plan</code>, <code>solve_auto</code>)</td>
+</tr>
+<tr>
+<td>Region filter: all 4 pattern stars within (ring radius + implied field radius) of the pointing</td>
+<td>Rejects off-region hash matches before any fitting</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>pattern_hash</code>)</td>
+</tr>
+<tr>
+<td>Placeholder scale rejection: a scale implying a field wider than a hemisphere (solver) or than 60° half-diagonal (header reader)</td>
+<td>Found on cropped frames whose headers carry non-WCS scale values</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>new_ctx</code>), <code>crates/fayde-fits/src/priors.rs</code></td>
+</tr>
+<tr>
+<td>Prior terms in the hypothesis score: ln(prior density / uniform density over the hard limits) for pointing (2-D Gaussian vs a cap of the hard radius), scale and roll (1-D Gaussians vs their ranges)</td>
+<td>Standard Bayesian odds (the same framework as Lang et al. 2010's verification); the uniform-over-limits reference is Fayde's choice</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>prior_log_ratio</code>)</td>
+</tr>
+<tr>
+<td>Catalogue position error at epoch added in quadrature to the centroid error, per match</td>
+<td>Standard error propagation; uses <code>Star::pos_err_mas</code> from §5.1</td>
+<td><code>crates/fayde-solve/src/verify.rs</code>, <code>solve.rs</code></td>
+</tr>
+<tr>
+<td>Duplicates: a source within 3 px of a better-ranked one gets <code>p_star</code> × 0.1 and is ranked last</td>
+<td>Detector fragments otherwise compete for the same reference star</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>new_ctx</code>)</td>
+</tr>
+<tr>
+<td>Ranking: measured-flux sources by <code>p_star</code> × flux, then sources without flux in input order</td>
+<td>One missing flux must not discard all flux information</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>new_ctx</code>)</td>
+</tr>
+<tr>
+<td>Polynomial fits in normalized offsets (u/S, v/S), coefficients rescaled by S^-(p+q)</td>
+<td>Standard least-squares conditioning (Press et al. 2007, §15.4); a safeguard: tests at 4096 px, orders 3 and 5, matched with and without it</td>
+<td><code>crates/fayde-solve/src/fit.rs</code>, <code>crates/fayde-wcs/src/sip.rs</code></td>
+</tr>
+<tr>
+<td>Leave-one-out residuals r/(1 − h) with leverage h = w·fᵀ(AᵀWA)⁻¹f; worst predicted σ over a 5×5 grid</td>
+<td>Hoaglin &amp; Welsch 1978, <em>Am. Stat.</em> 32(1), 17 (the hat matrix); the grid report is Fayde's</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>final_fit</code>), <code>fit.rs</code> (<code>worst_radial_sigma_arcsec</code>)</td>
+</tr>
+<tr>
+<td>Truncated sources: anisotropic Gaussian gate along the frame trail (1σ = L/2), excluded from fits and seeds</td>
+<td>Fayde's own</td>
+<td><code>crates/fayde-solve/src/verify.rs</code>, <code>solve.rs</code></td>
+</tr>
+<tr>
+<td>Instrument profile with a header-keyword roll rule</td>
+<td>Fayde's own</td>
+<td><code>crates/fayde-fits/src/instrument.rs</code>, <code>profiles/example.json</code></td>
+</tr>
+<tr>
+<td><code>verify_wcs</code> / <code>refine_wcs</code> (<code>fayde verify</code>, <code>fayde refit</code>): score an existing WCS; re-match 12 → 6 → 3 px and refit with the solver's IRLS/BIC</td>
+<td>Fayde's own, reusing Lang et al. 2010 verification</td>
+<td><code>crates/fayde-solve/src/solve.rs</code></td>
+</tr>
+<tr>
+<td>Strategy: pair seeds first when there is a pointing prior and σ/scale ≤ 3%, then the pattern hash; the hash alone otherwise (including no priors)</td>
+<td>Follows the design (§5.3) and the oversampling measurement in §5.2</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>solve_with_index</code>)</td>
+</tr>
+<tr>
+<td>Pattern-hash ratio tolerance <code>clamp(8.5σ / L, 0.002, 0.02)</code>, L = largest image edge</td>
+<td>Propagated centroid noise (≈ 2√2σ/L per ratio) × 3</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>pattern_hash</code>)</td>
+</tr>
+<tr>
+<td>Pattern-hash assignments: enumerate all ≤ 24 image permutations whose six labelled edge ratios (each divided by the largest edge) agree within lookup tolerance; fit both similarity parities, retain radial RMS ≤ 3 × max source σ, try smallest RMS first; require ≥ 1 extra index-star hit</td>
+<td>Canonical centroid-distance ranks can swap under noise; the similarity fit is sourced above, while enumeration, thresholds and residual ordering are Fayde choices</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>pattern_seeds</code>, <code>pattern_hash</code>)</td>
+</tr>
+<tr>
+<td>Hypothesis count starts after hard priors pass; each surviving permutation/parity is a separate trial, including cheap pre-filter failures</td>
+<td>Hard-prior rejections lie outside the searched model space; retains the NFA penalty for every eligible tested seed</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>pair_seeds</code>, <code>pattern_hash</code>)</td>
+</tr>
+<tr>
+<td>Catalogue pair traversal starts nearest the separation implied by the scale-prior mean, then alternates outward on either side</td>
+<td>Fayde's prior-guided extension of PROSAC (Chum &amp; Matas 2005); tries plausible scales before the low edge of the permitted interval</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>pairs_from_mean</code>)</td>
+</tr>
+<tr>
+<td>Default centroid sigma may shrink under the fitted error scale; producer-supplied sigma retains a floor of 1 on its multiplier</td>
+<td>A policy default is an initial estimate; measured producer errors remain a lower bound, including mixed source lists</td>
+<td><code>crates/fayde-solve/src/solve.rs</code> (<code>final_fit</code>), <code>verify.rs</code> (<code>assess</code>)</td>
+</tr>
+<tr>
+<td>Detection pipeline as a whole: the star width measured from the frame and the filter matched to it (binning wide stars), one closed-form fit per peak supplying position, error, size and shape, classes and probabilities passed on to the solver's verification</td>
+<td>No detector surveyed (<code>docs/research/literature-review.md</code> §7) adapts its filter to a measured width, reports a per-star position error, or traces streaks before solving</td>
+<td><code>crates/fayde-detect/src/lib.rs</code>; <code>docs/design/detection.md</code></td>
+</tr>
+<tr>
+<td>Position error of the maximum of a filtered image, <code>σx = σt² / (√2·σk·SNR)</code>; photon-noise term <code>σp²·σt⁸ / (N·σk⁴·(σk² + 2σp²)²)</code></td>
+<td>Derived (<code>docs/design/detection.md</code> §4): noise gradient over signal curvature. Equal to the Cramér–Rao bound and to Mortensen et al.'s eq. 6 for a matched kernel; on synthetic frames the error over the claim has a robust spread of 0.8 to 1.25</td>
+<td><code>crates/fayde-detect/src/lib.rs</code> (<code>finish</code>)</td>
+</tr>
+<tr>
+<td>Star width as the widest distinct mode of the size distribution of bright, round peaks (histogram of ln size, bins of 0.25; a mode needs 5% of the tallest and a dip to half below it)</td>
+<td>Nothing from the sky is sharper than the optics, and stars share one width where hot pixels and cosmic rays have many. A real frame from a warm detector had 300 radiation hits to 36 stars; a median took the hits' width and the frame did not solve</td>
+<td><code>crates/fayde-detect/src/lib.rs</code> (<code>measure_psf</code>)</td>
+</tr>
+<tr>
+<td>Star shape: the frame's narrow-axis variance and axis ratio, medians over the peaks of the star mode; "sharp" is under 0.4 of the narrow-axis variance, "extended" and streak seeds are 1.5 and 2 times the stars' own axis ratio</td>
+<td>A drift during the exposure smears every star alike. Judged against the mean width, the 36 brightest stars of a real frame smeared two to one were classed as cosmic rays, and the frame did not solve</td>
+<td><code>crates/fayde-detect/src/lib.rs</code> (<code>measure_shape</code>, <code>classify</code>), <code>streak.rs</code></td>
+</tr>
+<tr>
+<td>Local test: a peak must stand above the median of a ring at three star-widths by the threshold less one σ, where the ring disagrees with the mesh</td>
+<td>A mesh cannot follow stray light or halos. Synthetic glow of 20 × sky from a corner: 33 false stars without, 1 with</td>
+<td><code>crates/fayde-detect/src/lib.rs</code> (<code>stand_out</code>), <code>peaks.rs</code> (<code>ring_median</code>)</td>
+</tr>
+<tr>
+<td>Mesh tiles replaced only when above the largest of the four two-neighbour line means; straight-line extrapolation of the background beyond the outermost tile centres</td>
+<td>A 3 × 3 median flattens the corner of a frame lit from outside, and a mesh held flat to the edge turns a gradient into signal (111 false sources at the edge of a binned frame before, 3 after)</td>
+<td><code>crates/fayde-detect/src/mesh.rs</code> (<code>despike</code>, <code>at</code>)</td>
+</tr>
+<tr>
+<td>Detection threshold as <code>min(pixel tail, peak density)</code> for a number of noise peaks per frame (default 1)</td>
+<td>A maximum above <code>u</code> on pixels is a pixel above <code>u</code>, so the pixel count bounds the continuous-field density where that overshoots (narrow kernels). Counted on empty frames: within 45% for σk 0.7 to 2 px</td>
+<td><code>crates/fayde-detect/src/stats.rs</code></td>
+</tr>
+<tr>
+<td>Classes and their limits: sharp under 0.4 of the stars' variance; extended over 2 × or elongated over 1.5, each beyond 2.5 × the fit's error <code>2/SNR</code>; class factors on <code>p_star</code> of 0.9 (saturated) and 0.5 (extended)</td>
+<td>Tuned on synthetic frames. The error of a fitted minor-axis variance was measured at 0.9 to 1.6 /SNR of the total with a bias of −1.3/SNR</td>
+<td><code>crates/fayde-detect/src/lib.rs</code> (<code>classify</code>)</td>
+</tr>
+<tr>
+<td>Saturation level from flat-topped peaks at the frame's brightest level; centre of a saturated star from the core of its saturated region (pixels with long runs along both axes); error 0.1 px + 3% of the core radius</td>
+<td>A bleed trail has short runs across it; a flat top below the brightest level is a cosmic-ray track or a stuck column. Measured: centre within 0.6 px for stars 3 to 300 × saturation with trails</td>
+<td><code>crates/fayde-detect/src/saturate.rs</code>, <code>lib.rs</code> (<code>find_saturation</code>)</td>
+</tr>
+<tr>
+<td>Streak tracing: seeds from ridge-like peaks (elongation ≥ 2), a walk along a running least-squares line (search ± 2 px, threshold 3σ, gaps of 8 px + 10% of the points, at most 30), end clean-up, total-least-squares line, half-level ends, a second trace from the fitted line, acceptance (10 px and 8σ long, half covered, SNR 10, half of the bright peaks ridges), <code>cosmic_ray</code> when narrower than 0.4 of the stars' variance</td>
+<td>Fayde's own; a line model through the walk keeps it on course across a crossing streak. Measured: ends within 2 px, 0.2 px typical</td>
+<td><code>crates/fayde-detect/src/streak.rs</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="considered-and-not-adopted">Considered and not adopted<a class="headerlink" href="#considered-and-not-adopted" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Source</th>
+<th>Why not</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A pattern-hash stage ahead of the pair seeds when a pointing, a tight scale and an index are all given</td>
+<td>Fayde's own</td>
+<td>Measured on 146 real source lists of 4 to 60 sources with the two all-sky indexes. The hash stage solved 123 of the 134 solvable lists and halved the median (1.3 ms against 2.8 ms), but a stage that finds nothing costs 37 to 395 ms in a 17 GB table (1 ms in a regional one, which is what first suggested the idea), and a match that comes late costs up to 86 ms: mean 24.0 ms against 4.5 ms with the pair seeds first. A cap on the stage gains under 10%. Pair seeds solved every list the hash did</td>
+</tr>
+<tr>
+<td>Radon-transform streak search (fast Radon transform; median Radon)</td>
+<td>Nir, Zackay &amp; Ofek 2018, AJ 156, 229; Stark et al. 2022, ACS ISR 2022-08</td>
+<td>Finds long streaks below the per-pixel noise, at about 0.9 to 10 s per megapixel after stars are removed. Fayde needs streaks kept out of the star list, which only streaks above the threshold threaten.</td>
+</tr>
+<tr>
+<td>Hough transform on thresholded pixels (kernel-based: Fernandes &amp; Oliveira 2008; Rubin <code>maskStreaks</code>)</td>
+<td>Pattern Recognition 41, 299; DMTN-197</td>
+<td>Each ridge-like peak already carries its direction, so a trace from it replaces the vote.</td>
+</tr>
+<tr>
+<td>A-contrario alignment of points</td>
+<td>Lezama et al. 2015, IEEE TPAMI 37(3), 499</td>
+<td>For grouping fragments of a faint streak; the tracer follows the pixels instead. Its significance test would suit a fragment-only detector.</td>
+</tr>
+<tr>
+<td>Exact null distribution of peak heights with Benjamini–Hochberg selection (STEM)</td>
+<td>Schwartzman, Gavrilov &amp; Adler 2011, Ann. Stat. 39, 3290; Cheng &amp; Schwartzman 2017</td>
+<td>The continuous-field formula is 25 to 35% conservative for a kernel of about 1 px (Lin, Schwartzman &amp; Davenport 2025, arXiv:2501.13239); the pixel bound is tighter there and is used with it.</td>
+</tr>
+<tr>
+<td>Iterative Gaussian-windowed centroid</td>
+<td>Bertin &amp; Arnouts 1996 (SExtractor <code>XWIN</code>)</td>
+<td>Equal accuracy on the matched-filtered peak at a fraction of the cost.</td>
+</tr>
+<tr>
+<td>4-D quad codes searched in a kd-tree</td>
+<td>Lang et al. 2010</td>
+<td>Fayde's 5 sorted edge ratios describe the same four-point shape as a quad code, and the hash lookup already enumerates neighbouring bins and re-checks the exact shape, which is the continuous-tolerance behaviour a kd-tree gives. What astrometry.net adds for blind solving is its scale-band index series, which Fayde adopts.</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "navigation.sections", "navigation.top", "search.highlight"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>
