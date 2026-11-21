@@ -9,7 +9,7 @@ abstract: >-
 authors:
   - family-names: Ryall
     given-names: Shane
-version: 0.3.3
+version: 0.4.0
 date-released: 2026-11-21
 license: GPL-3.0-or-later
 doi: 10.5281/zenodo.24379728

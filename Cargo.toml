@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.3.3"
+version = "0.4.0"
 edition = "2021"
 rust-version = "1.85"
 license = "GPL-3.0-or-later"
@@ -13,15 +13,15 @@ keywords = ["astronomy", "astrometry", "plate-solving", "wcs", "fits"]
 categories = ["science"]
 
 [workspace.dependencies]
-fayde-core = { path = "crates/fayde-core", version = "=0.3.3" }
-fayde-wcs = { path = "crates/fayde-wcs", version = "=0.3.3" }
-fayde-catalog = { path = "crates/fayde-catalog", version = "=0.3.3" }
-fayde-index = { path = "crates/fayde-index", version = "=0.3.3" }
-fayde-solve = { path = "crates/fayde-solve", version = "=0.3.3" }
-fayde-fits = { path = "crates/fayde-fits", version = "=0.3.3" }
-fayde-api = { path = "crates/fayde-api", version = "=0.3.3" }
-fayde-detect = { path = "crates/fayde-detect", version = "=0.3.3" }
-fayde-cli = { path = "crates/fayde-cli", version = "=0.3.3" }
+fayde-core = { path = "crates/fayde-core", version = "=0.4.0" }
+fayde-wcs = { path = "crates/fayde-wcs", version = "=0.4.0" }
+fayde-catalog = { path = "crates/fayde-catalog", version = "=0.4.0" }
+fayde-index = { path = "crates/fayde-index", version = "=0.4.0" }
+fayde-solve = { path = "crates/fayde-solve", version = "=0.4.0" }
+fayde-fits = { path = "crates/fayde-fits", version = "=0.4.0" }
+fayde-api = { path = "crates/fayde-api", version = "=0.4.0" }
+fayde-detect = { path = "crates/fayde-detect", version = "=0.4.0" }
+fayde-cli = { path = "crates/fayde-cli", version = "=0.4.0" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 libm = { version = "0.2", default-features = false }
