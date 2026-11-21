@@ -1,0 +1,1836 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Verified astrometric plate solving for FITS images.">
+      
+      
+      
+        <link rel="canonical" href="https://shaneryall.github.io/Fayde/0.4/reference/cli/">
+      
+      
+        <link rel="prev" href="../../index-set/">
+      
+      
+        <link rel="next" href="../python-api/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
+    
+    
+      
+        <title>Command-line reference - Fayde</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#command-line-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Fayde" class="md-header__button md-logo" aria-label="Fayde" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Fayde
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Command-line reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/shaneryall/Fayde" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shaneryall/Fayde
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Fayde" class="md-nav__button md-logo" aria-label="Fayde" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Fayde
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/shaneryall/Fayde" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shaneryall/Fayde
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-to guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-to guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install Fayde
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose and connect a star catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use the command line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../python/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Fayde from Python
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../index-set/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build pattern indexes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command-line reference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command-line reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#fayde" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-solve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde solve
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-detect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde detect
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde verify
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-refit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde refit
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-calibrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde calibrate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-index-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde index build
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-index-info" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde index info
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-catalog-download" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde catalog download
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-catalog-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde catalog check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-catalog-import" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde catalog import
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-compare" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde compare
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-bench" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde bench
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../source-list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source list format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Versioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Algorithm sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explanation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Explanation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/plate-solver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plate solver design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Star detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/literature-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Literature review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#fayde" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-solve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde solve
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-detect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde detect
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde verify
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-refit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde refit
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-calibrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde calibrate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-index-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde index build
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-index-info" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde index info
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-catalog-download" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde catalog download
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-catalog-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde catalog check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-catalog-import" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde catalog import
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-compare" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde compare
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fayde-bench" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fayde bench
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="command-line-reference">Command-line reference<a class="headerlink" href="#command-line-reference" title="Permanent link">&para;</a></h1>
+<p>Each command's options and defaults, as printed by its <code>--help</code> option in <code>fayde 0.4.0 (197bf29c9425)</code>. For tasks and examples, see <a href="../../usage/">Use the command line</a>.</p>
+<h2 id="fayde">fayde<a class="headerlink" href="#fayde" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>usage:
+  fayde index build --ucac4 &lt;dir&gt; --fov &lt;deg&gt; -o &lt;file&gt; [--epoch &lt;year&gt;] [--mag-limit &lt;m&gt;]
+                    [--stars-per-fov &lt;n&gt;] [--oversampling &lt;x&gt;] [--patterns-per-field &lt;n&gt;]
+                    [--stars-per-field &lt;n&gt;] [--pattern-stars-per-fov &lt;n&gt;] [--min-edge &lt;deg&gt;]
+                    [--region &lt;ra,dec,r&gt;]
+  fayde index info &lt;file&gt;
+  fayde detect --image &lt;frame.fits&gt; [-o &lt;frame.sources.fits&gt;] [detection options]
+  fayde solve  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; [request options]
+               [--index &lt;a.fidx&gt;]... [-o &lt;out.wcs&gt;]
+  fayde verify (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
+  fayde verify --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; (--at &lt;x,y&gt;... | --at-sky &lt;ra,dec&gt;... | --at-sources &lt;file&gt;)
+               [--header &lt;frame.fits&gt;] [--epoch &lt;year&gt;] [--pixel-error &lt;px&gt;] [--wcs-sigma &lt;arcsec&gt;]
+               [--search-radius &lt;arcsec&gt;] [--max-stars &lt;n&gt;]
+  fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
+               [-o &lt;out.wcs&gt;]
+     detection options (with --image): --fwhm &lt;px&gt; --detect-threshold &lt;sigma&gt; --saturation &lt;adu&gt;
+       --gain &lt;e/adu&gt; --max-sources &lt;n&gt; (--trail-angle also guides detection)
+     request options: --header &lt;frame.fits&gt; --instrument &lt;profile.json&gt; --width &lt;px&gt; --height &lt;px&gt;
+       --ra &lt;deg&gt; --dec &lt;deg&gt; --radius &lt;deg&gt; --pointing-sigma &lt;deg&gt;
+       --scale &lt;arcsec/px&gt; --scale-sigma &lt;fraction&gt;
+       --roll &lt;deg&gt; --roll-sigma &lt;deg&gt; --roll-max &lt;deg&gt; --parity negative|positive
+       --trail-length &lt;px&gt; --trail-angle &lt;deg&gt; --epoch &lt;year&gt; --deadline &lt;s&gt; --max-sip-order &lt;n&gt;
+       --pixel-error &lt;px&gt; --accept-log-odds &lt;x&gt; --max-hypotheses &lt;n&gt;
+       --no-priors --no-pointing --no-header-wcs --search-outside-pointing
+       --relax-priors-on-failure
+  fayde calibrate --solved &lt;list&gt; [--roll-keyword &lt;KEY&gt;] [--binning &lt;XKEY&gt;[,&lt;YKEY&gt;]]
+                  [--name &lt;text&gt;] [--no-header-wcs] [-o &lt;profile.json&gt;]
+  fayde compare --ucac4 &lt;dir&gt; --index &lt;a.fidx&gt;[,&lt;b.fidx&gt;] --frames &lt;frames.json&gt; [--limit &lt;n&gt;]
+                [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
+  fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
+              [--image-mag &lt;m&gt;] [--deadline &lt;s&gt;] [--pattern-sources &lt;n&gt;]
+  --ucac4 &lt;dir&gt; may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.
+</code></pre></div>
+<h2 id="fayde-solve">fayde solve<a class="headerlink" href="#fayde-solve" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>fayde solve  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; [options] [--index &lt;a.fidx&gt;]...
+             [-o &lt;out.wcs&gt;]
+fayde verify (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [options]
+fayde verify --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; (--at &lt;x,y&gt; | --at-sky &lt;ra,dec&gt; | --at-sources &lt;file&gt;)...
+fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [options]
+             [-o &lt;out.wcs&gt;]
+
+Once the inputs are read, the report (JSON) goes to stdout for every outcome: a solution, an
+abstention, or a solver error (with "error": true). A mistake on the command line or an
+unreadable input is reported on stderr only. The exit status is 1 for any error, 0 otherwise.
+Priors come from, in order: these options, the instrument profile, the frame header.
+
+Inputs
+  --image &lt;frame.fits&gt;     a FITS image: Fayde finds the stars (see fayde detect --help for the
+                           detection options); its header is used unless --header is given
+  --sources &lt;frame.sources.fits&gt;
+                           a source list from your own detector: a FITS binary table with
+                           X, Y (FITS pixels, first pixel centre at 1, 1); optional FLUX,
+                           SIGMA or SIGMA_PX, P_STAR, TRUNCATED; --xyls is an older name
+  --ucac4 &lt;dir&gt;            UCAC4 directory (holding u4b/, optionally u4i/)
+  --index &lt;a.fidx&gt;         pattern index; repeat for several (solve only; needed without a
+                           pointing and tight scale)
+  --header &lt;frame.fits&gt;    frame header: pointing, scale, epoch, size, binning
+  --instrument &lt;json&gt;      instrument profile (scale, parity, roll rule, binning rule,
+                           pointing uncertainty); fayde calibrate writes one
+  --width, --height &lt;px&gt;   image size              default: source list IMAGEW/IMAGEH, else header
+Pointing
+  --ra, --dec &lt;deg&gt;        pointing centre         default: header
+  --radius &lt;deg&gt;           hard limit              default: profile, else 2
+  --pointing-sigma &lt;deg&gt;   1-sigma                 default: profile, else radius/4
+                           (a 1-sigma of a sixth of the limit or less: the search starts
+                           within 3 sigma and widens to the limit if that finds nothing)
+  --no-pointing            drop the pointing only (keep scale, roll, parity)
+  --no-header-wcs          do not read the pointing or scale from a WCS in the header (it
+                           may be another solver's solution): RA/DEC or OBJCTRA/OBJCTDEC only
+  --search-outside-pointing  search beyond the limit if nothing is found inside
+Scale, roll, parity
+  --scale &lt;arcsec/px&gt;      pixel scale             default: profile, else header
+  --scale-sigma &lt;fraction&gt; 1-sigma                 default 0.02 (profile: its own)
+  --roll &lt;deg&gt;             roll                    default: profile rule (1-sigma 0.5, limit 3)
+  --roll-sigma, --roll-max &lt;deg&gt;  override either source's 1-sigma and hard limit
+  --parity negative|positive                       default: profile
+  --no-priors              drop every prior
+  --relax-priors-on-failure  retry once with wider hard limits
+Frame
+  --trail-length &lt;px&gt; --trail-angle &lt;deg&gt;   trail of every source (truncated sources)
+  --epoch &lt;year&gt;           Julian year, 1800-2200  default: header (mid-exposure), else 2000
+Search and fit
+  --pixel-error &lt;px&gt;       centroid 1-sigma of sources without SIGMA     default 1.0
+  --accept-log-odds &lt;x&gt;    acceptance threshold    default ln(1e9) = 20.7
+  --max-hypotheses &lt;n&gt;     hypothesis budget       default 5000000
+  --deadline &lt;s&gt;           wall-clock budget from the start            default none
+  --max-sip-order &lt;n&gt;      highest SIP order tried (BIC chooses), up to 9   default 3
+Output
+  -o &lt;out.wcs&gt;             solved WCS with provenance comments (solve, refit). A run that
+                           writes none (no solution, or an error once the options are
+                           accepted) removes a file already at that path. It may not name
+                           an input of the run.
+verify --at
+  --wcs-sigma &lt;arcsec&gt;     radial 1-sigma of the WCS (a solve's worst_sigma_arcsec) default 0
+  --search-radius &lt;arcsec&gt; stars reported within   default 30
+  --max-stars &lt;n&gt;          stars per position      default 3
+</code></pre></div>
+<h2 id="fayde-detect">fayde detect<a class="headerlink" href="#fayde-detect" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>fayde detect --image &lt;frame.fits&gt; [-o &lt;frame.sources.fits&gt;] [options]
+
+Finds stars in a FITS image as points, straight trails, or stars smeared along curved
+paths. Prints a JSON report with the settings, mode (points, trails, kernel, refused),
+census, trail or kernel measurements, stars' width, background, noise, and sources with
+position (FITS 1-based), error (along and across the trail too), flux, star probability and
+class, the streaks traced (ends, angle, width, flux), and what was set aside (hot pixels,
+cosmic-ray hits, anything on a streak, point-like objects in a trailed frame). -o also writes
+the sources as a source list for --sources, with the trail.
+The same detection runs inside `fayde solve|verify|refit --image &lt;frame.fits&gt;`, which also
+reads the frame's header from the image unless --header is given.
+
+  --image &lt;frame.fits&gt;        FITS image: BITPIX 8/16/32/64/-32/-64 with BSCALE/BZERO/BLANK,
+                              primary HDU or first IMAGE extension (not fpack-compressed)
+  --fwhm &lt;px&gt;                 stellar FWHM                     default: measured from the image
+  --detect-threshold &lt;sigma&gt;  peak threshold, filtered image   default: one noise peak per
+                              frame (about 5 for 4 megapixels)
+  --saturation &lt;adu&gt;          saturation level                 default: SATURATE, else the
+                              level of flat-topped stars
+  --gain &lt;e/adu&gt;              gain, for the stars' own noise   default: GAIN or EGAIN, else none
+  --max-sources &lt;n&gt;           brightest sources kept           default 2000
+  --trail-angle &lt;deg&gt;         expected direction of star       default: none; the trail used
+                              trails, from +x towards +y       is measured from the image
+  --no-trails                 measure every star as a point, even when the stars are
+                              trails (skips the trail census)
+  -o &lt;frame.sources.fits&gt;     also write the sources as a source list (Fayde's FITS table:
+                              X, Y, FLUX, SIGMA, P_STAR, TRUNCATED); name it after the frame
+</code></pre></div>
+<h2 id="fayde-verify">fayde verify<a class="headerlink" href="#fayde-verify" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>fayde solve  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; [options] [--index &lt;a.fidx&gt;]...
+             [-o &lt;out.wcs&gt;]
+fayde verify (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [options]
+fayde verify --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; (--at &lt;x,y&gt; | --at-sky &lt;ra,dec&gt; | --at-sources &lt;file&gt;)...
+fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [options]
+             [-o &lt;out.wcs&gt;]
+
+Once the inputs are read, the report (JSON) goes to stdout for every outcome: a solution, an
+abstention, or a solver error (with "error": true). A mistake on the command line or an
+unreadable input is reported on stderr only. The exit status is 1 for any error, 0 otherwise.
+Priors come from, in order: these options, the instrument profile, the frame header.
+
+Inputs
+  --image &lt;frame.fits&gt;     a FITS image: Fayde finds the stars (see fayde detect --help for the
+                           detection options); its header is used unless --header is given
+  --sources &lt;frame.sources.fits&gt;
+                           a source list from your own detector: a FITS binary table with
+                           X, Y (FITS pixels, first pixel centre at 1, 1); optional FLUX,
+                           SIGMA or SIGMA_PX, P_STAR, TRUNCATED; --xyls is an older name
+  --ucac4 &lt;dir&gt;            UCAC4 directory (holding u4b/, optionally u4i/)
+  --index &lt;a.fidx&gt;         pattern index; repeat for several (solve only; needed without a
+                           pointing and tight scale)
+  --header &lt;frame.fits&gt;    frame header: pointing, scale, epoch, size, binning
+  --instrument &lt;json&gt;      instrument profile (scale, parity, roll rule, binning rule,
+                           pointing uncertainty); fayde calibrate writes one
+  --width, --height &lt;px&gt;   image size              default: source list IMAGEW/IMAGEH, else header
+Pointing
+  --ra, --dec &lt;deg&gt;        pointing centre         default: header
+  --radius &lt;deg&gt;           hard limit              default: profile, else 2
+  --pointing-sigma &lt;deg&gt;   1-sigma                 default: profile, else radius/4
+                           (a 1-sigma of a sixth of the limit or less: the search starts
+                           within 3 sigma and widens to the limit if that finds nothing)
+  --no-pointing            drop the pointing only (keep scale, roll, parity)
+  --no-header-wcs          do not read the pointing or scale from a WCS in the header (it
+                           may be another solver's solution): RA/DEC or OBJCTRA/OBJCTDEC only
+  --search-outside-pointing  search beyond the limit if nothing is found inside
+Scale, roll, parity
+  --scale &lt;arcsec/px&gt;      pixel scale             default: profile, else header
+  --scale-sigma &lt;fraction&gt; 1-sigma                 default 0.02 (profile: its own)
+  --roll &lt;deg&gt;             roll                    default: profile rule (1-sigma 0.5, limit 3)
+  --roll-sigma, --roll-max &lt;deg&gt;  override either source's 1-sigma and hard limit
+  --parity negative|positive                       default: profile
+  --no-priors              drop every prior
+  --relax-priors-on-failure  retry once with wider hard limits
+Frame
+  --trail-length &lt;px&gt; --trail-angle &lt;deg&gt;   trail of every source (truncated sources)
+  --epoch &lt;year&gt;           Julian year, 1800-2200  default: header (mid-exposure), else 2000
+Search and fit
+  --pixel-error &lt;px&gt;       centroid 1-sigma of sources without SIGMA     default 1.0
+  --accept-log-odds &lt;x&gt;    acceptance threshold    default ln(1e9) = 20.7
+  --max-hypotheses &lt;n&gt;     hypothesis budget       default 5000000
+  --deadline &lt;s&gt;           wall-clock budget from the start            default none
+  --max-sip-order &lt;n&gt;      highest SIP order tried (BIC chooses), up to 9   default 3
+Output
+  -o &lt;out.wcs&gt;             solved WCS with provenance comments (solve, refit). A run that
+                           writes none (no solution, or an error once the options are
+                           accepted) removes a file already at that path. It may not name
+                           an input of the run.
+verify --at
+  --wcs-sigma &lt;arcsec&gt;     radial 1-sigma of the WCS (a solve's worst_sigma_arcsec) default 0
+  --search-radius &lt;arcsec&gt; stars reported within   default 30
+  --max-stars &lt;n&gt;          stars per position      default 3
+</code></pre></div>
+<h2 id="fayde-refit">fayde refit<a class="headerlink" href="#fayde-refit" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>fayde solve  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; [options] [--index &lt;a.fidx&gt;]...
+             [-o &lt;out.wcs&gt;]
+fayde verify (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [options]
+fayde verify --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; (--at &lt;x,y&gt; | --at-sky &lt;ra,dec&gt; | --at-sources &lt;file&gt;)...
+fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [options]
+             [-o &lt;out.wcs&gt;]
+
+Once the inputs are read, the report (JSON) goes to stdout for every outcome: a solution, an
+abstention, or a solver error (with "error": true). A mistake on the command line or an
+unreadable input is reported on stderr only. The exit status is 1 for any error, 0 otherwise.
+Priors come from, in order: these options, the instrument profile, the frame header.
+
+Inputs
+  --image &lt;frame.fits&gt;     a FITS image: Fayde finds the stars (see fayde detect --help for the
+                           detection options); its header is used unless --header is given
+  --sources &lt;frame.sources.fits&gt;
+                           a source list from your own detector: a FITS binary table with
+                           X, Y (FITS pixels, first pixel centre at 1, 1); optional FLUX,
+                           SIGMA or SIGMA_PX, P_STAR, TRUNCATED; --xyls is an older name
+  --ucac4 &lt;dir&gt;            UCAC4 directory (holding u4b/, optionally u4i/)
+  --index &lt;a.fidx&gt;         pattern index; repeat for several (solve only; needed without a
+                           pointing and tight scale)
+  --header &lt;frame.fits&gt;    frame header: pointing, scale, epoch, size, binning
+  --instrument &lt;json&gt;      instrument profile (scale, parity, roll rule, binning rule,
+                           pointing uncertainty); fayde calibrate writes one
+  --width, --height &lt;px&gt;   image size              default: source list IMAGEW/IMAGEH, else header
+Pointing
+  --ra, --dec &lt;deg&gt;        pointing centre         default: header
+  --radius &lt;deg&gt;           hard limit              default: profile, else 2
+  --pointing-sigma &lt;deg&gt;   1-sigma                 default: profile, else radius/4
+                           (a 1-sigma of a sixth of the limit or less: the search starts
+                           within 3 sigma and widens to the limit if that finds nothing)
+  --no-pointing            drop the pointing only (keep scale, roll, parity)
+  --no-header-wcs          do not read the pointing or scale from a WCS in the header (it
+                           may be another solver's solution): RA/DEC or OBJCTRA/OBJCTDEC only
+  --search-outside-pointing  search beyond the limit if nothing is found inside
+Scale, roll, parity
+  --scale &lt;arcsec/px&gt;      pixel scale             default: profile, else header
+  --scale-sigma &lt;fraction&gt; 1-sigma                 default 0.02 (profile: its own)
+  --roll &lt;deg&gt;             roll                    default: profile rule (1-sigma 0.5, limit 3)
+  --roll-sigma, --roll-max &lt;deg&gt;  override either source's 1-sigma and hard limit
+  --parity negative|positive                       default: profile
+  --no-priors              drop every prior
+  --relax-priors-on-failure  retry once with wider hard limits
+Frame
+  --trail-length &lt;px&gt; --trail-angle &lt;deg&gt;   trail of every source (truncated sources)
+  --epoch &lt;year&gt;           Julian year, 1800-2200  default: header (mid-exposure), else 2000
+Search and fit
+  --pixel-error &lt;px&gt;       centroid 1-sigma of sources without SIGMA     default 1.0
+  --accept-log-odds &lt;x&gt;    acceptance threshold    default ln(1e9) = 20.7
+  --max-hypotheses &lt;n&gt;     hypothesis budget       default 5000000
+  --deadline &lt;s&gt;           wall-clock budget from the start            default none
+  --max-sip-order &lt;n&gt;      highest SIP order tried (BIC chooses), up to 9   default 3
+Output
+  -o &lt;out.wcs&gt;             solved WCS with provenance comments (solve, refit). A run that
+                           writes none (no solution, or an error once the options are
+                           accepted) removes a file already at that path. It may not name
+                           an input of the run.
+verify --at
+  --wcs-sigma &lt;arcsec&gt;     radial 1-sigma of the WCS (a solve's worst_sigma_arcsec) default 0
+  --search-radius &lt;arcsec&gt; stars reported within   default 30
+  --max-stars &lt;n&gt;          stars per position      default 3
+</code></pre></div>
+<h2 id="fayde-calibrate">fayde calibrate<a class="headerlink" href="#fayde-calibrate" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>fayde calibrate --solved &lt;list&gt; [options] [-o &lt;profile.json&gt;]
+
+Writes an instrument profile (for --instrument) from frames Fayde has solved: the pixel scale,
+the parity, the rule that gives the roll from a header keyword, and how far the header's
+pointing is from the solved frame centre. Values are medians of the solutions, so a few poor
+solutions do not move them; at least 5 solved frames are needed, and more are better.
+
+A profile needs no other solver. Solve some frames with the pointing from their headers and a
+nominal scale (fayde solve --scale &lt;arcsec/px&gt; ... -o frame.wcs), then calibrate from those.
+
+  --solved &lt;list&gt;          text file, one solved frame per line: the frame's FITS file (for
+                           its header), a tab, the WCS file of its solution; # starts a comment
+  --roll-keyword &lt;KEY&gt;     header keyword with the instrument's own roll, degrees: the profile
+                           gets the rule roll = offset + sign x KEY       default: no roll rule
+  --binning &lt;XKEY&gt;[,&lt;YKEY&gt;]  header keywords of the binning factors: the profile's scale is
+                           then the unbinned one                           default: none
+  --name &lt;text&gt;            the profile's name
+  --no-header-wcs          measure the header pointing from RA/DEC or OBJCTRA/OBJCTDEC, not a
+                           WCS in the header, and make the profile tell the solver the same
+  -o &lt;profile.json&gt;        also write the profile to a file
+
+The profile goes to stdout. Its "calibration" member holds the numbers behind it: frames
+used, spreads, worst deviations.
+</code></pre></div>
+<h2 id="fayde-index-build">fayde index build<a class="headerlink" href="#fayde-index-build" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>fayde index build --ucac4 &lt;dir&gt; --fov &lt;deg&gt; -o &lt;file&gt; [options]
+
+  --fov &lt;deg&gt;                     field of view the index serves (required)
+  --epoch &lt;year&gt;                  star positions propagated to       default 2025
+  --mag-limit &lt;m&gt;                 faintest magnitude                 default none
+  --stars-per-fov &lt;n&gt;             stars kept per field of view       default 20
+  --pattern-stars-per-fov &lt;n&gt;     brightest of those used in patterns default 20
+  --stars-per-field &lt;n&gt;           stars per lattice field            default 12
+  --patterns-per-field &lt;n&gt;        patterns per lattice field         default 50
+  --oversampling &lt;x&gt;              lattice fields covering each sky point  default 100
+  --min-edge &lt;deg&gt;                shortest pattern edge              default 0.05
+  --region &lt;ra,dec,r&gt;             regional index (degrees)           default all sky
+
+Recommended set, sizes and memory: docs/index-set.md. `fayde index info &lt;file&gt;` prints the
+content hash.
+</code></pre></div>
+<h2 id="fayde-index-info">fayde index info<a class="headerlink" href="#fayde-index-info" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>usage:
+  fayde index build --ucac4 &lt;dir&gt; --fov &lt;deg&gt; -o &lt;file&gt; [--epoch &lt;year&gt;] [--mag-limit &lt;m&gt;]
+                    [--stars-per-fov &lt;n&gt;] [--oversampling &lt;x&gt;] [--patterns-per-field &lt;n&gt;]
+                    [--stars-per-field &lt;n&gt;] [--pattern-stars-per-fov &lt;n&gt;] [--min-edge &lt;deg&gt;]
+                    [--region &lt;ra,dec,r&gt;]
+  fayde index info &lt;file&gt;
+  fayde detect --image &lt;frame.fits&gt; [-o &lt;frame.sources.fits&gt;] [detection options]
+  fayde solve  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; [request options]
+               [--index &lt;a.fidx&gt;]... [-o &lt;out.wcs&gt;]
+  fayde verify (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
+  fayde verify --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; (--at &lt;x,y&gt;... | --at-sky &lt;ra,dec&gt;... | --at-sources &lt;file&gt;)
+               [--header &lt;frame.fits&gt;] [--epoch &lt;year&gt;] [--pixel-error &lt;px&gt;] [--wcs-sigma &lt;arcsec&gt;]
+               [--search-radius &lt;arcsec&gt;] [--max-stars &lt;n&gt;]
+  fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
+               [-o &lt;out.wcs&gt;]
+     detection options (with --image): --fwhm &lt;px&gt; --detect-threshold &lt;sigma&gt; --saturation &lt;adu&gt;
+       --gain &lt;e/adu&gt; --max-sources &lt;n&gt; (--trail-angle also guides detection)
+     request options: --header &lt;frame.fits&gt; --instrument &lt;profile.json&gt; --width &lt;px&gt; --height &lt;px&gt;
+       --ra &lt;deg&gt; --dec &lt;deg&gt; --radius &lt;deg&gt; --pointing-sigma &lt;deg&gt;
+       --scale &lt;arcsec/px&gt; --scale-sigma &lt;fraction&gt;
+       --roll &lt;deg&gt; --roll-sigma &lt;deg&gt; --roll-max &lt;deg&gt; --parity negative|positive
+       --trail-length &lt;px&gt; --trail-angle &lt;deg&gt; --epoch &lt;year&gt; --deadline &lt;s&gt; --max-sip-order &lt;n&gt;
+       --pixel-error &lt;px&gt; --accept-log-odds &lt;x&gt; --max-hypotheses &lt;n&gt;
+       --no-priors --no-pointing --no-header-wcs --search-outside-pointing
+       --relax-priors-on-failure
+  fayde calibrate --solved &lt;list&gt; [--roll-keyword &lt;KEY&gt;] [--binning &lt;XKEY&gt;[,&lt;YKEY&gt;]]
+                  [--name &lt;text&gt;] [--no-header-wcs] [-o &lt;profile.json&gt;]
+  fayde compare --ucac4 &lt;dir&gt; --index &lt;a.fidx&gt;[,&lt;b.fidx&gt;] --frames &lt;frames.json&gt; [--limit &lt;n&gt;]
+                [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
+  fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
+              [--image-mag &lt;m&gt;] [--deadline &lt;s&gt;] [--pattern-sources &lt;n&gt;]
+  --ucac4 &lt;dir&gt; may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.
+</code></pre></div>
+<h2 id="fayde-catalog-download">fayde catalog download<a class="headerlink" href="#fayde-catalog-download" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>usage:
+  fayde index build --ucac4 &lt;dir&gt; --fov &lt;deg&gt; -o &lt;file&gt; [--epoch &lt;year&gt;] [--mag-limit &lt;m&gt;]
+                    [--stars-per-fov &lt;n&gt;] [--oversampling &lt;x&gt;] [--patterns-per-field &lt;n&gt;]
+                    [--stars-per-field &lt;n&gt;] [--pattern-stars-per-fov &lt;n&gt;] [--min-edge &lt;deg&gt;]
+                    [--region &lt;ra,dec,r&gt;]
+  fayde index info &lt;file&gt;
+  fayde detect --image &lt;frame.fits&gt; [-o &lt;frame.sources.fits&gt;] [detection options]
+  fayde solve  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; [request options]
+               [--index &lt;a.fidx&gt;]... [-o &lt;out.wcs&gt;]
+  fayde verify (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
+  fayde verify --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; (--at &lt;x,y&gt;... | --at-sky &lt;ra,dec&gt;... | --at-sources &lt;file&gt;)
+               [--header &lt;frame.fits&gt;] [--epoch &lt;year&gt;] [--pixel-error &lt;px&gt;] [--wcs-sigma &lt;arcsec&gt;]
+               [--search-radius &lt;arcsec&gt;] [--max-stars &lt;n&gt;]
+  fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
+               [-o &lt;out.wcs&gt;]
+     detection options (with --image): --fwhm &lt;px&gt; --detect-threshold &lt;sigma&gt; --saturation &lt;adu&gt;
+       --gain &lt;e/adu&gt; --max-sources &lt;n&gt; (--trail-angle also guides detection)
+     request options: --header &lt;frame.fits&gt; --instrument &lt;profile.json&gt; --width &lt;px&gt; --height &lt;px&gt;
+       --ra &lt;deg&gt; --dec &lt;deg&gt; --radius &lt;deg&gt; --pointing-sigma &lt;deg&gt;
+       --scale &lt;arcsec/px&gt; --scale-sigma &lt;fraction&gt;
+       --roll &lt;deg&gt; --roll-sigma &lt;deg&gt; --roll-max &lt;deg&gt; --parity negative|positive
+       --trail-length &lt;px&gt; --trail-angle &lt;deg&gt; --epoch &lt;year&gt; --deadline &lt;s&gt; --max-sip-order &lt;n&gt;
+       --pixel-error &lt;px&gt; --accept-log-odds &lt;x&gt; --max-hypotheses &lt;n&gt;
+       --no-priors --no-pointing --no-header-wcs --search-outside-pointing
+       --relax-priors-on-failure
+  fayde calibrate --solved &lt;list&gt; [--roll-keyword &lt;KEY&gt;] [--binning &lt;XKEY&gt;[,&lt;YKEY&gt;]]
+                  [--name &lt;text&gt;] [--no-header-wcs] [-o &lt;profile.json&gt;]
+  fayde compare --ucac4 &lt;dir&gt; --index &lt;a.fidx&gt;[,&lt;b.fidx&gt;] --frames &lt;frames.json&gt; [--limit &lt;n&gt;]
+                [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
+  fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
+              [--image-mag &lt;m&gt;] [--deadline &lt;s&gt;] [--pattern-sources &lt;n&gt;]
+  --ucac4 &lt;dir&gt; may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.
+</code></pre></div>
+<h2 id="fayde-catalog-check">fayde catalog check<a class="headerlink" href="#fayde-catalog-check" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>usage:
+  fayde index build --ucac4 &lt;dir&gt; --fov &lt;deg&gt; -o &lt;file&gt; [--epoch &lt;year&gt;] [--mag-limit &lt;m&gt;]
+                    [--stars-per-fov &lt;n&gt;] [--oversampling &lt;x&gt;] [--patterns-per-field &lt;n&gt;]
+                    [--stars-per-field &lt;n&gt;] [--pattern-stars-per-fov &lt;n&gt;] [--min-edge &lt;deg&gt;]
+                    [--region &lt;ra,dec,r&gt;]
+  fayde index info &lt;file&gt;
+  fayde detect --image &lt;frame.fits&gt; [-o &lt;frame.sources.fits&gt;] [detection options]
+  fayde solve  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; [request options]
+               [--index &lt;a.fidx&gt;]... [-o &lt;out.wcs&gt;]
+  fayde verify (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
+  fayde verify --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; (--at &lt;x,y&gt;... | --at-sky &lt;ra,dec&gt;... | --at-sources &lt;file&gt;)
+               [--header &lt;frame.fits&gt;] [--epoch &lt;year&gt;] [--pixel-error &lt;px&gt;] [--wcs-sigma &lt;arcsec&gt;]
+               [--search-radius &lt;arcsec&gt;] [--max-stars &lt;n&gt;]
+  fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
+               [-o &lt;out.wcs&gt;]
+     detection options (with --image): --fwhm &lt;px&gt; --detect-threshold &lt;sigma&gt; --saturation &lt;adu&gt;
+       --gain &lt;e/adu&gt; --max-sources &lt;n&gt; (--trail-angle also guides detection)
+     request options: --header &lt;frame.fits&gt; --instrument &lt;profile.json&gt; --width &lt;px&gt; --height &lt;px&gt;
+       --ra &lt;deg&gt; --dec &lt;deg&gt; --radius &lt;deg&gt; --pointing-sigma &lt;deg&gt;
+       --scale &lt;arcsec/px&gt; --scale-sigma &lt;fraction&gt;
+       --roll &lt;deg&gt; --roll-sigma &lt;deg&gt; --roll-max &lt;deg&gt; --parity negative|positive
+       --trail-length &lt;px&gt; --trail-angle &lt;deg&gt; --epoch &lt;year&gt; --deadline &lt;s&gt; --max-sip-order &lt;n&gt;
+       --pixel-error &lt;px&gt; --accept-log-odds &lt;x&gt; --max-hypotheses &lt;n&gt;
+       --no-priors --no-pointing --no-header-wcs --search-outside-pointing
+       --relax-priors-on-failure
+  fayde calibrate --solved &lt;list&gt; [--roll-keyword &lt;KEY&gt;] [--binning &lt;XKEY&gt;[,&lt;YKEY&gt;]]
+                  [--name &lt;text&gt;] [--no-header-wcs] [-o &lt;profile.json&gt;]
+  fayde compare --ucac4 &lt;dir&gt; --index &lt;a.fidx&gt;[,&lt;b.fidx&gt;] --frames &lt;frames.json&gt; [--limit &lt;n&gt;]
+                [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
+  fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
+              [--image-mag &lt;m&gt;] [--deadline &lt;s&gt;] [--pattern-sources &lt;n&gt;]
+  --ucac4 &lt;dir&gt; may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.
+</code></pre></div>
+<h2 id="fayde-catalog-import">fayde catalog import<a class="headerlink" href="#fayde-catalog-import" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>usage:
+  fayde index build --ucac4 &lt;dir&gt; --fov &lt;deg&gt; -o &lt;file&gt; [--epoch &lt;year&gt;] [--mag-limit &lt;m&gt;]
+                    [--stars-per-fov &lt;n&gt;] [--oversampling &lt;x&gt;] [--patterns-per-field &lt;n&gt;]
+                    [--stars-per-field &lt;n&gt;] [--pattern-stars-per-fov &lt;n&gt;] [--min-edge &lt;deg&gt;]
+                    [--region &lt;ra,dec,r&gt;]
+  fayde index info &lt;file&gt;
+  fayde detect --image &lt;frame.fits&gt; [-o &lt;frame.sources.fits&gt;] [detection options]
+  fayde solve  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; [request options]
+               [--index &lt;a.fidx&gt;]... [-o &lt;out.wcs&gt;]
+  fayde verify (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
+  fayde verify --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; (--at &lt;x,y&gt;... | --at-sky &lt;ra,dec&gt;... | --at-sources &lt;file&gt;)
+               [--header &lt;frame.fits&gt;] [--epoch &lt;year&gt;] [--pixel-error &lt;px&gt;] [--wcs-sigma &lt;arcsec&gt;]
+               [--search-radius &lt;arcsec&gt;] [--max-stars &lt;n&gt;]
+  fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
+               [-o &lt;out.wcs&gt;]
+     detection options (with --image): --fwhm &lt;px&gt; --detect-threshold &lt;sigma&gt; --saturation &lt;adu&gt;
+       --gain &lt;e/adu&gt; --max-sources &lt;n&gt; (--trail-angle also guides detection)
+     request options: --header &lt;frame.fits&gt; --instrument &lt;profile.json&gt; --width &lt;px&gt; --height &lt;px&gt;
+       --ra &lt;deg&gt; --dec &lt;deg&gt; --radius &lt;deg&gt; --pointing-sigma &lt;deg&gt;
+       --scale &lt;arcsec/px&gt; --scale-sigma &lt;fraction&gt;
+       --roll &lt;deg&gt; --roll-sigma &lt;deg&gt; --roll-max &lt;deg&gt; --parity negative|positive
+       --trail-length &lt;px&gt; --trail-angle &lt;deg&gt; --epoch &lt;year&gt; --deadline &lt;s&gt; --max-sip-order &lt;n&gt;
+       --pixel-error &lt;px&gt; --accept-log-odds &lt;x&gt; --max-hypotheses &lt;n&gt;
+       --no-priors --no-pointing --no-header-wcs --search-outside-pointing
+       --relax-priors-on-failure
+  fayde calibrate --solved &lt;list&gt; [--roll-keyword &lt;KEY&gt;] [--binning &lt;XKEY&gt;[,&lt;YKEY&gt;]]
+                  [--name &lt;text&gt;] [--no-header-wcs] [-o &lt;profile.json&gt;]
+  fayde compare --ucac4 &lt;dir&gt; --index &lt;a.fidx&gt;[,&lt;b.fidx&gt;] --frames &lt;frames.json&gt; [--limit &lt;n&gt;]
+                [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
+  fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
+              [--image-mag &lt;m&gt;] [--deadline &lt;s&gt;] [--pattern-sources &lt;n&gt;]
+  --ucac4 &lt;dir&gt; may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.
+</code></pre></div>
+<h2 id="fayde-compare">fayde compare<a class="headerlink" href="#fayde-compare" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>usage:
+  fayde index build --ucac4 &lt;dir&gt; --fov &lt;deg&gt; -o &lt;file&gt; [--epoch &lt;year&gt;] [--mag-limit &lt;m&gt;]
+                    [--stars-per-fov &lt;n&gt;] [--oversampling &lt;x&gt;] [--patterns-per-field &lt;n&gt;]
+                    [--stars-per-field &lt;n&gt;] [--pattern-stars-per-fov &lt;n&gt;] [--min-edge &lt;deg&gt;]
+                    [--region &lt;ra,dec,r&gt;]
+  fayde index info &lt;file&gt;
+  fayde detect --image &lt;frame.fits&gt; [-o &lt;frame.sources.fits&gt;] [detection options]
+  fayde solve  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; [request options]
+               [--index &lt;a.fidx&gt;]... [-o &lt;out.wcs&gt;]
+  fayde verify (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
+  fayde verify --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; (--at &lt;x,y&gt;... | --at-sky &lt;ra,dec&gt;... | --at-sources &lt;file&gt;)
+               [--header &lt;frame.fits&gt;] [--epoch &lt;year&gt;] [--pixel-error &lt;px&gt;] [--wcs-sigma &lt;arcsec&gt;]
+               [--search-radius &lt;arcsec&gt;] [--max-stars &lt;n&gt;]
+  fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
+               [-o &lt;out.wcs&gt;]
+     detection options (with --image): --fwhm &lt;px&gt; --detect-threshold &lt;sigma&gt; --saturation &lt;adu&gt;
+       --gain &lt;e/adu&gt; --max-sources &lt;n&gt; (--trail-angle also guides detection)
+     request options: --header &lt;frame.fits&gt; --instrument &lt;profile.json&gt; --width &lt;px&gt; --height &lt;px&gt;
+       --ra &lt;deg&gt; --dec &lt;deg&gt; --radius &lt;deg&gt; --pointing-sigma &lt;deg&gt;
+       --scale &lt;arcsec/px&gt; --scale-sigma &lt;fraction&gt;
+       --roll &lt;deg&gt; --roll-sigma &lt;deg&gt; --roll-max &lt;deg&gt; --parity negative|positive
+       --trail-length &lt;px&gt; --trail-angle &lt;deg&gt; --epoch &lt;year&gt; --deadline &lt;s&gt; --max-sip-order &lt;n&gt;
+       --pixel-error &lt;px&gt; --accept-log-odds &lt;x&gt; --max-hypotheses &lt;n&gt;
+       --no-priors --no-pointing --no-header-wcs --search-outside-pointing
+       --relax-priors-on-failure
+  fayde calibrate --solved &lt;list&gt; [--roll-keyword &lt;KEY&gt;] [--binning &lt;XKEY&gt;[,&lt;YKEY&gt;]]
+                  [--name &lt;text&gt;] [--no-header-wcs] [-o &lt;profile.json&gt;]
+  fayde compare --ucac4 &lt;dir&gt; --index &lt;a.fidx&gt;[,&lt;b.fidx&gt;] --frames &lt;frames.json&gt; [--limit &lt;n&gt;]
+                [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
+  fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
+              [--image-mag &lt;m&gt;] [--deadline &lt;s&gt;] [--pattern-sources &lt;n&gt;]
+  --ucac4 &lt;dir&gt; may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.
+</code></pre></div>
+<h2 id="fayde-bench">fayde bench<a class="headerlink" href="#fayde-bench" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>usage:
+  fayde index build --ucac4 &lt;dir&gt; --fov &lt;deg&gt; -o &lt;file&gt; [--epoch &lt;year&gt;] [--mag-limit &lt;m&gt;]
+                    [--stars-per-fov &lt;n&gt;] [--oversampling &lt;x&gt;] [--patterns-per-field &lt;n&gt;]
+                    [--stars-per-field &lt;n&gt;] [--pattern-stars-per-fov &lt;n&gt;] [--min-edge &lt;deg&gt;]
+                    [--region &lt;ra,dec,r&gt;]
+  fayde index info &lt;file&gt;
+  fayde detect --image &lt;frame.fits&gt; [-o &lt;frame.sources.fits&gt;] [detection options]
+  fayde solve  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; [request options]
+               [--index &lt;a.fidx&gt;]... [-o &lt;out.wcs&gt;]
+  fayde verify (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
+  fayde verify --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; (--at &lt;x,y&gt;... | --at-sky &lt;ra,dec&gt;... | --at-sources &lt;file&gt;)
+               [--header &lt;frame.fits&gt;] [--epoch &lt;year&gt;] [--pixel-error &lt;px&gt;] [--wcs-sigma &lt;arcsec&gt;]
+               [--search-radius &lt;arcsec&gt;] [--max-stars &lt;n&gt;]
+  fayde refit  (--sources &lt;frame.sources.fits&gt; | --image &lt;frame.fits&gt;) --ucac4 &lt;dir&gt; --wcs &lt;in.wcs&gt; [request options]
+               [-o &lt;out.wcs&gt;]
+     detection options (with --image): --fwhm &lt;px&gt; --detect-threshold &lt;sigma&gt; --saturation &lt;adu&gt;
+       --gain &lt;e/adu&gt; --max-sources &lt;n&gt; (--trail-angle also guides detection)
+     request options: --header &lt;frame.fits&gt; --instrument &lt;profile.json&gt; --width &lt;px&gt; --height &lt;px&gt;
+       --ra &lt;deg&gt; --dec &lt;deg&gt; --radius &lt;deg&gt; --pointing-sigma &lt;deg&gt;
+       --scale &lt;arcsec/px&gt; --scale-sigma &lt;fraction&gt;
+       --roll &lt;deg&gt; --roll-sigma &lt;deg&gt; --roll-max &lt;deg&gt; --parity negative|positive
+       --trail-length &lt;px&gt; --trail-angle &lt;deg&gt; --epoch &lt;year&gt; --deadline &lt;s&gt; --max-sip-order &lt;n&gt;
+       --pixel-error &lt;px&gt; --accept-log-odds &lt;x&gt; --max-hypotheses &lt;n&gt;
+       --no-priors --no-pointing --no-header-wcs --search-outside-pointing
+       --relax-priors-on-failure
+  fayde calibrate --solved &lt;list&gt; [--roll-keyword &lt;KEY&gt;] [--binning &lt;XKEY&gt;[,&lt;YKEY&gt;]]
+                  [--name &lt;text&gt;] [--no-header-wcs] [-o &lt;profile.json&gt;]
+  fayde compare --ucac4 &lt;dir&gt; --index &lt;a.fidx&gt;[,&lt;b.fidx&gt;] --frames &lt;frames.json&gt; [--limit &lt;n&gt;]
+                [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
+  fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
+              [--image-mag &lt;m&gt;] [--deadline &lt;s&gt;] [--pattern-sources &lt;n&gt;]
+  --ucac4 &lt;dir&gt; may be left out when the environment variable FAYDE_UCAC4 names the directory.
+  Each command lists its options and defaults with --help.
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy", "navigation.sections", "navigation.top", "search.highlight"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>

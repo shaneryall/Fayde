@@ -1,0 +1,2790 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Verified astrometric plate solving for FITS images.">
+      
+      
+      
+        <link rel="canonical" href="https://shaneryall.github.io/Fayde/0.4/design/plate-solver/">
+      
+      
+        <link rel="prev" href="../../reference/changelog/">
+      
+      
+        <link rel="next" href="../detection/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
+    
+    
+      
+        <title>Plate solver design - Fayde</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#fayde-plate-solver-design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Fayde" class="md-header__button md-logo" aria-label="Fayde" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Fayde
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Plate solver design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/shaneryall/Fayde" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shaneryall/Fayde
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Fayde" class="md-nav__button md-logo" aria-label="Fayde" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Fayde
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/shaneryall/Fayde" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shaneryall/Fayde
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-to guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-to guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install Fayde
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose and connect a star catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use the command line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../python/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Fayde from Python
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../index-set/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build pattern indexes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command-line reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../source-list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source list format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Versioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Algorithm sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explanation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Explanation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plate solver design
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plate solver design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Purpose
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Purpose">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#standalone-first-host-pipelines-first-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standalone first, host pipelines first-class
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-not-keep-astrometrynet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why not keep astrometry.net
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Requirements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Requirements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#must" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Must
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#should" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Should
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wont" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Won't
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-prior-art" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Prior art
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Prior art">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-astrometrynet-dstndstnastrometrynet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 astrometry.net (dstndstn/astrometry.net)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-tetra3-esatetra3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 tetra3 (esa/tetra3)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-cedar-solve-smroidcedar-solve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 cedar-solve (smroid/cedar-solve)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Comparison
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-what-fayde-takes-from-each" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 What Fayde takes from each
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-solve-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Solve pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Solve pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#50-xylist-validation-fayde-solve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.0 Xylist validation (fayde-solve)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#51-catalog-layer-fayde-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Catalog layer (fayde-catalog)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-index-fayde-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Index (fayde-index)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52a-adaptive-search-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2a Adaptive search plan
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-matchers-fayde-solve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Matchers (fayde-solve)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-verifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Verifier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-fit-fayde-solve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Fit (fayde-solve)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-sequence-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 Sequence mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-input-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Input contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Input contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Principles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-frame" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Frame
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Sources
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63a-frame-level-detector-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3a Frame-level detector outputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-priors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Priors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-instrument-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 Instrument model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#66-observer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.6 Observer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#67-solve-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.7 Solve policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#68-encodings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.8 Encodings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#69-integrating-with-a-host-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.9 Integrating with a host pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Error handling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-licensing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Licensing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Decisions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Star detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/literature-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Literature review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Purpose
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Purpose">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#standalone-first-host-pipelines-first-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standalone first, host pipelines first-class
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-not-keep-astrometrynet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why not keep astrometry.net
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Requirements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Requirements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#must" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Must
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#should" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Should
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wont" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Won't
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-prior-art" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Prior art
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Prior art">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-astrometrynet-dstndstnastrometrynet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 astrometry.net (dstndstn/astrometry.net)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-tetra3-esatetra3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 tetra3 (esa/tetra3)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-cedar-solve-smroidcedar-solve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 cedar-solve (smroid/cedar-solve)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Comparison
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-what-fayde-takes-from-each" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 What Fayde takes from each
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-solve-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Solve pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Solve pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#50-xylist-validation-fayde-solve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.0 Xylist validation (fayde-solve)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#51-catalog-layer-fayde-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Catalog layer (fayde-catalog)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-index-fayde-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Index (fayde-index)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52a-adaptive-search-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2a Adaptive search plan
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-matchers-fayde-solve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Matchers (fayde-solve)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-verifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Verifier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-fit-fayde-solve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Fit (fayde-solve)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-sequence-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 Sequence mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-input-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Input contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Input contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Principles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-frame" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Frame
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Sources
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63a-frame-level-detector-outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3a Frame-level detector outputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-priors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Priors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-instrument-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 Instrument model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#66-observer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.6 Observer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#67-solve-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.7 Solve policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#68-encodings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.8 Encodings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#69-integrating-with-a-host-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.9 Integrating with a host pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-error-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Error handling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-licensing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Licensing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Decisions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="fayde-plate-solver-design">Fayde plate solver — design<a class="headerlink" href="#fayde-plate-solver-design" title="Permanent link">&para;</a></h1>
+<p>For the crate layout and integration contract, see §4 and §6. For commands and report fields, see
+the <a href="../../usage/">CLI guide</a> and <a href="../../python/">Python guide</a>. Source references in the prior-art
+survey (§3) point to the upstream repositories.</p>
+<h2 id="1-purpose">1. Purpose<a class="headerlink" href="#1-purpose" title="Permanent link">&para;</a></h2>
+<p>Fayde is a public, open-source astrometry tool written in Rust. It goes from a source list to a
+verified WCS with measured accuracy. It must fully meet the needs of a host pipeline, so that the
+pipeline can retire <code>solve-field</code> and the solving-related code around it.</p>
+<p>The input is an xylist, as with <code>solve-field</code>, or an image. The user can run whatever source
+detector suits their sensor and give Fayde the resulting list of sources (§6) along with any
+header or metadata they have. Fayde also takes the image itself when its stars
+are points (a frame tracked at the sidereal rate, a spacecraft holding its attitude), detects the
+stars, keeps streaks and artifacts out of the list, and fills the same contract:
+<a href="../detection/"><code>detection.md</code></a>. It does the same when every star is a trail of
+one length and direction (a telescope tracking a satellite):
+<a href="../streak-detection/"><code>streak-detection.md</code></a>.</p>
+<p>It is not a wrapper. It ports the strongest algorithms from three solvers, and it takes over
+capabilities that pipelines otherwise build around a solver, generalized for public use:</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Taken from</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fast hinted match</td>
+<td>tetra3 / cedar-solve; Mortari's pair lists</td>
+<td>Pair seeds when the scale is tight, otherwise a 4-star edge-ratio pattern hash; millisecond solves</td>
+</tr>
+<tr>
+<td>Blind / wide fallback</td>
+<td>astrometry.net, adapted</td>
+<td>Its series of indexes for different field widths, searched with Fayde's 5-ratio pattern hash (quad codes considered, not adopted)</td>
+</tr>
+<tr>
+<td>Match acceptance</td>
+<td>astrometry.net</td>
+<td>Bayesian log-odds verification against the catalog</td>
+</tr>
+<tr>
+<td>Final fit</td>
+<td>astrometry.net, extended</td>
+<td>TAN + SIP fit, upgraded to weighted iterative refit with outlier rejection</td>
+</tr>
+<tr>
+<td>Source detection</td>
+<td>Fayde's own, for point-like and trailed stars; otherwise the user supplies the xylist</td>
+<td>One fixed extractor cannot fit every sensor; astrometry.net's built-in <code>simplexy</code> solved about 12% of one host pipeline's frames. Fayde defines a rich xylist contract (§6) that any detector can fill, and fills it itself from an image of point-like stars with a detector that measures the star width, noise and position errors instead of asking for them (<a href="../detection/"><code>detection.md</code></a>).</td>
+</tr>
+<tr>
+<td>Catalog</td>
+<td>Fayde's own</td>
+<td>UCAC4 and Tycho-2 read natively behind a catalog trait</td>
+</tr>
+<tr>
+<td>Header priors, neighbor hints</td>
+<td>Fayde's own</td>
+<td>Scale and pointing resolution and a prediction from a solved neighbor, which a pipeline otherwise builds around the solver</td>
+</tr>
+</tbody>
+</table>
+<h3 id="standalone-first-host-pipelines-first-class">Standalone first, host pipelines first-class<a class="headerlink" href="#standalone-first-host-pipelines-first-class" title="Permanent link">&para;</a></h3>
+<p>Fayde is a general-purpose public tool. A host pipeline is a user, not a dependency. Fayde takes
+on capabilities that pipelines otherwise build around a solver when they belong in a public
+astrometry tool.</p>
+<p>Detection of point-like and trailed stars is one of them. A host may still prefer its own
+detector and give the xylist.</p>
+<p><strong>In Fayde</strong> (so that a host pipeline need not build them):</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Fayde home</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Star and streak detection from the image, points or trails</td>
+<td><code>fayde-detect</code></td>
+</tr>
+<tr>
+<td>Source ranking and demotion of near-duplicate centroids</td>
+<td><code>fayde-solve</code> (§5.0)</td>
+</tr>
+<tr>
+<td>Scale prior from focal length and pixel size, or from CD or PC+CDELT with unit checks; rejection of mixed or invalid WCS</td>
+<td><code>fayde-fits</code></td>
+</tr>
+<tr>
+<td>Pointing prior from the header, never treating a commanded WCS as solved</td>
+<td><code>fayde-fits</code></td>
+</tr>
+<tr>
+<td>Exposure time resolution (DATE-OBS, JD-OBS, TIME-OBS, EXPTIME and variants)</td>
+<td><code>fayde-fits</code></td>
+</tr>
+<tr>
+<td>UCAC4 cone search; "is there a catalog star here?" check</td>
+<td><code>fayde-catalog</code> (cone search) + <code>fayde verify --at</code></td>
+</tr>
+<tr>
+<td>Verifying or repairing existing WCS headers</td>
+<td><code>fayde verify</code>, <code>fayde refit</code></td>
+</tr>
+<tr>
+<td>Writing the solution atomically as a separate FITS WCS file, leaving the image untouched</td>
+<td><code>fayde-fits</code> (WCS file), <code>fayde-cli</code> (provenance cards)</td>
+</tr>
+</tbody>
+</table>
+<p>These stay in the host pipeline, as pipeline policy rather than astrometry:</p>
+<ul>
+<li>WCS cache reuse policy, versioned header cards and policy fingerprints.</li>
+<li>Run-summary and evidence schemas.</li>
+<li>Satellite identification, correlation, stacking, and drift.</li>
+<li>A detector of the host's own, where it prefers one to Fayde's.</li>
+</ul>
+<p>A host's solving path is then: its detector → xylist → Fayde → adapter → its own cache and
+records.</p>
+<p>General rules:</p>
+<ul>
+<li>Core crates know nothing about any host pipeline: no host field names, config keys, cache
+  records or FITS history cards.</li>
+<li>Fayde's own inputs and outputs are general: a source list, hints, and a solution with full
+  evidence. They are designed so that everything a host pipeline needs maps onto them with no
+  loss (§6).</li>
+<li>A host adapter is thin and lives at the edge: <code>fayde-py</code> plus a backend in the host's own
+  repository. Host-specific provenance (cache records, run summaries) is built there from
+  Fayde's generic provenance.</li>
+<li>Other users get the same features through the CLI and the Rust API. These include ground
+  telescopes, star trackers, and any <code>solve-field</code> user who is willing to switch.</li>
+</ul>
+<h3 id="why-not-keep-astrometrynet">Why not keep astrometry.net<a class="headerlink" href="#why-not-keep-astrometrynet" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Maintenance is sporadic; build and packaging are C/Python/SWIG and hard to vendor.</li>
+<li>Every solve is a subprocess with scratch files, a 180 s budget and text-file I/O.</li>
+<li>It does not expose solution covariance, so the accuracy of an accepted solution is not
+  quantified.</li>
+<li>Index files are fixed 2MASS/Tycho-2/Gaia-DR2 builds (series 4200/5200); epoch handling is not
+  declared, and we cannot build from UCAC4 with our own epoch and density policy.</li>
+<li>No native notion of an image sequence; a pipeline has to implement neighbor hints and
+  borrowing around it.</li>
+</ul>
+<h2 id="2-requirements">2. Requirements<a class="headerlink" href="#2-requirements" title="Permanent link">&para;</a></h2>
+<h3 id="must">Must<a class="headerlink" href="#must" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Define an input contract optimized for solution quality (§6). Only the sources and image size
+are required. Every other field (uncertainties, flux, <code>p_star</code>, exposure time, priors with σ)
+improves the result when present. Internally, <code>(x, y)</code> = (column, row), with the center of the first
+pixel at <code>(0, 0)</code> (NumPy/Astropy). Conversions happen only at the edges: +1 for FITS/astrometry.net
+xylists, +0.5 and an <code>(x, y)</code>→<code>(y, x)</code> swap for tetra3/cedar.</li>
+<li>Use priors when present: pointing, roll, scale and parity, each given as a σ plus a hard limit.
+   The limit bounds the search; the σ ranks hypotheses (§6.4).</li>
+<li>Solve blind (no position hint) within a bounded time when the hint is missing or wrong.</li>
+<li>Build indexes from <strong>UCAC4</strong> zone files (<code>z001</code>–<code>z900</code>, 78-byte records), with proper motion
+propagated to a chosen epoch and per-cell density limiting. Catalog access goes through a trait so
+Tycho-2, Gaia DR3 and others can be added.</li>
+<li>Output a FITS-compatible TAN or TAN-SIP WCS, plus: matched pairs, per-star residuals, RMS,
+   parameter covariance, the log-odds score, index/catalog identity and epoch.</li>
+<li>Deterministic: same input, same index → bit-identical output. Required by a host pipeline's
+   WCS cache fingerprints.</li>
+<li>Library first (no subprocess), with a CLI and Python bindings for host pipelines.</li>
+<li>Read xylists in Fayde's native format (§6.8) and in astrometry.net's FITS xylist format. A
+   <code>solve-field</code> user should be able to point Fayde at their existing <code>.xyls</code> files and get a
+   solution with no other changes.</li>
+<li>Build priors (scale, pointing, exposure time) from standard FITS headers with strict validation.</li>
+<li>Public tool hygiene: an open source license, documented CLI, published crates and wheels, and
+    reproducible index builds anyone can run from public catalogs.</li>
+</ol>
+<h3 id="should">Should<a class="headerlink" href="#should" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Sequence mode: when the search finds no solution, verify a WCS predicted from a solved frame
+   of the same pass.</li>
+<li>Per-source centroid uncertainty: each source may carry a position error that the verifier
+   and fitter use (§6.3). Sources are treated as point centroids; producers with streaked stars
+   supply the streak centroid.</li>
+<li>Solve the target case (sub-degree FOV, ~3″/px, 30–60 sources) in &lt; 100 ms hinted and
+   &lt; 5 s blind on a single core.</li>
+</ol>
+<h3 id="wont">Won't<a class="headerlink" href="#wont" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Lens-distortion models beyond SIP (TPV, lookup tables).</li>
+</ul>
+<h2 id="3-prior-art">3. Prior art<a class="headerlink" href="#3-prior-art" title="Permanent link">&para;</a></h2>
+<h3 id="31-astrometrynet-dstndstnastrometrynet">3.1 astrometry.net (<code>dstndstn/astrometry.net</code>)<a class="headerlink" href="#31-astrometrynet-dstndstnastrometrynet" title="Permanent link">&para;</a></h3>
+<p>astrometry.net reads an image or a FITS xylist (<code>X</code>, <code>Y</code>, optional <code>FLUX</code>/<code>BACKGROUND</code>).
+Coordinates are 1-based, so the center of the first pixel is (1, 1)
+(<code>util/image2xy.c:102-105</code>). The list is sorted brightest first, and <code>--depth</code> limits how many
+objects are tried. The built-in extractor (simplexy) does median background subtraction, 8σ
+peaks and a 3×3 centroid (<code>include/astrometry/simplexy.h:10-20</code>).</p>
+<p>The hints are the scale in degwidth, arcminwidth, arcsec/px or focal length
+(<code>solver/augment-xylist.c:83-89</code>), an RA/Dec center with a radius (<code>solver/engine.c:496-576</code>),
+parity, and a CPU limit.</p>
+<p>The pattern is a quad of 4 stars. A and B are the widest pair. C and D are expressed in the frame
+where A=(0,0) and B=(1,1), giving a 4-D code that does not change under rotation, scaling or
+translation (<code>solver/quad-utils.c:15-55</code>). Requiring cx ≤ dx and flipping for parity removes
+duplicate orderings (<code>quad-utils.c:102-150</code>). Code tolerance is 0.01 (<code>solver.h:30</code>). Field stars
+are added one at a time and every quad containing the new star is tried
+(<code>solver/solver.c:898-990</code>), using a kd-tree range search in code space.</p>
+<p>The index is a set of FITS files, each holding a star kd-tree (unit xyz vectors), a quad table
+and a code kd-tree. One file covers one band of quad sizes, in steps of √2. The 4100 series
+(Tycho-2) covers 22′–2000′. The 5200 series covers 2′–22′ and is split into 12 or 48 HEALPix
+tiles. Small scales need tens of GB. Star density is evened out by <code>uniformize-catalog</code>
+(N brightest per HEALPix cell, in sweeps) and <code>hpquads</code>.</p>
+<p>Verification uses Bayesian log-odds (<code>solver/verify.c:448-620</code>). Each test star is scored either
+as a true match (a Gaussian) or as a spurious "distractor" star (uniform over the field), with
+conflicts resolved. Defaults: distractor ratio 0.25, verify_pix 1 px, accept at odds 1e9
+(<code>engine.c:672-673</code>).</p>
+<p>The output is a full TAN + SIP WCS from <code>tweak2</code> (<code>solver.c:126-220</code>), plus <code>.corr</code>, <code>.match</code>
+and <code>.rdls</code> files.</p>
+<p>It is the most robust of the three and needs no FOV. It is slow to start (seconds), its indexes
+are large, and the C/FITS stack is heavy.</p>
+<p>Its catalogs are Tycho-2, 2MASS, USNO-B, NOMAD and UCAC3/4/5 (<code>catalogs/</code>). UCAC4 is supported
+(<code>catalogs/ucac4.c:51-125</code>) through <code>ucac4tofits</code> → <code>hpsplit</code> → <code>build-astrometry-index</code>. <strong>It
+does not propagate proper motion</strong>; positions stay at J2000.</p>
+<h3 id="32-tetra3-esatetra3">3.2 tetra3 (<code>esa/tetra3</code>)<a class="headerlink" href="#32-tetra3-esatetra3" title="Permanent link">&para;</a></h3>
+<p><code>solve_from_image</code> uses its own blob extractor (<code>tetra3.py:1796</code>).
+<code>solve_from_centroids</code> takes <strong>(y, x)</strong>, with the origin at the top-left pixel edge (so the first
+pixel center is 0.5), sorted brightest first, plus <code>(height, width)</code>.</p>
+<p>A pattern of 4 stars gives 6 edges. They are sorted and divided by the longest edge to give 5
+ratios, binned at <code>1/(4·max_err)</code> (<code>tetra3.py:1060-1071</code>). The key is a polynomial over the bins,
+multiplied by 2654435761, in an open-addressed table with quadratic probing
+(<code>tetra3.py:110-153</code>). It tries every 4-combination of the brightest 8 centroids
+(<code>tetra3.py:1381</code>).</p>
+<p>The database is an <code>.npz</code> with a star table (float32) and a pattern table of star indices
+(2× table oversize), about 99 MB. It is built per FOV scale (step 1.5×) with a minimum star
+separation of <code>0.6·fov/√stars_per_fov</code> (<code>tetra3.py:925-1013</code>).</p>
+<p>Verification finds the rotation by SVD (Kabsch) <strong>with no determinant check, so it can accept a
+mirror-image (wrong parity) solution</strong> (<code>tetra3.py:236-244</code>). Projected catalog stars are
+matched by nearest neighbor and accepted using a binomial false-positive probability
+(<code>tetra3.py:1589</code>).</p>
+<p>The output is RA, Dec, roll, FOV, one radial distortion term k (<code>tetra3.py:1641</code>), RMSE, match
+count and probability, with no WCS or SIP.</p>
+<p>It solves in 10–500 ms in Python. Pattern density is uneven across the sky, and limiting the
+search to the brightest 8 stars fails when bright detections are spurious.</p>
+<p>Its catalogs are BSC5, Hipparcos and Tycho (<code>tetra3.py:702-870</code>). Proper motion is applied
+linearly from 1991.25 to the requested epoch, and stars without proper motion are dropped. It
+has no UCAC4 or Gaia support.</p>
+<h3 id="33-cedar-solve-smroidcedar-solve">3.3 cedar-solve (<code>smroid/cedar-solve</code>)<a class="headerlink" href="#33-cedar-solve-smroidcedar-solve" title="Permanent link">&para;</a></h3>
+<p>A tetra3 fork with the same API and pixel convention.</p>
+<p>Its database, unlike tetra3's, is uniform: patterns are generated in "lattice fields" on a
+Fibonacci sphere, with a fixed 50 patterns per field, brightest first, in breadth-first
+combination order (<code>tetra3.py:1182-1308</code>). The table size is the next prime above 3× the pattern
+count, with linear probing (<code>tetra3.py:1316-1320</code>). Each slot stores a 16-bit key hash, which
+rejects probe collisions without loading stars (<code>tetra3.py:1382</code>, <code>2268</code>), plus a float16
+longest edge. The magnitude limit is set automatically from the star density needed
+(<code>tetra3.py:1118-1143</code>). The database is about 38 MB (about 42k stars).</p>
+<p>The solve tries every image combination breadth-first, so there is no fixed limit of 8 stars
+(<code>tetra3.py:1819</code>). Hash bins are visited nearest first (<code>~1855-1866</code>). Match tolerance is 0.002,
+the default timeout is 5 s, and solves can be canceled. It adds P90E/MAXE errors and the rotation
+matrix. The distortion range search was removed.</p>
+<p>Its catalogs are the same as tetra3's.</p>
+<p>There is no Rust solver. smroid's cedar-detect is a Rust star detector:</p>
+<ul>
+<li>a row gate followed by a 2-D gate, noise estimation, rejection of hot pixels and trails, and
+  2/4/8× binning;</li>
+<li>about 10 ms per Mpx on a Raspberry Pi 4;</li>
+<li>takes 8-bit images only and returns centroids with the first pixel center at 0.5
+  (<code>src/algorithm.rs:509-528</code>, <code>958</code>).</li>
+</ul>
+<p>It could become the CLI's extractor if it were extended to 16-bit images.</p>
+<h3 id="34-comparison">3.4 Comparison<a class="headerlink" href="#34-comparison" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>astrometry.net</th>
+<th>tetra3</th>
+<th>cedar-solve</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Input</td>
+<td>image or FITS xylist, 1-based (x, y)</td>
+<td>image or (y, x), first pixel center at 0.5</td>
+<td>same as tetra3</td>
+</tr>
+<tr>
+<td>Hash</td>
+<td>4-D quad code, kd-tree</td>
+<td>5 binned edge ratios, open addressing</td>
+<td>same + 16-bit key check, linear probing</td>
+</tr>
+<tr>
+<td>Index</td>
+<td>FITS per scale band and HEALPix tile, GBs</td>
+<td>npz, ~99 MB</td>
+<td>npz, ~38 MB, uniform</td>
+</tr>
+<tr>
+<td>Verify</td>
+<td>Bayesian log-odds, odds 1e9</td>
+<td>binomial false-positive probability</td>
+<td>binomial false-positive probability</td>
+</tr>
+<tr>
+<td>Output</td>
+<td>TAN + SIP WCS</td>
+<td>RA/Dec/roll/FOV/k</td>
+<td>+ P90E, MAXE, rotation matrix</td>
+</tr>
+<tr>
+<td>Speed</td>
+<td>0.1–10 s</td>
+<td>10–500 ms</td>
+<td>10–100 ms</td>
+</tr>
+<tr>
+<td>Catalogs</td>
+<td>Tycho-2, 2MASS, Gaia, USNO-B, UCAC4/5</td>
+<td>BSC5, HIP, TYC</td>
+<td>BSC5, HIP, TYC</td>
+</tr>
+<tr>
+<td>Proper motion</td>
+<td>none</td>
+<td>linear, drops stars without PM</td>
+<td>linear, drops stars without PM</td>
+</tr>
+</tbody>
+</table>
+<h3 id="35-what-fayde-takes-from-each">3.5 What Fayde takes from each<a class="headerlink" href="#35-what-fayde-takes-from-each" title="Permanent link">&para;</a></h3>
+<p>The wider literature (star-tracker identification, robust estimation, distortion fitting,
+benchmarks) is reviewed in <a href="../../research/literature-review/"><code>docs/research/literature-review.md</code></a>.
+Sections 5, 6 and 9 describe what Fayde implements.</p>
+<ol>
+<li>The database layout comes from cedar-solve:</li>
+<li>uniform lattice fields with a fixed budget of patterns per field;</li>
+<li>brightest-first breadth-first combinations;</li>
+<li>a prime-sized table with linear probing;</li>
+<li>a 16-bit key check and the longest edge (as <code>f32</code>) in each slot.</li>
+</ol>
+<p>A lookup probes every key in the tolerance window (or scans the table when the window holds
+   more keys than the table has slots) and ranks the hits by their exact shape error. The index
+   is a versioned flat binary, read into memory, rather than npz.
+2. Verification comes from astrometry.net (Bayesian log-odds with distractors), behind a cheap
+   pre-filter that counts sources landing near catalog stars (§5.4).
+3. The output is a real WCS (TAN, with SIP of order 2–3), plus RA, Dec, pixel scale and roll.
+   Fayde fits each seed with an explicit parity and, when the parity is unknown, tries both and
+   verifies each, so the parity is right, which tetra3 does not check.
+4. Several indexes for different field widths, like astrometry.net's series, are tried in order
+   of closeness to the frame's diagonal (the widest first when the scale is unknown). A pointing
+   hint rejects a matched pattern with a star farther from the pointing than the search radius
+   plus the frame's half-diagonal.
+5. Catalogs are pluggable, and proper motion is applied to every star. Each position moves along
+   its proper motion on the sphere, which holds at the poles, and stars without proper motion are
+   kept with a larger error: all three take shortcuts near the poles or drop such stars.</p>
+<h2 id="4-architecture">4. Architecture<a class="headerlink" href="#4-architecture" title="Permanent link">&para;</a></h2>
+<p>Cargo workspace:</p>
+<div class="highlight"><pre><span></span><code>fayde/
+  crates/
+    fayde-core      sky, pixel and epoch types; portable numerical primitives
+    fayde-catalog   Catalog trait, UCAC4/Tycho-2/star-table/.fcat readers, proper motion
+    fayde-index     HEALPix selection, pattern hash, streamed index file reads and writes
+    fayde-solve     Source, SolveRequest, Outcome and Solution; search, verification, fits and covariance
+    fayde-wcs       TAN/SIP projections, WCS header cards, WCS prediction from pointing and roll
+    fayde-fits      FITS images and source lists, header priors, profiles, WCS file output
+    fayde-detect    star, trail and streak detection in an image
+    fayde-api       request building and the JSON report, shared by the command line and Python
+    fayde-cli       `fayde index build`, `fayde index info`, `fayde catalog`, `fayde solve`,
+                    `fayde verify`, `fayde refit`, `fayde detect`, `fayde calibrate`, `fayde bench`,
+                    `fayde compare`
+    fayde-py        PyO3 bindings (general Python API)
+</code></pre></div>
+<p>The solver uses <code>fayde-core</code>, <code>fayde-catalog</code>, <code>fayde-index</code> and <code>fayde-wcs</code>. FITS, detection
+and request orchestration sit outside the solver. <code>fayde-api</code> combines those layers for the
+CLI and Python. The index reader verifies a checksum in one streamed pass, then parses the
+index into memory in a second pass.</p>
+<p>Dependencies kept small: <code>serde</code> and <code>serde_json</code> (reports, profiles), <code>libm</code> (portable math),
+<code>pyo3</code> (Python bindings), <code>flate2</code> (catalog downloads, in pure Rust). FITS reading and writing,
+the k-d tree and the linear algebra are Fayde's own. No C toolchain at runtime.</p>
+<h2 id="5-solve-pipeline">5. Solve pipeline<a class="headerlink" href="#5-solve-pipeline" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>sources + hints
+   ├─ validate geometry and options, filter and rank usable centroids (§5.0)
+   ├─ plan pair-seed and pattern-hash stages from the hints and indexes (§5.2a)
+   ├─ try hypotheses, refit locally, verify, and select the final TAN/SIP fit (§5.3–5.5)
+   ├─ try the predicted WCS if the search found no solution and a prediction was supplied (§5.6)
+   └─ report the solution, abstention, or error
+</code></pre></div>
+<p>Search stages share the request's deadline and hypothesis limit. The relaxed-prior pass, when
+enabled, uses the remaining budget and continues the hypothesis count.</p>
+<h3 id="50-xylist-validation-fayde-solve">5.0 Xylist validation (<code>fayde-solve</code>)<a class="headerlink" href="#50-xylist-validation-fayde-solve" title="Permanent link">&para;</a></h3>
+<p>A source list can come from any detector, so Fayde checks it before solving:</p>
+<ul>
+<li>Validate the frame dimensions, search priors, and solver policy. The Python adapter also
+  checks that source arrays have equal lengths.</li>
+<li>Ignore non-finite centroids and centroids outside the frame. Rank the remaining sources by
+  <code>p_star</code> and flux when supplied. With no flux, use <code>p_star</code> and input order.</li>
+<li>Demote candidates near a better-ranked centroid. Keep truncated sources as match evidence
+  and exclude them from seeding and fitting.</li>
+</ul>
+<h3 id="51-catalog-layer-fayde-catalog">5.1 Catalog layer (<code>fayde-catalog</code>)<a class="headerlink" href="#51-catalog-layer-fayde-catalog" title="Permanent link">&para;</a></h3>
+<p>The <a href="https://github.com/shaneryall/Fayde/blob/v0.4.0/crates/fayde-catalog/src/lib.rs"><code>Catalog</code> trait</a> exposes fallible cone search and
+scans. Queries specify an optional epoch and magnitude limit plus a magnitude band. Catalog
+stars carry a sky position, identifier, optional magnitude, and position errors.</p>
+<p>UCAC4 reader:</p>
+<ul>
+<li>Reads the original zone files in place, seeking to the record ranges for each cone. There
+  are 900 zones (<code>z001</code>–<code>z900</code>), each a 0.2° Dec band starting at −90° and sorted by RA, about 113M
+  stars and 8.9 GB in total.</li>
+<li>Each record is 78 bytes, little-endian, decoded with explicit little-endian conversion (the field
+  layout matches <code>catalogs/ucac4.c:51-119</code> in astrometry.net):</li>
+<li><code>ra</code> u32 (mas) and <code>spd</code> u32 (mas from the south pole, so Dec = spd − 90°);</li>
+<li><code>magm</code>/<code>maga</code> i16 (mmag), <code>sigra</code>/<code>sigdc</code> i8 (+128 mas);</li>
+<li><code>pmrac</code>/<code>pmdc</code> i16 (0.1 mas/yr, where pmRA already includes cos δ), <code>sigpmr</code>/<code>sigpmd</code> i8 (+128);</li>
+<li>2MASS J/H/K, APASS B/V/g/r/i, and <code>rnm</code> u32 (the unique star ID).</li>
+<li>Two values are sentinels: a magnitude of 20000 means missing, and a proper motion of 32767
+  means the real value is in <code>u4i/u4hpm.dat</code>, which is loaded once.</li>
+<li><code>u4i/u4index.unf</code> holds, for each of the 900 zones × 1440 RA bins (0.25° each), a start offset and
+  a count, so a cone search seeks straight to the rows it needs. The file is optional: a zone
+  file is in RA order, so without it the same rows are found by binary search of the zone file.</li>
+<li>Positions are ICRS mean positions at epoch 2000.0. <code>cepra</code>/<code>cepdc</code> are central epochs, not
+  the reference epoch: positions do not move from them, but position errors grow from them.
+  Proper motion moves each position to the query epoch as a unit vector on the sphere, the
+  zero-parallax, zero-radial-velocity case of Butkevich &amp; Lindegren (2014), which holds at the
+  poles. The error on each axis grows as <code>√(σ₀² + (t − t_c)²·σμ²)</code> from the central epoch
+  <code>t_c</code>. Stars without valid proper motion keep their 2000.0 position with an inflated position
+  error, rather than being dropped as tetra3 does.</li>
+<li>The magnitude band is <code>magm</code> (579–642 nm, close to unfiltered silicon) by default, falling back
+  to <code>maga</code>. This is the same default rule as the independent reader behind the test oracle, so
+  results can be compared row for row.</li>
+<li>UCAC4 is saturated or incomplete brighter than about mag 7–8. A Tycho-2 index covers the
+  bright stars for wide fields.</li>
+</ul>
+<p>Test vectors come from an independent UCAC4 reader
+(<code>crates/fayde-catalog/tests/reader_oracle.rs</code>).</p>
+<h3 id="52-index-fayde-index">5.2 Index (<code>fayde-index</code>)<a class="headerlink" href="#52-index-fayde-index" title="Permanent link">&para;</a></h3>
+<p>Each scale band is built offline from a <code>Catalog</code> and stored in one <code>.fidx</code> file:</p>
+<ul>
+<li>Stars are selected in HEALPix cells at the index epoch. Each cell keeps its K brightest stars,
+  in a streaming pass, with a minimum separation between stars (default 10″,
+  <code>min_sep_arcsec</code>). A nearby kept star, including across HEALPix boundaries, rejects the
+  candidate unless the candidate is brighter (ties by catalog ID); a better candidate
+  replaces all its fainter neighbors. Rejected stars are not buffered for reconsideration,
+  so results are deterministic for a given catalog stream. This follows astrometry.net's
+  <code>uniformize-catalog</code> approach. It keeps the density even, so the galactic plane does not swamp
+  the hash table and the poles are not empty. The magnitude limit is optional
+  (<code>--mag-limit</code>); stars without a magnitude are left out.</li>
+<li>Each index is built for one field width (<code>--fov</code>). A solve can load several, tried in order of
+  closeness to the frame's diagonal (the widest first when the scale is unknown, §5.3);
+  <a href="../../index-set/"><code>index-set.md</code></a> lists a recommended set.</li>
+<li>The pattern hash table follows cedar-solve's design:</li>
+<li>lattice fields with a fixed number of patterns per field, chosen brightest first in
+    breadth-first combination order;</li>
+<li>the key is 5 sorted edge ratios, binned;</li>
+<li>the table size is a prime above 3× the pattern count, with linear probing;</li>
+<li>each slot holds a 16-bit key check, a 32-bit floating-point longest edge, and four star indices.</li>
+<li>lookup visits neighboring keys or checks stored patterns directly when there are fewer
+    table slots than keys to visit. Candidates are ranked by exact ratio error.</li>
+<li>Measured on a regional UCAC4 index at 0.4° FOV, 0 of 70 image 4-sets were in the index with 2×
+  lattice oversampling; 30× found 11, 100× (cedar-solve's value) found 35, and the true match always
+  ranked first. Patterns grow roughly linearly with oversampling (431 → 11,645 for the region), so
+  an all-sky index for a sub-degree FOV at 100× is large (rough estimate: tens of millions of
+  patterns, gigabytes). This is a reason hinted solves should start from pair seeds built at solve
+  time (§5.3), with the stored pattern index reserved for loose priors and blind solving.</li>
+<li>The index has two tiers. The first all-sky benchmark solved 89/100 frames blind with no wrong
+  solutions, but every failure was a dense field whose true patterns were absent from the table
+  (0 of 126–1001 true 4-star sets of the frame's top index stars). There were about 40 index
+  stars per field of view, but patterns were built from each field's 10 brightest, so a frame's
+  brightest stars rarely formed a stored pattern. Fayde therefore uses tetra3/cedar-solve's two
+  densities: the dense tier (20 stars per field of view by default) feeds the pattern-seed
+  pre-filter, and patterns come only from a sparse pattern tier.</li>
+</ul>
+<p>The v2 selection, one star per cell of side fov/√10 rounded <em>down</em> to a HEALPix level, put
+  both tiers on nside 256, so half the index became pattern stars and fields were truncated
+  again (6 failures in 149 frames, from 8). The v3 selection kept k brightest stars per
+  coarse HEALPix cell, creating boundary artifacts: a bright star could lose its slot while a
+  nearby, much fainter star in the next cell was promoted.</p>
+<p>The v4 selection, which Fayde uses, visits dense-tier stars brightest-first (ties by catalog
+  ID) and accepts each only if no accepted pattern star is within <code>r_min = 0.6 × fov / sqrt(N)</code>,
+  with N = <code>pattern_stars_per_fov</code> (default 20). This is ESA tetra3's minimum-separation
+  thinning (Brown &amp; Stubis 2017 / TETRA): the characteristic spacing fov/√N sets an approximate
+  density N/fov², or roughly 10 pattern stars in a square frame whose diagonal is fov. The 0.6
+  factor is empirical; achieved density depends on the available dense stars, and sparse
+  catalogs can undershoot the target. An incremental Cartesian unit-vector grid checks 27
+  neighboring buckets with exact chord distances, avoiding cell-boundary and polar artifacts;
+  the existing static k-d tree then supplies lattice-field neighbors. Progress reports the
+  number of pattern stars per fov² over the requested region (or all sky). Pattern membership is
+  stored per star, and the index file format stays v2: v4 names the selection method, not the
+  file format.</p>
+<p>On a synthetic uniform all-sky input of 1.6 million dense stars at fov = 1°, v4 retained
+  751,083 pattern stars, 18.207 per fov² (−9.0% from target 20), in about 1.8–1.9 s for sorting
+  and thinning in release mode. An independent k-d-tree check verifies separation for every
+  retained star. The coarse-boundary and 3″-double regression tests, which failed before v4,
+  pass with it. Regional UCAC4 validation retains 67 dense stars and 9,411 patterns; 5/70 image
+  patterns are present, all ranked first. These v4 results are separate from the oversampling
+  measurements above.
+- astrometry.net's quad kd-tree (4-D quad codes for blind solving, code tolerance about 0.01)
+  was considered and not adopted (§5.3).
+- The index is built at a fixed epoch (2025.0 by default; see §10). Stars whose proper motion
+  would move them more than half the pattern tolerance at half the field width in 25 years
+  (about 180 mas/yr per degree of field) are left out of the index, so it stays valid for
+  decades; a star with no proper motion counts as still. Pair seeds, verification and fitting do
+  not use index positions: they read catalog stars propagated to the observation epoch at query
+  time (§5.1), so they still see those stars. UCAC4 propagation errors at epoch 2026 are about
+  0.06–0.3″ (0.02–0.1 px at 3″/px); Gaia matters only for accuracy goals finer than that.
+- The header records catalog ID, epoch, magnitude limit, cell level and build parameters, and
+  a trailer holds a content hash. A pattern-hash solution names its index's hash, and the report
+  lists the hash of every index loaded.</p>
+<h3 id="52a-adaptive-search-plan">5.2a Adaptive search plan<a class="headerlink" href="#52a-adaptive-search-plan" title="Permanent link">&para;</a></h3>
+<p>Fayde's default entry point, <code>solve_auto</code>, plans the search from the metadata the request carries
+instead of defaulting to a blind search. Stages run in order and share one hypothesis count, so
+the false-alarm accounting covers the whole search. Each solution and each abstention returns the
+executed plan (<code>search</code>: stage, hypotheses, seconds).</p>
+<table>
+<thead>
+<tr>
+<th>Metadata</th>
+<th>Stages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pointing + tight scale (σ/scale ≤ 3%)</td>
+<td>Pair seeds within 3σ of the pointing, when 3σ is at most half the hard radius → pair seeds in the whole prior cone → pattern hash in an inner ring (2σ) → pattern hash to the hard radius</td>
+</tr>
+<tr>
+<td>Pointing, loose or no scale</td>
+<td>Pattern hash, inner ring → hard radius (scale-pruned when a scale prior exists)</td>
+</tr>
+<tr>
+<td>Scale only</td>
+<td>Pattern hash over the whole index, scale-pruned</td>
+</tr>
+<tr>
+<td>Nothing</td>
+<td>Blind: pattern hash over every index band</td>
+</tr>
+<tr>
+<td><code>search_outside_pointing</code> (opt-in)</td>
+<td>After the above, pattern hash outside the pointing limit; the solution is flagged <code>prior_violated</code></td>
+</tr>
+</tbody>
+</table>
+<p>The pair seeds look close to the pointing first when its σ is small. The work of a pair-seed
+stage grows with the area of its cone, and a pipeline's pointing is often far better than the
+hard limit it is willing to set: measured on 146 real
+source lists, the pointing was within 2.7′ while the limit was 2°, and a solve cost 8.7 ms at
+the 2° limit against 1.1 ms at 0.25°. The first look is skipped when 3σ is more than half the
+hard radius, which includes the default σ of a quarter of it: a first look nearly as wide as
+the limit costs almost as much as the search it would spare. The σ comes from the request
+(<code>--pointing-sigma</code>) or the instrument profile, which <code>fayde calibrate</code> fills in from solved
+frames.</p>
+<p>With a pointing and a tight scale the pair seeds go first even when an index is loaded. The
+reverse was tried: one hash stage ahead of the pair seeds halves the median solve
+on real source lists, but with an all-sky index a stage that finds nothing costs 37 to 395 ms,
+against 3 ms for the pair-seed solve it delays, and the mean went from 4.5 ms to 24 ms
+(<code>docs/references.md</code>, "Considered and not adopted").</p>
+<p>The inner ring is skipped when 2σ ≥ 0.8 × hard radius (the second pass would add nothing).
+Indexes whose region cannot contain the field are skipped, and implausible priors are rejected
+rather than searched: a scale prior that implies a field wider than a hemisphere (header
+placeholders such as <code>CDELT = 1</code>) is an input error, and <code>fayde-fits</code> drops such header scales
+with a warning. A sequence stage (predict from the previous frame, §5.6) will go first once
+implemented.</p>
+<h3 id="53-matchers-fayde-solve">5.3 Matchers (<code>fayde-solve</code>)<a class="headerlink" href="#53-matchers-fayde-solve" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Image sources are tried in order of <code>p_star</code> × brightness, not brightness alone, widening the
+  set progressively (PROSAC; Chum &amp; Matas 2005). In frames tracking satellites, the brightest
+  detections are often not stars.</li>
+<li>With a pointing hint and a tight scale prior, the matcher uses pair seeds (k-vector; Mortari).
+  It fetches the brightest catalog stars in the hint cone at solve time and builds a list of
+  their pair separations. The fainter stars that a hypothesis is verified against are read
+  around the hypotheses that pass the pre-filter, not for the whole cone, which is tens of frame
+  areas. Each image pair from the top of the source order is looked up by separation (tolerance
+  from the scale σ and position errors). One matched pair and a choice of parity fix rotation,
+  scale and translation. The roll prior can rule out a seed. With half the sources false, a
+  pair is all-real 25% of the time and a 4-star pattern only 6%.</li>
+<li>With a pointing hint and a loose scale prior, the matcher uses the pattern hash. It builds
+  patterns from the ordered image sources and looks up only hash entries whose stars lie in the
+  cone. The scale range prunes by edge length before lookup.</li>
+<li>Fayde has no geometric-voting fallback (Kolomenkin et al. 2008), in which image pairs vote for
+  catalog pairs of matching separation. A source list dominated by false detections can use up
+  the search budget before a seed finds real stars.</li>
+<li>A blind solve does pattern-hash lookups across the indexes loaded, each built for one field
+  width (as astrometry.net's index series), the closest to the frame's diagonal first (the widest
+  when the scale is unknown), with hypotheses counted across all of them. astrometry.net's 4-D
+  quad codes were considered and not adopted: the 5 edge ratios describe the same four-point
+  shape, and the hash lookup already gives continuous-tolerance matching (<code>docs/references.md</code>,
+  "Considered and not adopted").</li>
+<li>Each stage tries candidate transforms in deterministic order. The search returns a hypothesis
+  once it passes verification and the final fit.</li>
+</ul>
+<h3 id="54-verifier">5.4 Verifier<a class="headerlink" href="#54-verifier" title="Permanent link">&para;</a></h3>
+<p>The pre-filter projects the first 12 ranked sources outside the seed and counts those that land
+within <code>3σ + 2 px + 0.01·d</code> of a star, <code>d</code> being the distance in pixels from the seed's center: at
+least 2 among the catalog stars read for pair seeds, at least 1 among the index's stars for
+pattern seeds. Hypotheses that pass go on to the full test.</p>
+<p>A seed transform from 2–4 stars is rough, so the hypothesis is refitted on its provisional
+inliers (weighted, §5.5), re-matched, and only then scored (LO-RANSAC; Chum, Matas &amp; Kittler
+2003). This rescues correct hypotheses whose seed transform was slightly off.</p>
+<p>The full test is Bayesian log-odds as in astrometry.net (<code>solver/verify.c:448-620</code>, distractor
+ratio 0.25 by default): for each image source in rank order (§5.0), the probability it matches a
+projected catalog star (Gaussian with the combined position error) versus being a distractor
+(uniform over the field). The default acceptance threshold is ln(10⁹) after the
+hypothesis-count correction. Fayde combines the centroid error (<code>sigma_px</code> or the policy default)
+with catalog uncertainty, uses <code>p_star</code> to adjust the distractor probability, and stretches
+the match gate along a known trail for truncated sources. The solve also scores its pointing,
+roll and scale priors. The verifier treats each position error as isotropic and doesn't compare
+brightnesses.</p>
+<p>Each solution reports its number of false alarms (NFA), <code>hypotheses_tested × exp(−log_odds)</code>.
+Acceptance uses the log-odds minus the natural logarithm of the hypothesis count. The fixed-model
+likelihood argument assumes independent uniform null sources. Refitting on provisional matches uses
+some of the scored sources to select the model. End-to-end false-accept rates therefore need
+empirical calibration for each search regime (§9).</p>
+<h3 id="55-fit-fayde-solve">5.5 Fit (<code>fayde-solve</code>)<a class="headerlink" href="#55-fit-fayde-solve" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Seed transforms use the supplied parity or try both image parities.</li>
+<li>The weighted least-squares TAN fit uses the centroid and catalog position error at the
+  observation epoch.</li>
+<li>The robust fit is iteratively reweighted least squares (IRLS) over the same
+  Gaussian-plus-distractor mixture the verifier uses. Each match gets a soft weight from its
+  probability of being real; there is no hard kσ clipping. The fit and the verifier therefore
+  agree on what an outlier is.</li>
+<li>A global error-scale factor s on the supplied covariances is fitted and reported. s ≫ 1 means
+  the producer under-reports its centroid errors, which is useful feedback to detector authors.</li>
+<li>Fayde fits SIP distortion per frame, with the order chosen by BIC. Fayde doesn't fit one
+  distortion model across many frames, as a SCAMP-style global solution does (Bernstein et al.
+  2017). Among orders up to BIC's choice, the lowest whose weighted mean squared error on held-out
+  cells of the frame is within 5% of the best is kept (with matches in fewer than four of the nine
+  cells, no distortion; when the order cannot be scored, BIC's choice stands). SIP is also dropped,
+  or the hypothesis rejected, when a cell of a 3 × 3 grid with at least 6 sources has confident
+  matches at under a quarter of the frame's rate. When the request has a scale or roll prior, a
+  solution with distortion is converged again as TAN with scale and roll free of the priors: a TAN
+  outside the hint's limits that explains the sources at least as well replaces it and is then
+  refused, and a TAN inside them replaces it only with higher posterior odds. Distortion must not
+  stand in for a scale or roll the hint held back.</li>
+<li>The solution carries CRVAL, CRPIX at image center, CD, optional SIP, parameter covariance,
+  per-star residuals, weighted RMS, and a leave-one-out RMS when there are enough matches.</li>
+</ul>
+<h3 id="56-sequence-mode">5.6 Sequence mode<a class="headerlink" href="#56-sequence-mode" title="Permanent link">&para;</a></h3>
+<p>The solver keeps state for a sequence ID: last WCS, timestamps, fitted pointing drift. For frame N
+it predicts the WCS, runs §5.4 only, and accepts if it passes. This replaces a pipeline-side
+neighbor-hint ladder for the common case and stays separate from WCS <em>borrowing</em>: Fayde never
+returns a WCS that did not pass verification on the frame itself.</p>
+<h2 id="6-input-contract">6. Input contract<a class="headerlink" href="#6-input-contract" title="Permanent link">&para;</a></h2>
+<p>The <a href="https://github.com/shaneryall/Fayde/blob/v0.4.0/crates/fayde-solve/src/request.rs">Rust request types</a> define what the solver
+consumes. The <a href="https://github.com/shaneryall/Fayde/blob/v0.4.0/crates/fayde-api/src/lib.rs">shared API</a> resolves header values, instrument
+profiles and caller overrides before building that request. See the <a href="../../source-list/">FITS source-list
+format</a> for the file contract.</p>
+<h3 id="61-principles">6.1 Principles<a class="headerlink" href="#61-principles" title="Permanent link">&para;</a></h3>
+<p>Give Fayde the frame dimensions, source centroids, and any measured centroid errors, fluxes,
+and star probabilities. Supply uncertainty with a pointing, scale, or roll estimate so the
+search can rank hypotheses and apply the intended limits. Fayde records where each prior
+came from in the CLI and Python reports.</p>
+<h3 id="62-frame">6.2 Frame<a class="headerlink" href="#62-frame" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Input</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>width</code>, <code>height</code></td>
+<td>Image dimensions in pixels. Supply them directly, through the image, or through the source list and its header.</td>
+</tr>
+<tr>
+<td><code>trail</code></td>
+<td>Optional common star trail. The Rust request takes full length in pixels and angle in radians from +x toward +y. The CLI, Python options and FITS source list take degrees.</td>
+</tr>
+<tr>
+<td>Observation epoch</td>
+<td>Set <code>Policy::epoch</code> in Rust or use an epoch override or observation header in the CLI and Python. Without one, file-backed catalogs use J2000.0, and the CLI and Python warn.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="63-sources">6.3 Sources<a class="headerlink" href="#63-sources" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th><code>Source</code> field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x</code>, <code>y</code></td>
+<td>Centroid in pixels. Rust and Python default to zero-based pixel centers. FITS source-list positions are one-based.</td>
+</tr>
+<tr>
+<td><code>flux</code></td>
+<td>Optional integrated flux in linear units, used for ranking.</td>
+</tr>
+<tr>
+<td><code>sigma_px</code></td>
+<td>Optional isotropic 1σ centroid error in pixels. The policy supplies the default.</td>
+</tr>
+<tr>
+<td><code>p_star</code></td>
+<td>Optional probability that a detection is a star, from 0 to 1.</td>
+</tr>
+<tr>
+<td><code>truncated</code></td>
+<td>Whether the frame edge or a mask cuts the source. Fayde uses truncated sources to score a match and excludes them from seeding and fitting. A known trail widens the match gate along its direction.</td>
+</tr>
+</tbody>
+</table>
+<p>The solver ranks centroids itself. Keep uncertain candidates with a low <code>p_star</code> when the
+upstream detector can estimate one. The verifier takes one isotropic position error per source,
+and it doesn't compare source brightness with catalog magnitudes.</p>
+<h3 id="63a-frame-level-detector-outputs">6.3a Frame-level detector outputs<a class="headerlink" href="#63a-frame-level-detector-outputs" title="Permanent link">&para;</a></h3>
+<p>The detection report contains its mode, background and noise estimates, and per-source
+measurements. In straight-trail mode, the common length and angle accompany the source list.
+For a source measured along and across a trail, the solver receives the larger position error
+as <code>sigma_px</code>. See <a href="../../usage/#read-the-detection-report">Read the detection report</a>.</p>
+<h3 id="64-priors">6.4 Priors<a class="headerlink" href="#64-priors" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pointing center, 1σ error and maximum radius</td>
+<td>Set the search region and contribute to the score.</td>
+</tr>
+<tr>
+<td>Scale in arcsec/px and 1σ error</td>
+<td>Select index bands and prune hypotheses. A tight scale and pointing enable pair-seed search.</td>
+</tr>
+<tr>
+<td>Roll, 1σ error and maximum deviation</td>
+<td>Constrain image orientation.</td>
+</tr>
+<tr>
+<td>Parity</td>
+<td>Choose the image handedness.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="65-instrument-model">6.5 Instrument model<a class="headerlink" href="#65-instrument-model" title="Permanent link">&para;</a></h3>
+<p>The JSON instrument profile can supply a scale and its uncertainty, binning, parity, a roll
+rule based on a header keyword, pointing uncertainty and radius, and whether to use the
+frame's WCS as a hint. Caller overrides take precedence, followed by the profile and then the
+image header. See the <a href="https://github.com/shaneryall/Fayde/blob/v0.4.0/profiles/example.json">instrument profile example</a> and the
+<a href="../../usage/#calibrate-an-instrument-profile">calibration guide</a>.</p>
+<h3 id="66-observer">6.6 Observer<a class="headerlink" href="#66-observer" title="Permanent link">&para;</a></h3>
+<p>Fayde doesn't model the observer. It applies no stellar aberration from the observer's velocity,
+no light-time correction and no refraction, and it computes no observer state from a TLE or a
+ground site. Fayde solves each frame on its own: a solved neighbor's WCS can seed the next frame
+(§5.6), but Fayde keeps no state across a sequence and never interpolates a WCS between frames.</p>
+<h3 id="67-solve-policy">6.7 Solve policy<a class="headerlink" href="#67-solve-policy" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Default</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>deadline</code></td>
+<td>None</td>
+<td>Starts when the solver receives the request. An accepted hypothesis can finish its final fit.</td>
+</tr>
+<tr>
+<td><code>max_hypotheses</code></td>
+<td>5,000,000</td>
+<td>Limits scored hypotheses across the search stages.</td>
+</tr>
+<tr>
+<td><code>accept_log_odds</code></td>
+<td>ln(10⁹)</td>
+<td>Threshold after subtracting the log of the hypothesis count.</td>
+</tr>
+<tr>
+<td><code>default_sigma_px</code></td>
+<td>1 px</td>
+<td>Position error for a source without <code>sigma_px</code>.</td>
+</tr>
+<tr>
+<td><code>max_sip_order</code></td>
+<td>3</td>
+<td>Upper limit for SIP model selection.</td>
+</tr>
+<tr>
+<td><code>epoch</code></td>
+<td>None: J2000.0 for file-backed catalogs</td>
+<td>Target epoch for catalog proper motion.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="68-encodings">6.8 Encodings<a class="headerlink" href="#68-encodings" title="Permanent link">&para;</a></h3>
+<ul>
+<li>In Rust, construct <code>SolveRequest</code> with <code>frame</code>, <code>sources</code>, <code>priors</code>, <code>policy</code>, and <code>previous</code>.
+  Pass the catalog and any indexes to the solver. <code>fayde_api::build_request</code> can resolve the
+  header and profile first.</li>
+<li>In Python, use <code>Solver.solve</code> with coordinate sequences, <code>Solver.solve_image</code> with a FITS
+  path, NumPy array or Astropy HDU, or <code>Solver.solve_detection</code> with a detection report.
+  Header cards or a keyword dictionary provide frame metadata.</li>
+<li>On the command line, use <code>fayde solve --image</code> with a FITS image or <code>fayde solve --sources</code>
+  with a FITS binary table. Add <code>--header</code>, <code>--instrument</code>, or explicit options as needed.</li>
+</ul>
+<h3 id="69-integrating-with-a-host-pipeline">6.9 Integrating with a host pipeline<a class="headerlink" href="#69-integrating-with-a-host-pipeline" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Send the detector's source list and the frame header, or pass the image to Fayde's detector.</li>
+<li>Supply a catalog path and any indexes needed for the search. In Python, reuse one <code>Solver</code>
+   across frames so it opens them once.</li>
+<li>Read the solution or abstention before using the WCS. A solved report includes WCS cards,
+   matched pairs and residuals, uncertainty estimates, and the catalog and index identity.
+   The Rust solution also exposes the parameter covariance.</li>
+<li>Compare solutions against the host's current backend on the same frames. Measure solve
+   rate, residuals, and latency before switching the default.</li>
+</ol>
+<h2 id="7-error-handling">7. Error handling<a class="headerlink" href="#7-error-handling" title="Permanent link">&para;</a></h2>
+<ul>
+<li>An exhausted search returns <code>Outcome::Abstained</code> with its reason, best log-odds if available,
+  hypothesis count, and search trace.</li>
+<li>Errors are for bad input (non-finite hints, zero image size) and unreadable index/catalog.</li>
+<li>A hypothesis limit or deadline that runs out also returns <code>Outcome::Abstained</code>, with that
+  reason, the best log-odds seen (no WCS), the hypothesis count and the trace.</li>
+</ul>
+<h2 id="8-licensing">8. Licensing<a class="headerlink" href="#8-licensing" title="Permanent link">&para;</a></h2>
+<p>Fayde is GPL-3.0-or-later from 0.3.3 (<code>LICENSE</code>, <code>NOTICE</code>); 0.3.0 to 0.3.2 were Apache-2.0.</p>
+<ul>
+<li>tetra3 and cedar-solve (Apache-2.0): code may be ported with notices kept.</li>
+<li>astrometry.net: mostly BSD-3, which is compatible with notices kept. Some components are GPL.
+  Fayde takes no code from them: code under another author's copyleft license would stop the
+  copyright holder from relicensing Fayde. Rule: port from papers (Lang et al. 2010) and BSD files
+  only; check the license header of every file before porting from it.</li>
+<li>Catalog data: Fayde's releases contain no catalog data and no built indexes.</li>
+</ul>
+<h2 id="9-validation">9. Validation<a class="headerlink" href="#9-validation" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Unit tests cover projection round trips, edge-ratio codes, and UCAC4 record decoding against
+   an independent reader on the same zones.</li>
+<li>On synthetic data, <code>fayde bench</code> solves source lists projected from the catalog with a known
+   WCS, with position noise, false sources and missing stars, and measures the recovery error.
+   Every other list holds only random positions, to count false solutions.</li>
+<li>On real frames, <code>fayde compare</code> checks each solution against a stored reference WCS on a
+   5 × 5 grid of image points.</li>
+<li>As a guard against false positives, <code>fayde bench</code> counts and reports the random lists that
+   solve. Whether the false-accept rate stays within what the reported NFA predicts (§5.4) isn't
+   measured.</li>
+</ol>
+<p>Fayde's results haven't been compared with other solvers on shared public frames.</p>
+<h2 id="10-decisions">10. Decisions<a class="headerlink" href="#10-decisions" title="Permanent link">&para;</a></h2>
+<ol>
+<li>The index is built at a fixed epoch, high-proper-motion stars are excluded from patterns, and
+   positions are propagated rigorously at query time (§5.2).</li>
+<li>Fayde is licensed GPL-3.0-or-later from 0.3.3, with every dependency under a permissive license,
+   so the copyright holder can relicense. Versions 0.3.0 to 0.3.2 were Apache-2.0.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy", "navigation.sections", "navigation.top", "search.highlight"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>

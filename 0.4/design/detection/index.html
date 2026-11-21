@@ -1,0 +1,1747 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Verified astrometric plate solving for FITS images.">
+      
+      
+      
+        <link rel="canonical" href="https://shaneryall.github.io/Fayde/0.4/design/detection/">
+      
+      
+        <link rel="prev" href="../plate-solver/">
+      
+      
+        <link rel="next" href="../streak-detection/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
+    
+    
+      
+        <title>Star detection - Fayde</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#star-and-streak-detection-design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Fayde" class="md-header__button md-logo" aria-label="Fayde" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Fayde
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Star detection
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/shaneryall/Fayde" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shaneryall/Fayde
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Fayde" class="md-nav__button md-logo" aria-label="Fayde" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Fayde
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/shaneryall/Fayde" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    shaneryall/Fayde
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-to guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-to guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install Fayde
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose and connect a star catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use the command line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../python/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Fayde from Python
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../index-set/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build pattern indexes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command-line reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/python-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../source-list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source list format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Versioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Algorithm sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explanation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Explanation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plate-solver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plate solver design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Star detection
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Star detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-why-not-an-existing-detector" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Why not an existing detector
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Method
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Method">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-matched-filter-and-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Matched filter and scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-background-and-noise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Background and noise
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-star-width" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Star width
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-one-fit-per-peak" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 One fit per peak
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-local-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Local test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 Classes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#37-streaks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 Streaks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#38-threshold-and-probabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.8 Threshold and probabilities
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-position-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Position error
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-measured" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Measured
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Limits
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../streak-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Trail and streak detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../research/literature-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Literature review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-why-not-an-existing-detector" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Why not an existing detector
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Method
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Method">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-matched-filter-and-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Matched filter and scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-background-and-noise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Background and noise
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-star-width" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Star width
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-one-fit-per-peak" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 One fit per peak
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-local-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Local test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 Classes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#37-streaks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 Streaks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#38-threshold-and-probabilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.8 Threshold and probabilities
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-position-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Position error
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-measured" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Measured
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Limits
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="star-and-streak-detection-design">Star and streak detection — design<a class="headerlink" href="#star-and-streak-detection-design" title="Permanent link">&para;</a></h1>
+<p>Crate <code>fayde-detect</code>. Survey of existing methods:
+<a href="../../research/literature-review/"><code>docs/research/literature-review.md</code></a> §7. Sources of every
+algorithm: <a href="../../references/"><code>docs/references.md</code></a>.</p>
+<h2 id="1-scope">1. Scope<a class="headerlink" href="#1-scope" title="Permanent link">&para;</a></h2>
+<p>Input: one image whose stars are points (a frame tracked at the sidereal rate, or a spacecraft
+holding its attitude), with possibly a satellite streak or two, hot pixels, cosmic-ray hits,
+saturated stars, stray light. Output: what the solver's input contract asks of a source list
+(<code>plate-solver.md</code> §6.3), filled honestly:</p>
+<table>
+<thead>
+<tr>
+<th>Per source</th>
+<th>How it is obtained</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x</code>, <code>y</code></td>
+<td>Closed-form fit to the peak of the matched-filtered image (§3.4)</td>
+</tr>
+<tr>
+<td><code>sigma_px</code></td>
+<td>Noise theory of that estimator, per source (§4)</td>
+</tr>
+<tr>
+<td><code>flux</code></td>
+<td>Integral of the fitted Gaussian</td>
+</tr>
+<tr>
+<td><code>p_star</code></td>
+<td>Local false discovery rate × shape class (§3.8)</td>
+</tr>
+<tr>
+<td><code>truncated</code></td>
+<td>The fit window reaches the frame edge</td>
+</tr>
+</tbody>
+</table>
+<p>Streaks are traced and reported (ends, angle, width, flux), and every detection on one is kept
+out of the star list. Frames whose stars are trailed (tracking a satellite) are handled by a
+second pass, designed in <a href="../streak-detection/"><code>streak-detection.md</code></a>.</p>
+<p>Design targets, in order: no parameter the user must know (star width, noise and threshold
+are measured or derived; gain is read from the header when it is there); robust to cosmic rays
+by the hundred and to stray light; position errors that the solver's verification and fit can
+trust; speed; and the same bits on every machine (<code>fayde_core::Portable</code>, no platform math).</p>
+<h2 id="2-why-not-an-existing-detector">2. Why not an existing detector<a class="headerlink" href="#2-why-not-an-existing-detector" title="Permanent link">&para;</a></h2>
+<p>From the survey (literature review §7) of the detectors in use:</p>
+<ul>
+<li>None measures the star width and adapts its filter. astrometry.net's <code>simplexy</code> smooths with
+  a fixed σ = 1 px; DAOFIND and photutils need the FWHM from the user; SExtractor a fixed 3 × 3
+  kernel; cedar-detect a fixed 7-pixel gate with manual binning.</li>
+<li>None reports a per-star position error to the matcher.</li>
+<li>None runs a streak detector before solving. Streak fragments are rejected only as a side
+  effect of size or shape gates, and astrometry.net removes only horizontal and vertical lines.</li>
+<li>Hot pixels and cosmic rays are handled by minimum-area or sharpness heuristics that conflict
+  with undersampled stars.</li>
+<li>Licenses: SExtractor GPL, SEP LGPL, astrometry.net GPL as distributed, cedar-detect
+  source-available but not open source. Everything here is written from the papers, so no other
+  project's code, and none of its license terms, enters Fayde.</li>
+</ul>
+<h2 id="3-method">3. Method<a class="headerlink" href="#3-method" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>image
+  │ 1. matched filter (Gaussian; width measured, image binned if stars are wide)
+  │ 2. background and noise mesh of the filtered image
+  │ 3. peaks: local maxima above the false-alarm threshold
+  │ 4. one closed-form fit per peak → position, size, shape, amplitude
+  │ 5. local test: each peak against the ring around it
+  │ 6. classes: star, saturated, extended, sharp
+  │ 7. streaks: traced from ridge-like peaks
+  │ 8. probabilities and errors
+  ▼
+stars (x, y, σ, flux, p_star) + streaks
+</code></pre></div>
+<h3 id="31-matched-filter-and-scale">3.1 Matched filter and scale<a class="headerlink" href="#31-matched-filter-and-scale" title="Permanent link">&para;</a></h3>
+<p>The image is convolved with a Gaussian of the stars' width, the filter of highest
+signal-to-noise ratio for a point source in white noise. The width is not asked for. A first
+pass at σk = 1.2 px (within 7% of the best ratio for stars of FWHM 1.9 to 4.1 px) measures it
+(§3.3); a second pass is run only when the ratio <code>2·σk·σp / (σk² + σp²)</code> falls below 0.93. Stars
+wider than σ = 2 px are binned first (block means), so wide-star frames cost less than
+narrow-star ones. At most three passes.</p>
+<h3 id="32-background-and-noise">3.2 Background and noise<a class="headerlink" href="#32-background-and-noise" title="Permanent link">&para;</a></h3>
+<p>Tiles of 64 px (the same sky area on a binned image, down to 24 binned px), measured on the
+<em>filtered</em> image so that the noise is that of the thresholded quantity whatever the input's
+noise correlation.</p>
+<ul>
+<li>Background: median of a sample of the tile, clipped once at median + 3σ.</li>
+<li>Noise: <code>1.4826 × MAD / √2</code> of the differences of pixel pairs separated by more than the
+  kernel's reach, clipped up to three times. A difference cancels the background and its
+  gradient, which a spread of values would count as noise.</li>
+<li>A tile standing above what its neighbors predict (a bright star, a galaxy) is replaced by the
+  prediction: the largest, over the four lines through the tile, of the mean of its two
+  neighbors on that line. SExtractor's 3 × 3 median flattens the corner of a frame lit from
+  outside; this filter does not (the glow of stray light curves up along the direction to its
+  source and down across it, and the line nearest that direction predicts at least the tile).</li>
+<li>Between tile centers the values are bilinear; beyond the outermost centers the background is
+  extrapolated in a straight line, so a gradient running off the frame is followed to the edge.</li>
+</ul>
+<p>If at least a quarter of the valid raw pixels equal the frame minimum, Fayde checks the
+distribution of those pixels in each tile. A tile is padding if at least 99% of its valid
+pixels equal the floor, or if transitions between floor and above-floor pixels occur at most
+a quarter as often as in a random mix. The detector checks the transition rate in tiles
+with at least eight floor pixels.</p>
+<p>Fayde uses the clipped-sky model when more than half of the sky tiles with at least 24
+valid pixels yield a fit. To fit a tile, at least a quarter of its valid pixels must be
+at the floor and at least 16 must be above it. The singly left-censored normal fit uses
+the floor fraction and an empirical quantile near the middle of the surviving values.
+Tiles without a fit use the frame's typical fit. When the model applies, floor pixels in
+padding tiles are undefined for detection. Otherwise, Fayde uses the standard filtered
+mesh.</p>
+<p>The fit estimates the sky before clipping. Its clipped moments give the background and noise
+of the recorded pixels. Fayde propagates these through the point filter and accounts for the
+skew of the filtered noise when setting peak and census thresholds. The trail pass uses the
+same sky model for raw-pixel fits and to set a minimum noise scale for the aimed filter. On a
+clipped frame, the automatic trail threshold is at least 5σ, and a trail center must be on the
+frame and have an along-trail uncertainty within one FWHM across the trail.</p>
+<h3 id="33-star-width">3.3 Star width<a class="headerlink" href="#33-star-width" title="Permanent link">&para;</a></h3>
+<p>For a peak of the filtered image, the variance of the star's profile is the fitted variance
+(§3.4) less the kernel's. The frame's star width is taken from bright, round peaks, but they
+are not all stars: on a warm or irradiated detector hot pixels and cosmic-ray hits outnumber
+stars ten to one or more. Nothing that came through the optics is sharper than the optics allow,
+and stars share one width where artifacts have many. So the stars are the <strong>widest distinct
+mode</strong> of the size distribution: in a histogram of ln(size), the widest local maximum holding at
+least 5% of the tallest one's count and separated from narrower sizes by a dip to half its
+height. Blends and galaxies form a tail, not a mode.</p>
+<p>The stars' <em>shape</em> is measured with their width: the median narrow-axis variance and the median
+axis ratio of the peaks in that mode. A drift during the exposure smears every star alike. Each
+source's narrow axis is then well under the stars' mean width, so narrowness (§3.6) and
+elongation (§3.6, §3.7) are judged against what the frame's stars show, not against a round
+star of the mean width.</p>
+<h3 id="34-one-fit-per-peak">3.4 One fit per peak<a class="headerlink" href="#34-one-fit-per-peak" title="Permanent link">&para;</a></h3>
+<p>A quadratic surface is fitted by least squares to the <em>logarithm</em> of the 3 × 3 filtered pixels
+around the maximum. For an elliptical Gaussian this is exact, and it gives at once:</p>
+<ul>
+<li>the position (no pixel-phase bias, unlike a quadratic fitted to the values themselves, whose
+  bias reaches 0.03 px for these widths);</li>
+<li>the variances along both axes and the orientation (eigen-decomposition of the fitted Hessian
+  <code>H</code>: variance along an axis = −1/eigenvalue);</li>
+<li>the amplitude, and so the flux <code>2π·A·σmajor·σminor</code>.</li>
+</ul>
+<p>Cost: nine logarithms and about 40 multiplications per peak.</p>
+<h3 id="35-local-test">3.5 Local test<a class="headerlink" href="#35-local-test" title="Permanent link">&para;</a></h3>
+<p>The mesh follows the frame on the scale of its tiles. Stray light and halos change faster, and
+what the mesh misses is left as broad bumps. A star is narrow: three widths from its center
+nothing of it is left, so its height above the median of a ring of that radius (eight samples,
+robust to a neighbor or a streak crossing the ring) is its height; a bump two or more
+star-widths across falls short. Where the ring agrees with the mesh, the mesh (less noisy)
+stands; elsewhere the ring is the background and the peak must exceed it by the threshold less
+one σ. Saturated stars are exempt.</p>
+<h3 id="36-classes">3.6 Classes<a class="headerlink" href="#36-classes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Test</th>
+<th>Goes to the solver</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sharp</code></td>
+<td>Narrowest axis under 0.4 of the stars' narrow-axis variance, beyond the fit's noise; or, in the unfiltered pixels, the second faintest of the four neighbors of the brightest pixel under half of <code>exp(−1/σ²)</code> of it (light through the optics reaches all four; charge deposited in the detector does not)</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>saturated</code></td>
+<td>Top at the saturation level (given, from the header, or the level of flat tops at the frame's brightest)</td>
+<td>yes, <code>p</code> × 0.9</td>
+</tr>
+<tr>
+<td><code>extended</code></td>
+<td>Elongated over 1.5 times the stars' own axis ratio, or over twice the stars' variance, beyond the fit's noise</td>
+<td>yes, <code>p</code> × 0.5</td>
+</tr>
+<tr>
+<td><code>streak</code></td>
+<td>On a traced streak</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>point</code></td>
+<td>Point-like in a frame whose stars are trails (the tracked object): <a href="../streak-detection/"><code>streak-detection.md</code></a></td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>star</code></td>
+<td>The rest</td>
+<td>yes</td>
+</tr>
+</tbody>
+</table>
+<p>A saturated star's center is the mean position of the <em>core</em> of its saturated region: the
+pixels whose runs of saturated pixels along the row and along the column are each at least half
+the longest. A bleed trail, a few pixels wide, has short runs across it and does not move the
+center. A saturated region that is a line of even width is a streak, not a star.</p>
+<p>The work is bounded whatever the frame and the settings: each saturated pixel is flooded once
+per frame, a region is followed for at most 200,000 pixels, a saturation level within 20σ of
+the background is ignored, at most 200,000 peaks are measured and 1,000 streaks traced, and
+binning never leaves an image under 16 pixels on a side.</p>
+<h3 id="37-streaks">3.7 Streaks<a class="headerlink" href="#37-streaks" title="Permanent link">&para;</a></h3>
+<p>A peak on a streak is a ridge: the fitted surface curves down across the streak and hardly at
+all along it. Each ridge-like peak (axis ratio at least twice the stars') seeds a trace: the ridge is followed one
+pixel at a time in both directions along a straight line refitted by least squares as points are
+added, re-centring on the brightest of five samples across the track, bridging gaps in
+proportion to the length traced. Holding the trace to a line keeps it on course past a bright
+star beside the streak or another streak crossing it. Then:</p>
+<ul>
+<li>isolated points at the ends, short groups beyond a gap, and a bright star touching an end are
+  removed;</li>
+<li>the line is a total-least-squares fit; each end is put where the ridge falls to half its level
+  (the true end of a uniform streak blurred by the PSF);</li>
+<li>the streak is traced once more from the middle of the fitted line, whose direction is better
+  than the seed's;</li>
+<li>it is kept if it is at least 10 px and 8 cross-section σ long, half covered, with a total
+  signal-to-noise ratio of 10, and if at least half of the bright peaks on it are ridges (a row
+  of stars is not a streak);</li>
+<li>a streak narrower than the stars is flagged <code>cosmic_ray</code>.</li>
+</ul>
+<p>Only streaks bright enough to raise a peak above the detection threshold are found (about 5σ per PSF
+area). Fainter ones do not disturb the star list. Fayde does not search for them: an integration
+along the line (Radon transform; Nir, Zackay &amp; Ofek 2018) costs 10 to 100 times everything here.</p>
+<h3 id="38-threshold-and-probabilities">3.8 Threshold and probabilities<a class="headerlink" href="#38-threshold-and-probabilities" title="Permanent link">&para;</a></h3>
+<p>The threshold is set from the number of noise peaks the caller accepts per frame (default 1):
+the expected number of local maxima of filtered noise above <code>u</code> per pixel is bounded by
+<code>min(P(Z &gt; u), u·φ(u) / (4π·σk²))</code>, the pixel count and the peak density of a continuous
+Gaussian field. On empty synthetic frames the bound is within 45% of the count for σk from 0.7
+to 2 px. For a 4-megapixel frame the threshold is 5.0σ.</p>
+<p><code>p_star</code> = (1 − local false discovery rate) × class factor. The local rate is the expected
+number of noise peaks within a quarter σ of a source's height over the number of sources seen
+there. A source at the threshold in an empty region of height gets a low probability; the same
+height among many real faint stars gets a high one.</p>
+<h2 id="4-position-error">4. Position error<a class="headerlink" href="#4-position-error" title="Permanent link">&para;</a></h2>
+<p>The position is the maximum of the filtered image. Noise moves a maximum by (noise gradient) /
+(signal curvature). For white noise σn filtered by a Gaussian of σk, and a Gaussian star whose
+filtered profile has variance σt² = σp² + σk² and peak A:</p>
+<div class="highlight"><pre><span></span><code>Var(∂n/∂x) = N² / (2σk²),  N = filtered noise;   curvature = A / σt²
+σx = σt² / (√2 · σk · SNR),  SNR = A / N
+</code></pre></div>
+<p>For a matched kernel (σk = σp) this is <code>√2·σp / SNR</code>, the Cramér–Rao bound for a Gaussian star
+in background noise (0.60 FWHM / SNR). Everything in it is measured per source.</p>
+<p>The star's own photon noise, with gain <code>g</code> given (N electrons): the same calculation with noise
+variance proportional to the star's profile gives</p>
+<div class="highlight"><pre><span></span><code>Var = σp² · σt⁸ / (N · σk⁴ · (σk² + 2σp²)²)     = (16/9) · σp² / N  for a matched kernel
+</code></pre></div>
+<p>the known result for a Gaussian-weighted centroid (Mortensen et al. 2010, eq. 6). Without a gain
+it is not modeled, and a floor of 0.05 px stands in. Saturated stars: 0.1 px + 3% of the radius
+of the saturated core (measured on synthetic frames).</p>
+<h2 id="5-measured">5. Measured<a class="headerlink" href="#5-measured" title="Permanent link">&para;</a></h2>
+<p>Synthetic frames (<code>fayde_detect::synth</code>: pixel-integrated Gaussian or Moffat stars, sky and read
+noise, photon noise, streaks, hot pixels, cosmic rays, stray light, saturation). One laptop
+core.</p>
+<table>
+<thead>
+<tr>
+<th>Quantity</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Speed, 4 Mpx frame, stars of σ 1.5 px</td>
+<td>10 ms (2.4 ms/Mpx), one pass</td>
+</tr>
+<tr>
+<td>Speed, stars of σ 0.6 / 2.5 / 4 / 8 px</td>
+<td>4 to 7 ms/Mpx (two or three passes; binned from σ 2.5 px up)</td>
+</tr>
+<tr>
+<td>Star width</td>
+<td>within 1% of the truth, σ 0.6 to 8 px</td>
+</tr>
+<tr>
+<td>Noise</td>
+<td>within 1% on sparse frames; reads up to 12% high when stars cover much of the frame</td>
+</tr>
+<tr>
+<td>Completeness</td>
+<td>every star above SNR 8; 21 of 28 between SNR 5 and 8</td>
+</tr>
+<tr>
+<td>Error / claimed error (robust spread; gain given)</td>
+<td>0.8 to 1.25 for σ 0.9, 1.5, 2.6 px</td>
+</tr>
+<tr>
+<td>Error / Cramér–Rao bound, faint stars</td>
+<td>0.8 to 1.3</td>
+</tr>
+<tr>
+<td>False stars on empty frames</td>
+<td>3 in six 4 Mpx frames at the default (1 per frame asked)</td>
+</tr>
+<tr>
+<td>Hot pixels (60 per frame) flagged</td>
+<td>60 of 60 at σ 0.7 and 1.5 px; 55 of 60 at σ 3 px (binned)</td>
+</tr>
+<tr>
+<td>Cosmic rays, 15 to 30 hits per star</td>
+<td>0.3 to 0.6% of hits pass as faint stars at σ 1.5 px, 0.8% at σ 1.0 px; star width unaffected</td>
+</tr>
+<tr>
+<td>Stray light, 20 × sky from a corner</td>
+<td>1 false star; without the local test, 33</td>
+</tr>
+<tr>
+<td>Streak ends</td>
+<td>within 2 px (0.2 px typical); faint streaks (5σ ridge) within 10 px</td>
+</tr>
+<tr>
+<td>Saturated stars, 3 to 300 × saturation, with bleed trails</td>
+<td>center within 0.6 px; one detection each</td>
+</tr>
+</tbody>
+</table>
+<p>End to end (<code>crates/fayde-api/tests/image_solve.rs</code>, a synthetic sky through a known WCS, two
+streaks, hot pixels, saturated stars): worst sky error over the frame 0.11″ at 3″/px for
+well-sampled stars (0.035 px), 0.08″ undersampled, 0.49″ for seeing-limited stars 7 px wide. The
+solver's fitted error scale is 1.01 on the well-sampled frame: the claimed errors are the real
+ones.</p>
+<p>Real frames: 109 frames whose stars are points (two pixel scales; 3 to 10 s exposures, stars of
+FWHM 2.2 to 3.3 px, 4 to 540 hot pixels and radiation hits per frame, up to 4 streaks or
+cosmic-ray tracks in most frames), solved from the image file alone against UCAC4 with the
+header pointing (2° radius) and a scale prior:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Solved</td>
+<td>109 of 109</td>
+</tr>
+<tr>
+<td>Detection time</td>
+<td>2.0 ms per frame (median). A later run measured 2.2 ms, and 3.0 ms with the trail census (<a href="../streak-detection/"><code>streak-detection.md</code></a> §7)</td>
+</tr>
+<tr>
+<td>Matched stars</td>
+<td>181 (median)</td>
+</tr>
+<tr>
+<td>Residual</td>
+<td>0.40 px RMS (median)</td>
+</tr>
+<tr>
+<td>Error scale fitted by the solver</td>
+<td>1.58 (median): on these frames the claimed errors are too small by that factor, with or without the gain</td>
+</tr>
+</tbody>
+</table>
+<p>Two of those frames shaped the method:</p>
+<ul>
+<li>One, taken with a warm detector, has 300 radiation hits to 36 stars among its bright compact
+  sources. It is what the widest-mode rule (§3.3) was made for.</li>
+<li>One is a crowded field whose stars are smeared two to one by a drift. With
+  narrowness judged against the stars' mean width, its 36 brightest stars were classed as
+  cosmic rays (117 "sharp" sources; 7 once judged against the stars' narrow axis), and with the
+  brightest stars missing the solver's search, which starts from them, found nothing although
+417 of the remaining sources matched the catalog. It now solves with 451 matched stars.</li>
+</ul>
+<p>The detector this one replaced (after SExtractor: clipped-mode mesh, pixel cleaning, matched
+filter, connected pixels, windowed centroids) was run on the same 109 frames with the same
+solver and priors: 105 solved, median residual 0.79 px, error scale 2.65, about 20 ms per
+frame. On the 105 frames both solve, the field centers agree to 0.19″ (median); on the one
+where they differ by 10″, this detector's solution has a residual of 1.5 px and the other's 5 px.</p>
+<h2 id="6-limits">6. Limits<a class="headerlink" href="#6-limits" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Faint streaks (under about 5σ per PSF area) are not found (§3.7).</li>
+<li>With stars of FWHM under about 2.5 px, multi-pixel cosmic-ray clumps of signal-to-noise ratio
+   under about 30 cannot be told from faint stars by a 3 × 3 shape: in the worst synthetic case
+   (3000 hits, 200 stars of FWHM 2.4 px, stray light and streaks together) 8% of the hits pass
+   as faint stars. They are distractors
+   the solver is built for.</li>
+<li>The claimed position errors assume a Gaussian core and white noise. On real frames the
+   solver's error scale shows them 1.5 times too small; the cause (pixel response, PSF shape,
+   pointing jitter) has not been separated.</li>
+<li>Undersampled stars (σ under 0.7 px): errors about 1.3 times the claim.</li>
+<li>One thread. The filter and the scan split into strips without changing the result.</li>
+<li>FITS images only (8 to 64-bit integers and floats); tile-compressed images are not read.</li>
+<li>Trailed stars (from a telescope tracking a satellite) are handled by a second pass:
+   <a href="../streak-detection/"><code>streak-detection.md</code></a> §7.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy", "navigation.sections", "navigation.top", "search.highlight"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>
