@@ -5,7 +5,7 @@ Versioning rules: `docs/versioning.md`.
 Versions up to 0.2.1 were development versions and were not published; their notes are kept
 because the index files and their hashes date from 0.1.0.
 
-## Unreleased
+## 0.5.0 (2026-11-25)
 
 - Periodic background patterns. An instrument profile's `periodic_pattern` field lists the
   frequencies of stripes from readout pickup; Fayde fits their amplitude and phase in 32 × 32
