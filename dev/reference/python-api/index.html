@@ -1725,7 +1725,10 @@ default: the level that lets one noise peak through per frame, about 5), <code>s
 <code>gain</code> (default: the header's <code>SATURATE</code>, <code>GAIN</code>/<code>EGAIN</code>), <code>max_sources</code> (default
 2000), <code>trail_angle</code> (degrees from +x towards +y: the expected direction of star trails,
 to choose among directions), <code>no_trails</code> (measure every star as a point, even when the
-stars are trails) and <code>header</code> (dict or cards, for an array). Returns the report
+stars are trails), <code>header</code> (dict or cards, for an array), <code>instrument</code> or
+<code>instrument_path</code> (a profile whose <code>periodic_pattern</code> is subtracted and whose
+<code>charge_transfer</code> is taken out of the positions; its other fields are not used here) and <code>epoch</code> (Julian year, when the header has no
+observation time). Returns the report
 <code>fayde detect</code> prints: settings, background, noise, <code>mode</code> (<code>"points"</code>, <code>"trails"</code>,
 <code>"kernel"</code>, or <code>"refused"</code>) with <code>census</code>, <code>trail</code>, and <code>kernel</code>, <code>sources</code> (the stars, with FITS 1-based
 <code>x</code>, <code>y</code>, <code>sigma_px</code>, <code>flux</code>, <code>p_star</code> and <code>class</code>), <code>streaks</code> (ends, angle,

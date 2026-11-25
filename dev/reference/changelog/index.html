@@ -746,6 +746,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#050-2026-11-25" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.5.0 (2026-11-25)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#040-2026-11-21" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1125,6 +1136,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#050-2026-11-25" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.5.0 (2026-11-25)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#040-2026-11-21" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1311,6 +1333,27 @@
 <p>Versioning rules: <code>docs/versioning.md</code>.</p>
 <p>Versions up to 0.2.1 were development versions and were not published; their notes are kept
 because the index files and their hashes date from 0.1.0.</p>
+<h2 id="050-2026-11-25">0.5.0 (2026-11-25)<a class="headerlink" href="#050-2026-11-25" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Periodic background patterns. An instrument profile's <code>periodic_pattern</code> field lists the
+  frequencies of stripes from readout pickup; Fayde fits their amplitude and phase in 32 × 32
+  pixel tiles and subtracts them before detection. <code>fayde calibrate --periodic-pattern</code> finds
+  the frequencies from the frames' power spectra. The detection report gains
+  <code>periodic_pattern</code>. On 193 real frames from one camera, whose stripes hold
+  about 18% of the background variance, frames tracking satellites solved 77 of 84 (66 without)
+  and frames whose stars are points 109 of 109, as before.</li>
+<li>Charge-transfer smear. An instrument profile's <code>charge_transfer</code> field takes the CCD's
+  smear out of the positions Fayde detects: traps displace faint stars away from the readout,
+  more the farther they are from it. <code>fayde calibrate --charge-transfer --ucac4 DIR</code> fits it
+  from solved frames (the readout axis and edge too), with its growth per year when five or
+  more dated frames span a year. It applies to <code>--image</code>, <code>fayde detect --instrument</code> and
+  Python <code>detect</code>/<code>solve_image</code>; source lists given with <code>--sources</code> are left as they are. The
+  detection report gains <code>charge_transfer</code> (<code>null</code> without a term) and, per star,
+  <code>charge_transfer_px</code>. On 175 solved real frames from one camera (not in the
+  repository), the offset between faint and bright stars at the top rows fell from 0.29
+  to 0.04 px, the error scale of frames whose stars are points from 1.52 to 1.32, and no
+  frame stopped solving.</li>
+</ul>
 <h2 id="040-2026-11-21">0.4.0 (2026-11-21)<a class="headerlink" href="#040-2026-11-21" title="Permanent link">&para;</a></h2>
 <h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">&para;</a></h3>
 <ul>

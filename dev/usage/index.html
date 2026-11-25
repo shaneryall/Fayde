@@ -552,6 +552,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#correct-charge-transfer-smear" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Correct charge-transfer smear
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remove-a-periodic-background-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remove a periodic background pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#solve-without-a-pointing-or-scale" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1214,6 +1236,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#correct-charge-transfer-smear" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Correct charge-transfer smear
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remove-a-periodic-background-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remove a periodic background pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#solve-without-a-pointing-or-scale" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1383,6 +1427,9 @@ fields, see <a href="#read-the-detection-report">Read the detection report</a>.<
 1 pixel or less at full resolution, it keeps sources that are too sharp for the usual shape
 checks. A star this narrow can put nearly all its light in one pixel, so the source list can
 also include hot pixels and compact cosmic-ray hits.</p>
+<p>If your instrument profile has a <code>charge_transfer</code> field, add <code>--instrument PROFILE</code> so that
+the report and <code>SOURCES</code> hold corrected positions. For more information, see
+<a href="#correct-charge-transfer-smear">Correct charge-transfer smear</a>.</p>
 <p>To list the detection options and their default values, run <code>fayde detect --help</code>. The same
 options work with <code>fayde solve --image</code>. The <code>--detect-threshold</code> option sets the peak threshold
 in σ of the filtered image, and its value must be at least 1.5.</p>
@@ -1577,6 +1624,14 @@ accuracy in the frame headers. To use a profile, add <code>--instrument</code>:<
 <td>When <code>false</code>, has the same effect as <code>--no-header-wcs</code> on every frame</td>
 </tr>
 <tr>
+<td><code>charge_transfer</code></td>
+<td>The CCD's charge-transfer smear, which Fayde removes from the positions it detects. For more information, see <a href="#correct-charge-transfer-smear">Correct charge-transfer smear</a>.</td>
+</tr>
+<tr>
+<td><code>periodic_pattern</code></td>
+<td>Stripes from electronic pickup during readout, which Fayde subtracts before it detects stars. For more information, see <a href="#remove-a-periodic-background-pattern">Remove a periodic background pattern</a>.</td>
+</tr>
+<tr>
 <td><code>source</code></td>
 <td>A description of where the values come from. Fayde doesn't read this field.</td>
 </tr>
@@ -1667,6 +1722,10 @@ these solutions, follow these steps:</p>
 <td>The 1σ error of the pointing in the headers, in degrees. Fayde omits this field when fewer than five headers have a pointing.</td>
 </tr>
 <tr>
+<td><code>charge_transfer</code></td>
+<td>With <code>--charge-transfer</code>, the CCD's charge-transfer smear. Fayde omits this field when the frames show no smear.</td>
+</tr>
+<tr>
 <td><code>calibration</code></td>
 <td>The numbers behind these values: frames used, spreads, and largest deviations</td>
 </tr>
@@ -1675,6 +1734,84 @@ these solutions, follow these steps:</p>
 <p>You can add the <code>pointing_radius_deg</code> and <code>header_wcs</code> fields manually. To include
 <code>header_wcs</code> in the profile during calibration, add <code>--no-header-wcs</code> to the <code>fayde calibrate</code>
 command.</p>
+<h3 id="correct-charge-transfer-smear">Correct charge-transfer smear<a class="headerlink" href="#correct-charge-transfer-smear" title="Permanent link">&para;</a></h3>
+<p>A CCD moves each pixel's charge across the chip to its readout. Traps in the silicon hold back
+part of the charge and release it later, behind the rest. A star's measured position therefore
+moves away from the readout edge. The shift is larger for stars farther from that edge, and
+larger for faint stars than for bright ones. The WCS fit can't absorb a shift that depends on
+brightness, so it remains in the residuals. Radiation damage adds traps over time, so the
+smear can grow over the years.</p>
+<p>To measure the smear, add <code>--charge-transfer</code> to the <code>fayde calibrate</code> command in
+<a href="#calibrate-an-instrument-profile">Calibrate an instrument profile</a>:</p>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>calibrate<span class="w"> </span>--solved<span class="w"> </span>LIST<span class="w"> </span>--charge-transfer<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>-o<span class="w"> </span>PROFILE
+</code></pre></div>
+<p>Each line of <code>LIST</code> must name the FITS image, not only a header, because Fayde detects the
+stars again. Fayde matches them to the catalog under each frame's solution, and fits how their
+residuals depend on brightness and on distance from each edge of the frame. Fayde keeps the
+result only if the shift is positive and at least five times its uncertainty. If it isn't,
+Fayde prints a warning and omits the field. Calibration needs at least 200 matched stars.</p>
+<p>The <code>charge_transfer</code> field has these fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>axis</code></td>
+<td><code>y</code> if the charge moves along the columns to a row of the frame, or <code>x</code> if it moves along the rows to a column</td>
+</tr>
+<tr>
+<td><code>readout_edge</code></td>
+<td><code>low</code> if the charge moves toward row or column 1, or <code>high</code> if it moves toward the last row or column</td>
+</tr>
+<tr>
+<td><code>shift_px</code></td>
+<td>The shift in pixels per 1,000 transfers per factor of e (2.718) in flux below <code>flux_ref</code></td>
+</tr>
+<tr>
+<td><code>flux_ref</code></td>
+<td>The flux, in image units, at and above which Fayde doesn't move a star</td>
+</tr>
+<tr>
+<td><code>per_year</code>, <code>epoch</code></td>
+<td>The change of <code>shift_px</code> per year, and the Julian year at which <code>shift_px</code> holds. Fayde fits these when at least five dated frames, each with at least six matched stars, span at least 1 year. Frames without an observation time then don't take part.</td>
+</tr>
+</tbody>
+</table>
+<p>For a frame observed in Julian year <code>t</code>, the shift is
+<code>s</code> = <code>shift_px</code> + <code>per_year</code> × (<code>t</code> − <code>epoch</code>), and never less than 0. Without an observation
+time, Fayde uses <code>shift_px</code>. A star <code>n</code> rows or columns from the readout edge, with flux <code>F</code>,
+moves away from that edge by <code>s</code> × (<code>n</code> / 1000) × ln(<code>flux_ref</code> / <code>F</code>). A star with a flux of at
+least <code>flux_ref</code> doesn't move. With <code>readout_edge</code> set to <code>high</code>, Fayde counts <code>n</code> from the last
+row or column, and the star moves toward row or column 1. Fayde removes that shift from every
+star that it detects: with <code>fayde solve</code>, <code>fayde verify</code>, or <code>fayde refit</code> and <code>--image</code>, and
+with <code>fayde detect --instrument PROFILE</code>. Fayde doesn't change the positions in a source list
+that you give with <code>--sources</code>, because it calibrates the term against the flux that its own
+detection measures.</p>
+<h3 id="remove-a-periodic-background-pattern">Remove a periodic background pattern<a class="headerlink" href="#remove-a-periodic-background-pattern" title="Permanent link">&para;</a></h3>
+<p>Some cameras pick up electronic interference while they read out a frame. The interference adds
+a wave of fixed frequency to every frame, which appears as fine stripes. Stripes a fraction of
+the noise high raise the measured noise, so faint stars go undetected. They also line up noise
+peaks along the stripes, which can make Fayde take a frame of trailed stars for something else.</p>
+<p>To find the stripes, add <code>--periodic-pattern</code> to the <code>fayde calibrate</code> command in
+<a href="#calibrate-an-instrument-profile">Calibrate an instrument profile</a>:</p>
+<div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>calibrate<span class="w"> </span>--solved<span class="w"> </span>LIST<span class="w"> </span>--periodic-pattern<span class="w"> </span>-o<span class="w"> </span>PROFILE
+</code></pre></div>
+<p>Each line of <code>LIST</code> must name the FITS image. Fayde averages the power spectra of the frames'
+backgrounds and keeps up to four peaks that stand far above the rest. If it finds none, it
+prints a warning and omits the field. Otherwise the profile gets a <code>periodic_pattern</code> field with
+a <code>frequencies</code> list. Each frequency is a pair of numbers, in cycles per pixel along x and y.</p>
+<p>With such a profile, Fayde fits each wave's amplitude and phase in 32 × 32 pixel tiles of every
+frame, away from the stars, and subtracts the waves before it detects stars. The detection
+report's <code>periodic_pattern</code> field gives the frequencies, the RMS of what Fayde subtracted
+(<code>rms</code>), and each wave's mean amplitude (<code>amplitude</code>), in image units. Without such a profile,
+<code>periodic_pattern</code> is <code>null</code>. If you give <code>--periodic-pattern</code> and <code>--charge-transfer</code>
+together, Fayde subtracts the pattern before it measures the charge-transfer smear.</p>
+<p>A frame that is binned differently can have the stripes at another frequency. At a frequency
+with no stripes, the fitted amplitude is near zero and the frame barely changes.</p>
 <h3 id="solve-without-a-pointing-or-scale">Solve without a pointing or scale<a class="headerlink" href="#solve-without-a-pointing-or-scale" title="Permanent link">&para;</a></h3>
 <p>When you know the pointing and have a precise pixel scale, Fayde needs only the catalog. In
 that case, omit <code>--index</code>. Fayde searches a pattern index only if it finds no solution around
@@ -2058,6 +2195,11 @@ points, the three errors are equal. The <code>class</code> field describes each 
   streak, or <code>point</code> for a point-like source in an image whose stars are trails, such as the
   tracked object</li>
 </ul>
+<p>With a profile that has a <code>charge_transfer</code> field, the positions in <code>sources</code> are corrected.
+Each star's <code>charge_transfer_px</code> field holds the shift that Fayde removed, in pixels. The
+report's <code>charge_transfer</code> field holds the term that Fayde used, the shift at the frame's
+epoch, the number of stars moved (<code>moved</code>), and the largest shift (<code>max_px</code>). Without such a
+profile, <code>charge_transfer</code> is <code>null</code>.</p>
 <h2 id="check-or-refit-an-existing-wcs">Check or refit an existing WCS<a class="headerlink" href="#check-or-refit-an-existing-wcs" title="Permanent link">&para;</a></h2>
 <p>To check a WCS from any solver against the catalog, use <code>fayde verify</code>:</p>
 <div class="highlight"><pre><span></span><code>fayde<span class="w"> </span>verify<span class="w"> </span>--image<span class="w"> </span>FRAME<span class="w"> </span>--ucac4<span class="w"> </span>UCAC4_DIR<span class="w"> </span>--wcs<span class="w"> </span>WCS

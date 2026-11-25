@@ -1262,7 +1262,7 @@
 
 
 <h1 id="command-line-reference">Command-line reference<a class="headerlink" href="#command-line-reference" title="Permanent link">&para;</a></h1>
-<p>Each command's options and defaults, as printed by its <code>--help</code> option in <code>fayde 0.4.0 (197bf29c9425)</code>. For tasks and examples, see <a href="../../usage/">Use the command line</a>.</p>
+<p>Each command's options and defaults, as printed by its <code>--help</code> option in <code>fayde 0.5.0 (37973e51ba84)</code>. For tasks and examples, see <a href="../../usage/">Use the command line</a>.</p>
 <h2 id="fayde">fayde<a class="headerlink" href="#fayde" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>usage:
   fayde index build --ucac4 &lt;dir&gt; --fov &lt;deg&gt; -o &lt;file&gt; [--epoch &lt;year&gt;] [--mag-limit &lt;m&gt;]
@@ -1291,6 +1291,7 @@
        --relax-priors-on-failure
   fayde calibrate --solved &lt;list&gt; [--roll-keyword &lt;KEY&gt;] [--binning &lt;XKEY&gt;[,&lt;YKEY&gt;]]
                   [--name &lt;text&gt;] [--no-header-wcs] [-o &lt;profile.json&gt;]
+                  [--charge-transfer --ucac4 &lt;dir&gt;] [--periodic-pattern]
   fayde compare --ucac4 &lt;dir&gt; --index &lt;a.fidx&gt;[,&lt;b.fidx&gt;] --frames &lt;frames.json&gt; [--limit &lt;n&gt;]
                 [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
   fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
@@ -1388,6 +1389,11 @@ reads the frame's header from the image unless --header is given.
                               trails, from +x towards +y       is measured from the image
   --no-trails                 measure every star as a point, even when the stars are
                               trails (skips the trail census)
+  --instrument &lt;profile.json&gt; subtract the profile's periodic pattern and take its
+                              charge-transfer smear out of the positions (its other fields
+                              are for the solve)                          default: none
+  --epoch &lt;year&gt;              observation year, for a smear    default: the header's
+                              that changes with time
   -o &lt;frame.sources.fits&gt;     also write the sources as a source list (Fayde's FITS table:
                               X, Y, FLUX, SIGMA, P_STAR, TRUNCATED); name it after the frame
 </code></pre></div>
@@ -1539,6 +1545,13 @@ nominal scale (fayde solve --scale &lt;arcsec/px&gt; ... -o frame.wcs), then cal
   --name &lt;text&gt;            the profile's name
   --no-header-wcs          measure the header pointing from RA/DEC or OBJCTRA/OBJCTDEC, not a
                            WCS in the header, and make the profile tell the solver the same
+  --charge-transfer        also fit the CCD's charge-transfer smear (faint stars displaced
+                           away from the readout edge): the listed FITS files must be the
+                           images; needs --ucac4. Detection options (--fwhm ...) apply
+  --periodic-pattern       also find stripes from readout pickup (a wave of fixed frequency in
+                           every frame's background), to subtract before detection; the listed
+                           FITS files must be the images
+  --ucac4 &lt;dir&gt;            UCAC4 directory, for --charge-transfer
   -o &lt;profile.json&gt;        also write the profile to a file
 
 The profile goes to stdout. Its "calibration" member holds the numbers behind it: frames
@@ -1589,6 +1602,7 @@ content hash.
        --relax-priors-on-failure
   fayde calibrate --solved &lt;list&gt; [--roll-keyword &lt;KEY&gt;] [--binning &lt;XKEY&gt;[,&lt;YKEY&gt;]]
                   [--name &lt;text&gt;] [--no-header-wcs] [-o &lt;profile.json&gt;]
+                  [--charge-transfer --ucac4 &lt;dir&gt;] [--periodic-pattern]
   fayde compare --ucac4 &lt;dir&gt; --index &lt;a.fidx&gt;[,&lt;b.fidx&gt;] --frames &lt;frames.json&gt; [--limit &lt;n&gt;]
                 [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
   fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
@@ -1624,6 +1638,7 @@ content hash.
        --relax-priors-on-failure
   fayde calibrate --solved &lt;list&gt; [--roll-keyword &lt;KEY&gt;] [--binning &lt;XKEY&gt;[,&lt;YKEY&gt;]]
                   [--name &lt;text&gt;] [--no-header-wcs] [-o &lt;profile.json&gt;]
+                  [--charge-transfer --ucac4 &lt;dir&gt;] [--periodic-pattern]
   fayde compare --ucac4 &lt;dir&gt; --index &lt;a.fidx&gt;[,&lt;b.fidx&gt;] --frames &lt;frames.json&gt; [--limit &lt;n&gt;]
                 [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
   fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
@@ -1659,6 +1674,7 @@ content hash.
        --relax-priors-on-failure
   fayde calibrate --solved &lt;list&gt; [--roll-keyword &lt;KEY&gt;] [--binning &lt;XKEY&gt;[,&lt;YKEY&gt;]]
                   [--name &lt;text&gt;] [--no-header-wcs] [-o &lt;profile.json&gt;]
+                  [--charge-transfer --ucac4 &lt;dir&gt;] [--periodic-pattern]
   fayde compare --ucac4 &lt;dir&gt; --index &lt;a.fidx&gt;[,&lt;b.fidx&gt;] --frames &lt;frames.json&gt; [--limit &lt;n&gt;]
                 [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
   fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
@@ -1694,6 +1710,7 @@ content hash.
        --relax-priors-on-failure
   fayde calibrate --solved &lt;list&gt; [--roll-keyword &lt;KEY&gt;] [--binning &lt;XKEY&gt;[,&lt;YKEY&gt;]]
                   [--name &lt;text&gt;] [--no-header-wcs] [-o &lt;profile.json&gt;]
+                  [--charge-transfer --ucac4 &lt;dir&gt;] [--periodic-pattern]
   fayde compare --ucac4 &lt;dir&gt; --index &lt;a.fidx&gt;[,&lt;b.fidx&gt;] --frames &lt;frames.json&gt; [--limit &lt;n&gt;]
                 [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
   fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
@@ -1729,6 +1746,7 @@ content hash.
        --relax-priors-on-failure
   fayde calibrate --solved &lt;list&gt; [--roll-keyword &lt;KEY&gt;] [--binning &lt;XKEY&gt;[,&lt;YKEY&gt;]]
                   [--name &lt;text&gt;] [--no-header-wcs] [-o &lt;profile.json&gt;]
+                  [--charge-transfer --ucac4 &lt;dir&gt;] [--periodic-pattern]
   fayde compare --ucac4 &lt;dir&gt; --index &lt;a.fidx&gt;[,&lt;b.fidx&gt;] --frames &lt;frames.json&gt; [--limit &lt;n&gt;]
                 [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
   fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]
@@ -1764,6 +1782,7 @@ content hash.
        --relax-priors-on-failure
   fayde calibrate --solved &lt;list&gt; [--roll-keyword &lt;KEY&gt;] [--binning &lt;XKEY&gt;[,&lt;YKEY&gt;]]
                   [--name &lt;text&gt;] [--no-header-wcs] [-o &lt;profile.json&gt;]
+                  [--charge-transfer --ucac4 &lt;dir&gt;] [--periodic-pattern]
   fayde compare --ucac4 &lt;dir&gt; --index &lt;a.fidx&gt;[,&lt;b.fidx&gt;] --frames &lt;frames.json&gt; [--limit &lt;n&gt;]
                 [--instrument &lt;profile.json&gt;] [--no-header-wcs] [--hinted-only] [--deadline &lt;s&gt;]
   fayde bench --ucac4 &lt;dir&gt; --index &lt;file&gt; [--frames &lt;n&gt;] [--seed &lt;n&gt;] [--size &lt;px&gt;] [--scale &lt;arcsec/px&gt;]

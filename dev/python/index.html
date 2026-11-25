@@ -1010,7 +1010,11 @@ angle guides detection, and the two values replace the measured trail in the sol
 <li>The <code>header</code> argument accepts a dictionary, a list of header cards, or an
   <code>astropy.io.fits.Header</code>. The WCS argument of <code>verify</code>, <code>refit</code>, and <code>stars_at</code> accepts the
   same types.</li>
-<li>The <code>instrument</code> argument accepts a profile dictionary or the path to a profile file.</li>
+<li>The <code>instrument</code> argument accepts a profile dictionary or the path to a profile file.
+  The <code>detect</code> function also takes <code>instrument</code> or <code>instrument_path</code>. During detection, Fayde
+  applies the profile's <code>charge_transfer</code> and <code>periodic_pattern</code> corrections. For more
+  information, see <a href="../usage/#correct-charge-transfer-smear">Correct charge-transfer smear</a> and
+  <a href="../usage/#remove-a-periodic-background-pattern">Remove a periodic background pattern</a>.</li>
 <li>The report is a dictionary with the same fields as the command-line JSON report. For more
   information about these fields, see <a href="../usage/#read-the-report">Read the report</a>.</li>
 <li>An invalid option raises <code>ValueError</code>. A solver failure raises <code>fayde.FaydeError</code>, which

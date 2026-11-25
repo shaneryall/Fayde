@@ -1890,6 +1890,11 @@ describes the result.</p>
 <td>A frame measured as trails that gives no solution is solved again with its stars measured as points (<code>fayde solve --image</code>, Python <code>solve_image</code>)</td>
 <td>A slew ending in a dwell leaves curved trails with a bright point at the end: trails mode failed where the points solved</td>
 </tr>
+<tr>
+<td>Background as measured</td>
+<td>An instrument profile's periodic pattern is subtracted before detection</td>
+<td>Readout pickup at a fixed frequency, about 18% of the background variance on real frames, pulled the census's second estimate to the stripes' direction and hid faint trails</td>
+</tr>
 </tbody>
 </table>
 <p>Results on the synthetic frames of <code>crates/fayde-detect/tests/trails.rs</code> (768 × 768, PSF σ 1.3 px,

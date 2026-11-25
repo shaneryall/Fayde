@@ -1492,16 +1492,28 @@ implements an algorithm cites the same source.</p>
 <td><code>crates/fayde-detect/src/kernel/rotation.rs</code> (<code>Rotation::template</code>)</td>
 </tr>
 <tr>
+<td>Charge-transfer smear: traps release charge behind the packet, so a source is displaced away from the readout, more for faint sources and more transfers, growing with radiation dose</td>
+<td>Physics: Janesick 2001, <em>Scientific Charge-Coupled Devices</em>, SPIE Press (charge-transfer efficiency and traps). The astrometric effect on faint against bright sources and its growth with time: Anderson &amp; Bedin 2010, <em>PASP</em> 122, 1035; Massey et al. 2010, <em>MNRAS</em> 401, 371. The model, shift = s(t) · (transfers / 1000) · max(0, ln(flux_ref / F)) with s(t) = max(0, shift_px + per_year · (t − epoch)), is Fayde's own, chosen from Fayde's residuals on real frames from one camera (after correction, faint against bright within 0.05 px per 1000 rows over 300 to 64,000 flux units; the frames are not in the repository)</td>
+<td>Correcting detected positions with an instrument profile</td>
+<td><code>crates/fayde-fits/src/instrument.rs</code> (<code>ChargeTransfer</code>), <code>crates/fayde-api/src/lib.rs</code> (<code>detect_sources</code>)</td>
+</tr>
+<tr>
 <td>Periodic background pattern removed: in 32 × 32 pixel tiles, the offset and a cosine and a sine term per known frequency fitted by least squares to the pixels away from sources (3 robust σ from the tile median, 2 px around), the terms interpolated bilinearly between tile centers and the waves subtracted</td>
 <td>Least-squares fitting of sinusoids to unevenly sampled data: Lomb 1976, <em>Ap&amp;SS</em> 39, 447; Scargle 1982, <em>ApJ</em> 263, 835. Tiled fits that follow a slowly drifting amplitude and phase are Fayde's own</td>
-<td>Readout stripes, during the trail census retry</td>
-<td><code>crates/fayde-detect/src/pattern.rs</code> (<code>remove</code>), <code>crates/fayde-detect/src/trail.rs</code> (<code>clean_census</code>)</td>
+<td>Readout stripes, before detection with a profile or during the trail census retry</td>
+<td><code>crates/fayde-detect/src/pattern.rs</code> (<code>remove</code>), <code>crates/fayde-api/src/lib.rs</code> (<code>detect_sources</code>), <code>crates/fayde-detect/src/trail.rs</code> (<code>clean_census</code>)</td>
 </tr>
 <tr>
 <td>Periodic pattern frequencies: power spectra of the frames' backgrounds (sources clipped) on a power-of-two square by a radix-2 fast Fourier transform, normalized and averaged; peaks 30 times the median power holding at least 0.5% of the variance, refined between bins by a parabola through the log power</td>
 <td>Cooley &amp; Tukey 1965, <em>Math. Comp.</em> 19, 297. Peak thresholds are Fayde's own</td>
-<td>Single-frame trail census retry (waves with at least 2% power and two cycles per fitting tile)</td>
+<td><code>fayde calibrate --periodic-pattern</code> and single-frame trail census retry (waves with at least 2% power and two cycles per fitting tile)</td>
 <td><code>crates/fayde-detect/src/pattern.rs</code> (<code>Finder</code>), <code>crates/fayde-detect/src/trail.rs</code> (<code>clean_census</code>)</td>
+</tr>
+<tr>
+<td>Charge-transfer calibration: each frame's offset and linear terms projected out of the residuals frame by frame, then one least-squares fit of the shift (and its rate per year) for each of the four readout geometries, 5σ clipping on the robust spread; the four compared on one set of stars, and the term kept from those whose shift is positive and at least 5σ</td>
+<td>Partitioned regression: Frisch &amp; Waugh 1933, <em>Econometrica</em> 1(4), 387; Lovell 1963, <em>JASA</em> 58, 993. Median absolute deviation: Hampel 1974</td>
+<td><code>fayde calibrate --charge-transfer</code></td>
+<td><code>crates/fayde-api/src/calibrate.rs</code> (<code>calibrate_charge_transfer</code>)</td>
 </tr>
 </tbody>
 </table>

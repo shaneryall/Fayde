@@ -2615,7 +2615,8 @@ as <code>sigma_px</code>. See <a href="../../usage/#read-the-detection-report">R
 <p>The JSON instrument profile can supply a scale and its uncertainty, binning, parity, a roll
 rule based on a header keyword, pointing uncertainty and radius, and whether to use the
 frame's WCS as a hint. Caller overrides take precedence, followed by the profile and then the
-image header. See the <a href="https://github.com/shaneryall/Fayde/blob/main/profiles/example.json">instrument profile example</a> and the
+image header. Detection can also use the profile's charge-transfer and periodic-background
+corrections. See the <a href="https://github.com/shaneryall/Fayde/blob/main/profiles/example.json">instrument profile example</a> and the
 <a href="../../usage/#calibrate-an-instrument-profile">calibration guide</a>.</p>
 <h3 id="66-observer">6.6 Observer<a class="headerlink" href="#66-observer" title="Permanent link">&para;</a></h3>
 <p>Fayde doesn't model the observer. It applies no stellar aberration from the observer's velocity,
