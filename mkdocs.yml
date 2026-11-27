@@ -1,4 +1,5 @@
 site_name: Fayde
+site_author: Shane Ryall
 site_description: Verified astrometric plate solving for FITS images.
 site_url: https://shaneryall.github.io/Fayde/
 repo_url: https://github.com/shaneryall/Fayde

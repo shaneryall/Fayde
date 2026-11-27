@@ -4,6 +4,8 @@ Fayde finds the stars in a FITS image, matches them against a star catalog, and 
 coordinate system (WCS) solution with its measured accuracy. It runs from the command line and
 from Python on Linux, macOS, and Windows.
 
+Fayde is developed and maintained by [Shane Ryall](https://shaneryall.com/).
+
 To solve your first image, follow these pages in order:
 
 1. [Install Fayde](install.md).

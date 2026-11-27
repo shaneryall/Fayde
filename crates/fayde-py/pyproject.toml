@@ -32,6 +32,7 @@ fayde = "fayde._cli:main"
 
 [project.urls]
 Repository = "https://github.com/shaneryall/Fayde"
+"Author website" = "https://shaneryall.com/"
 Changelog = "https://github.com/shaneryall/Fayde/blob/main/CHANGELOG.md"
 Issues = "https://github.com/shaneryall/Fayde/issues"
 

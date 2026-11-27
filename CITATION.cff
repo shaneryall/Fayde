@@ -9,6 +9,8 @@ abstract: >-
 authors:
   - family-names: Ryall
     given-names: Shane
+    orcid: "https://orcid.org/0009-0004-7275-2989"
+    website: "https://shaneryall.com/"
 version: 0.5.0
 date-released: 2026-11-25
 license: GPL-3.0-or-later
