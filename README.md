@@ -169,3 +169,8 @@ attribution, see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). Versions 0.3.0 to 
 released under the Apache License 2.0 and stay under it. If you redistribute Fayde, include both
 files. For the licenses of the bundled Rust crates, see
 [`THIRD-PARTY-LICENSES.md`](THIRD-PARTY-LICENSES.md).
+
+## Author
+
+[Shane Ryall](https://shaneryall.com/) is a Canadian AI researcher and engineer based in Ottawa.
+Find his other projects on [GitHub](https://github.com/shaneryall).
