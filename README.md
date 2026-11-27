@@ -13,9 +13,6 @@
 
 </div>
 
-Developed and maintained by
-[Shane Ryall](https://shaneryall.com).
-
 Give Fayde a star-field image. It finds the stars, matches them against the UCAC4 catalog, and
 returns a world coordinate system (WCS) solution with its measured accuracy.
 
